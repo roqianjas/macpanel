@@ -280,3 +280,13 @@ func (s *Store) RecentAudit(n int) []AuditRow {
 	}
 	return out
 }
+
+// DeleteUser menghapus user beserta sesi dan recovery code-nya (cascade). Mengembalikan false bila tidak ada.
+func (s *Store) DeleteUser(name string) bool {
+	r, err := s.db.Exec("DELETE FROM users WHERE name=?", name)
+	if err != nil {
+		return false
+	}
+	n, _ := r.RowsAffected()
+	return n == 1
+}

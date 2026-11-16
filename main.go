@@ -29,6 +29,10 @@ func defaultDB() string {
 func keychainGet(service string) ([]byte, error) {
 	out, err := exec.Command("/usr/bin/security", "find-generic-password", "-a", "panel", "-s", service, "-w").Output()
 	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && ee.ExitCode() == 36 {
+			return nil, errors.New("Keychain terkunci untuk sesi ini (SSH). Jalankan: security unlock-keychain ~/Library/Keychains/login.keychain-db")
+		}
 		return nil, errors.New("kunci tidak ada di Keychain (jalankan: panel init-key)")
 	}
 	return decodeHexKey(strings.TrimSpace(string(out)))
@@ -39,7 +43,12 @@ func keychainInit(service string) error {
 		return errors.New("kunci sudah ada, tidak ditimpa (menimpa membuat secret TOTP lama tak terbaca)")
 	}
 	k := fmt.Sprintf("%x", randBytes(32))
-	return exec.Command("/usr/bin/security", "add-generic-password", "-a", "panel", "-s", service, "-w", k).Run()
+	err := exec.Command("/usr/bin/security", "add-generic-password", "-a", "panel", "-s", service, "-w", k).Run()
+	var ee *exec.ExitError
+	if errors.As(err, &ee) && ee.ExitCode() == 36 {
+		return errors.New("Keychain terkunci untuk sesi ini (SSH). Jalankan: security unlock-keychain ~/Library/Keychains/login.keychain-db")
+	}
+	return err
 }
 
 func decodeHexKey(s string) ([]byte, error) {
@@ -54,7 +63,7 @@ func fatal(m string) { fmt.Fprintln(os.Stderr, "panel:", m); os.Exit(1) }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("pakai: panel serve | init-key | user add <nama> [--password-stdin] | user list | audit verify")
+		fmt.Println("pakai: panel serve | init-key | user add <nama> [--password-stdin] | user remove <nama> | user list | audit verify")
 		os.Exit(2)
 	}
 	fs := flag.NewFlagSet("panel", flag.ExitOnError)
@@ -103,6 +112,19 @@ func main() {
 			fatal(err.Error())
 		}
 		fmt.Println(strings.Join(st.ListUsers(), "\n"))
+	case cmd == "user" && sub == "remove":
+		if len(pos) != 1 || !nameRE.MatchString(pos[0]) {
+			fatal("pakai: panel user remove <nama>")
+		}
+		st, err := openStore(*dbPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		if !st.DeleteUser(pos[0]) {
+			fatal("user tidak ada")
+		}
+		st.Audit("cli", "user_remove", pos[0], "local", time.Now())
+		fmt.Println("User dihapus:", pos[0], "(sesi dan recovery code ikut terhapus)")
 	case cmd == "user" && sub == "add":
 		if len(pos) != 1 || !nameRE.MatchString(pos[0]) {
 			fatal("nama: huruf kecil/angka/_-, 3-32 karakter. Pakai: panel user add <nama>")
