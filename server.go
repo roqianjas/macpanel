@@ -36,6 +36,10 @@ type App struct {
 	home     string // HOME user; batas ~/Developer dihitung dari sini
 	sitesDir string // folder konfigurasi situs nginx (hanya dibaca panel)
 	tld      string
+	nginxDir string // folder config nginx (snippets)
+	certDir  string
+	logDir   string // log akses per situs
+	errLog   string
 	timeout  time.Duration // batas waktu tiap aksi
 	mu       sync.Mutex    // satu aksi mutasi pada satu waktu
 }
@@ -57,7 +61,8 @@ const (
 func newApp(st *Store, key []byte, cfg Config) *App {
 	home, _ := os.UserHomeDir()
 	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now,
-		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", timeout: 120 * time.Second}
+		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", timeout: 120 * time.Second,
+		nginxDir: filepath.Join(home, "Developer/_ops/web/nginx"), certDir: "/opt/homebrew/etc/nginx/certs", logDir: "/opt/homebrew/var/log/nginx/sites", errLog: "/opt/homebrew/var/log/nginx/error.log"}
 }
 
 // routes adalah SATU-SATUNYA daftar rute. Tes memastikan semua yang bukan Public menolak permintaan tanpa sesi.
@@ -78,6 +83,14 @@ func routes() []Route {
 		{"POST", "/api/db/{engine}/{name}/dump", Full, hDBDump},
 		{"POST", "/api/db/{engine}/{name}/drop", Full, hDBDrop},
 		{"GET", "/api/jobs", Full, hJobs},
+		{"GET", "/api/sites/{name}/settings", Full, hSettingsGet},
+		{"POST", "/api/sites/{name}/settings", Full, hSettingsSet},
+		{"GET", "/api/sites/{name}/config", Full, hConfigGet},
+		{"POST", "/api/sites/{name}/config", Full, hConfigSet},
+		{"POST", "/api/sites/{name}/restore", Full, hRestore},
+		{"GET", "/api/sites/{name}/ssl", Full, hSSLGet},
+		{"POST", "/api/sites/{name}/ssl/renew", Full, hSSLRenew},
+		{"GET", "/api/sites/{name}/logs", Full, hLogs},
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -459,4 +460,14 @@ func TestUseTOTPStepIsAtomic(t *testing.T) {
 	if !e.app.st.UseTOTPStep(u.ID, 101) {
 		t.Fatal("langkah lebih baru harus diterima")
 	}
+}
+
+func jsonQuote(s string) string { b, _ := json.Marshal(s); return string(b) }
+
+func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+func decodeJSONString(s string, v any) error {
+	d := json.NewDecoder(strings.NewReader(s))
+	d.DisallowUnknownFields()
+	return d.Decode(v)
 }
