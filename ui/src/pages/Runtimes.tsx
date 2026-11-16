@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
@@ -27,6 +27,13 @@ const TOOLS = [
 export default function Runtimes() {
   const php = useLoad(() => get<{ php: PHP[] }>("/api/php"));
   const rt = useLoad(() => get<{ runtimes: RT[] }>("/api/runtime"));
+  // FPM butuh beberapa detik untuk naik setelah pemasangan; periksa ulang sampai aktif agar tidak menampilkan "mati" yang basi.
+  const fpmDown = !!php.data?.php.some((p) => p.installed && !p.fpm);
+  useEffect(() => {
+    if (!fpmDown) return;
+    const t = setInterval(php.reload, 4000);
+    return () => clearInterval(t);
+  }, [fpmDown, php.reload]);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [rmPhp, setRmPhp] = useState<string | null>(null);
   const [rmRt, setRmRt] = useState<RT | null>(null);
