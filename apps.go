@@ -189,7 +189,7 @@ func (a *App) probeSite(host string) (int, int) {
 	if tc.Handshake() != nil {
 		return 0, 0
 	}
-	req := "HEAD / HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\nUser-Agent: panel-probe\r\n\r\n"
+	req := "GET / HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\nUser-Agent: panel-probe\r\n\r\n"
 	if _, err := tc.Write([]byte(req)); err != nil {
 		return 0, 0
 	}

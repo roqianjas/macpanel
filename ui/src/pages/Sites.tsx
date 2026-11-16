@@ -66,6 +66,7 @@ function SiteList() {
       setNote({ tone: "bad", text: errText(x) });
     } finally {
       reload();
+      setTimeout(reload, 1500); // nginx butuh sekitar 0,2-0,4 detik untuk memuat ulang; periksa lagi setelahnya
     }
   };
 
@@ -148,6 +149,7 @@ function SiteList() {
             await post(`/api/sites/${pause.name}/disable`, {});
             setNote({ tone: "ok", text: `${pause.host} dijeda.` });
             reload();
+            setTimeout(reload, 1500);
           }}
           onClose={() => setPause(null)}
         />

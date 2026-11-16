@@ -79,7 +79,7 @@ export default function Overview() {
   );
 
   const tiles = [
-    { href: "#/website", icon: Globe, label: "Website", ds: "Situs .lab, rewrite, SSL, config nginx", chip: counts.data ? `${counts.data.sitesOn} dari ${counts.data.sites} aktif` : "" },
+    { href: "#/website", icon: Globe, label: "Website", ds: "Situs .lab, rewrite, SSL, config nginx", chip: counts.data ? (counts.data.sites ? `${counts.data.sitesOn} dari ${counts.data.sites} situs aktif` : "Belum ada situs Anda") : "" },
     { href: "#/aplikasi", icon: Server, label: "Aplikasi", ds: "nginx, PHP-FPM, database, cache", chip: svc.data ? `${running} dari ${total} berjalan` : "" },
     { href: "#/database", icon: Database, label: "Database", ds: "MySQL dan PostgreSQL per proyek", chip: counts.data ? `${counts.data.db} proyek` : "" },
     { href: "#/tugas", icon: Timer, label: "Worker dan cron", ds: "Pengganti Supervisor dan crontab", chip: counts.data ? `${counts.data.workers} worker, ${counts.data.jobs} cron` : "" },
@@ -152,7 +152,8 @@ export default function Overview() {
                   <ul className="kpi-rows">
                     {nets.map((n) => (
                       <li key={n.iface}>
-                        {n.label}: ↓ {fmtRate(n.rx_bps)}, ↑ {fmtRate(n.tx_bps)}
+                        <span>{n.label}</span>
+                        <span className="mono">↓{fmtRate(n.rx_bps)} ↑{fmtRate(n.tx_bps)}</span>
                       </li>
                     ))}
                   </ul>
@@ -165,7 +166,8 @@ export default function Overview() {
       </State>
 
       <div className="split">
-        <Card title={<><Activity size={18} className="icon" aria-hidden="true" /> Seberapa sibuk CPU dan memori?</>} action={<RangePicker value={range} onChange={setRange} />}>
+        <div className="stackc">
+          <Card title={<><Activity size={18} className="icon" aria-hidden="true" /> Seberapa sibuk CPU dan memori?</>} action={<RangePicker value={range} onChange={setRange} />}>
           <State loading={met.loading && !met.data} error={met.error} onRetry={met.reload}>
             {met.data && (
               <LineChart
@@ -180,20 +182,6 @@ export default function Overview() {
               />
             )}
           </State>
-        </Card>
-        <div className="stackc">
-          <Card title="Status layanan" action={<a className="btn btn-sm" href="#/aplikasi">Kelola</a>}>
-            <State loading={svc.loading && !svc.data} error={svc.error} onRetry={svc.reload}>
-              <ul className="svc-list">
-                {services.filter((s) => s.installed).map((s) => (
-                  <li key={s.id}>
-                    <Mark tone={stateTone(s.state)} />
-                    <a href="#/aplikasi">{s.label}</a>
-                    <Chip tone={stateTone(s.state)}>{stateText[s.state]}</Chip>
-                  </li>
-                ))}
-              </ul>
-            </State>
           </Card>
           {si && (
             <Card title="Sistem">
@@ -211,6 +199,20 @@ export default function Overview() {
               {si.backup?.local_only && <p className="callout">Backup masih di disk yang sama, belum offsite.</p>}
             </Card>
           )}
+        </div>
+        <div className="stackc">
+          <Card title="Status layanan" action={<a className="btn btn-sm" href="#/aplikasi">Kelola</a>}>
+            <State loading={svc.loading && !svc.data} error={svc.error} onRetry={svc.reload}>
+              <ul className="svc-list">
+                {services.filter((s) => s.installed).map((s) => (
+                  <li key={s.id}>
+                    <a href="#/aplikasi">{s.label}</a>
+                    <Chip tone={stateTone(s.state)}>{stateText[s.state]}</Chip>
+                  </li>
+                ))}
+              </ul>
+            </State>
+          </Card>
         </div>
       </div>
     </>

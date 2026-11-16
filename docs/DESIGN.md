@@ -132,3 +132,10 @@ Kode: `nginxconf.go` (parser + kebijakan), `siteconf.go` (model, template, pipel
 - P4: UI di `ui/` (React, build statis, disajikan Go). Header keamanan di semua respons; aset hash di-cache lama, HTML `no-store`. LaunchAgent + `panel.lab` aktif.
 - Disengaja tidak dikerjakan: mengganti `home.lab` (panel belum punya grafik, status, log, dokumen), QR enrol TOTP, govulncheck (jaringan).
 - Belum teruji: reboot penuh + Keychain di bawah launchd, upgrade paket nyata lewat panel, cron `--at`, browser selain Chromium, pembaca layar.
+
+## 15. Status P5 (2026-11-16): Pantau, Aplikasi, jeda situs, desain Konsol Ramah
+- Pantau: pengumpul di `metrics.go` (sampel 30 dtk) membaca `top`, `memory_pressure`, `sysctl`, `netstat -ibn`, `ps`, `statfs` (path mutlak, env bersih, tanpa masukan pengguna). Penyimpanan `metrics`/`netm` di SQLite, 7 hari. Rute `/api/metrics?range=1h|24h|7d` dan `/api/system`.
+- Aplikasi: `/api/services`, `/api/services/{id}/{start|stop|restart}` (stop/restart butuh step-up), `/api/services/{id}/logs`, `/api/apps/{id}/install|remove` (katalog tetap memcached, mailpit). id divalidasi regex di panel dan lagi di `lab`.
+- Website: `GET /api/sites` kini memuat status HTTP (GET lewat loopback), latensi, umur sertifikat, dan situs dijeda; `POST /api/sites/{name}/{enable|disable}`.
+- Risiko sisa: bandwidth hanya interface ber-IPv4; laju dirata-rata per 30 dtk; probe situs menyambung ke 127.0.0.1:443 dengan SNI situs (hanya baca status baris pertama).
+- UI mengikuti `portal-ui/DESIGN.md` (palet, radius 16/10, rail berlabel, hero, kartu KPI). Ikon Lucide tetap override R-04/R-37 atas keputusan Roki.

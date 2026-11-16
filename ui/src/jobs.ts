@@ -46,6 +46,7 @@ export function trackJob(id: number, label: string, onDone?: (j: TrackedJob) => 
       /* jaringan putus sebentar: coba lagi */
     }
     emit();
+    if (j.status === "ok") setTimeout(() => dismissJob(id), 8000); // yang sukses hilang sendiri; gagal/timeout tetap sampai ditutup
     if (j.status === "berjalan" && Date.now() - started < 35 * 60 * 1000) {
       setTimeout(tick, 1500);
     } else if (j.status !== "berjalan") {

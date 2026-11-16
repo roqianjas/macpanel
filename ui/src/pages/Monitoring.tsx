@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Cpu, Gauge, HardDrive, Network } from "lucide-react";
 import { LineChart, RangePicker } from "../charts";
 import { useMetrics, useSystem } from "../data";
-import { fmtBytes, fmtRate, niceCeil, RANGES, type RangeKey } from "../lib";
+import { byteUnit, fmtBytes, fmtRate, niceTop, RANGES, type RangeKey } from "../lib";
 import { Card, PageHead, State } from "../ui";
 
 export default function Monitoring() {
@@ -35,7 +35,7 @@ export default function Monitoring() {
             <div className="grid2">
               <Card title={<><Gauge size={18} className="icon" aria-hidden="true" /> Beban rata-rata 1 menit</>}>
                 <p className="small muted">Angka di atas jumlah inti ({sys.data?.cores ?? "?"}) berarti proses antre menunggu CPU.</p>
-                <LineChart title="Beban rata-rata" rangeKey={range} domain={[0, niceCeil(loadMax, 1)]} tickFmt={(v) => v.toFixed(v < 10 ? 1 : 0).replace(".", ",")} series={[{ key: "load", label: "Beban", pts: m.load, fmt: (v) => v.toFixed(2).replace(".", ",") }]} />
+                <LineChart title="Beban rata-rata" rangeKey={range} domain={[0, niceTop(loadMax, 4)]} tickFmt={(v) => String(Math.round(v * 10) / 10).replace(".", ",")} series={[{ key: "load", label: "Beban", pts: m.load, fmt: (v) => v.toFixed(2).replace(".", ",") }]} />
               </Card>
               <Card title={<><HardDrive size={18} className="icon" aria-hidden="true" /> Pemakaian disk</>}>
                 <p className="small muted">{sys.data?.disk_total ? `${fmtBytes(sys.data.disk_free)} bebas dari ${fmtBytes(sys.data.disk_total)}.` : "Ukuran disk belum terbaca."}</p>
@@ -59,7 +59,7 @@ export default function Monitoring() {
               <>
                 {m.nets.map((n) => {
                   const top = Math.max(1, ...n.rx.map((p) => p[1]), ...n.tx.map((p) => p[1]));
-                  const hi = niceCeil(top, 1024);
+                  const hi = niceTop(top, 4096, byteUnit(Math.max(top, 4096) / 4));
                   return (
                     <Card key={n.iface} title={`${n.label}: berapa banyak lalu lintas masuk dan keluar?`}>
                       <LineChart

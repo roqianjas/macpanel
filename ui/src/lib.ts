@@ -51,6 +51,23 @@ export function niceCeil(v: number, floor = 1): number {
   return n * p;
 }
 
+/** Batas atas sumbu = 4 x langkah bulat (1, 2, atau 5 x 10^n) dalam satuan `unit`, supaya keempat interval berlabel bulat. */
+export function niceTop(v: number, floor: number, unit = 1): number {
+  const x = Math.max(v, floor) / unit;
+  const raw = x / 4;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const m = raw / p;
+  const step = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  return 4 * step * unit;
+}
+
+/** Satuan byte terbesar (1024^k) yang masih <= v, untuk memilih langkah sumbu bandwidth. */
+export function byteUnit(v: number): number {
+  let u = 1;
+  while (u * 1024 <= v && u < 1024 ** 4) u *= 1024;
+  return u;
+}
+
 export function fmtClock(t: number, withDate: boolean): string {
   const d = new Date(t * 1000);
   const hm = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(".", ":");
@@ -94,7 +111,7 @@ export function fmtBytes(b: number | null | undefined): string {
     v /= 1024;
     i++;
   }
-  return `${num(v, i === 0 || v >= 100 ? 0 : v >= 10 ? 1 : 2)} ${u[i]}`;
+  return `${num(v, i === 0 || v >= 100 ? 0 : v >= 10 ? 1 : 2).replace(/,(\d*?)0+$/, (_m, d: string) => (d ? `,${d}` : ""))} ${u[i]}`;
 }
 
 /** Laju dalam byte per detik. */

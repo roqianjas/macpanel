@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { RANGES, fmtClock, fmtSpan, geometry, summarize, useCountUp, type Pt, type RangeKey } from "./lib";
 
 export function CountUp({ value, decimals = 0, suffix = "" }: { value: number | null; decimals?: number; suffix?: string }) {
@@ -60,9 +60,8 @@ export interface ChartSeries {
   fmt: (v: number) => string;
 }
 
-const W = 640,
-  H = 250,
-  PAD = { l: 52, r: 8, t: 8, b: 22 };
+const H = 250,
+  PAD = { l: 56, r: 8, t: 8, b: 22 };
 
 /** Grafik garis. Data nyata saja; kurang dari 2 titik tampil sebagai keterangan, bukan grafik palsu. */
 export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series: ChartSeries[]; rangeKey: RangeKey; title: string; domain: [number, number]; tickFmt: (v: number) => string }) {
@@ -70,7 +69,18 @@ export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series
   const main = series[0]?.pts ?? [];
   const [cursor, setCursor] = useState<number | null>(null);
   const svg = useRef<SVGSVGElement>(null);
+  const box = useRef<HTMLElement>(null);
+  const [W, setW] = useState(640); // lebar viewBox = lebar kartu, supaya teks sumbu tetap 11px di ukuran berapa pun
   useEffect(() => setCursor(null), [rangeKey]);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const set = () => setW(Math.max(280, Math.round(el.clientWidth)));
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [main.length >= 2]); // figure baru ada setelah data cukup
 
   if (main.length < 2) {
     return (
@@ -124,7 +134,7 @@ export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series
   const at = (s: ChartSeries) => s.pts.find((p) => p[0] === main[idx][0]);
 
   return (
-    <figure className="chart">
+    <figure className="chart" ref={box}>
       <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={aria} tabIndex={0} onPointerMove={move} onPointerLeave={() => setCursor(null)} onKeyDown={key}>
         {ticks.map((t) => {
           const y = PAD.t + (H - PAD.t - PAD.b) * (1 - (t - domain[0]) / (domain[1] - domain[0]));

@@ -50,7 +50,8 @@ export default function Apps() {
         {groups.map(({ g, items }) => (
           <Card key={g} title={g}>
             <div className="tbl-wrap">
-              <table className="tbl">
+              <table className="tbl tbl-fixed">
+                <colgroup><col style={{ width: "30%" }} /><col style={{ width: "128px" }} /><col style={{ width: "96px" }} /><col style={{ width: "64px" }} /><col /></colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Layanan</th>
