@@ -51,8 +51,10 @@ func scrub(s string) string {
 
 // runLab satu-satunya cara panel menyentuh sistem: biner `lab` (path tetap), argv berupa list (tanpa shell),
 // env dibersihkan, timeout, batas output, seluruh grup proses dimatikan saat timeout.
-func (a *App) runLab(args []string, stdin string) Result {
-	ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
+func (a *App) runLab(args []string, stdin string) Result { return a.runLabT(args, stdin, a.timeout) }
+
+func (a *App) runLabT(args []string, stdin string, timeout time.Duration) Result {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, a.labBin, args...)
 	cmd.Env = []string{"PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", "HOME=" + a.home, "LANG=en_US.UTF-8"}

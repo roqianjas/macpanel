@@ -379,7 +379,7 @@ func hConfigSet(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		return
 	}
 	var in struct{ Content, SHA string }
-	if !decode(w, r, &in) {
+	if !decodeN(w, r, &in, 2*maxConfSize+1024) { // JSON memperbesar (escape); isi sebenarnya tetap dibatasi maxConfSize oleh parser
 		return
 	}
 	cur, _ := os.ReadFile(a.siteFile(name))

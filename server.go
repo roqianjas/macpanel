@@ -27,21 +27,24 @@ type Config struct {
 }
 
 type App struct {
-	st       *Store
-	key      []byte
-	cfg      Config
-	dummy    string
-	now      func() time.Time
-	labBin   string // biner lab (path tetap)
-	home     string // HOME user; batas ~/Developer dihitung dari sini
-	sitesDir string // folder konfigurasi situs nginx (hanya dibaca panel)
-	tld      string
-	nginxDir string // folder config nginx (snippets)
-	certDir  string
-	logDir   string // log akses per situs
-	errLog   string
-	timeout  time.Duration // batas waktu tiap aksi
-	mu       sync.Mutex    // satu aksi mutasi pada satu waktu
+	st          *Store
+	key         []byte
+	cfg         Config
+	dummy       string
+	now         func() time.Time
+	labBin      string // biner lab (path tetap)
+	home        string // HOME user; batas ~/Developer dihitung dari sini
+	sitesDir    string // folder konfigurasi situs nginx (hanya dibaca panel)
+	tld         string
+	nginxDir    string // folder config nginx (snippets)
+	certDir     string
+	logDir      string // log akses per situs
+	errLog      string
+	timeout     time.Duration  // batas waktu tiap aksi cepat
+	longTimeout time.Duration  // batas aksi lama (install, update)
+	bg          sync.WaitGroup // aksi latar belakang yang masih berjalan
+	mu          sync.Mutex     // satu aksi mutasi pada satu waktu
+	uiDir       string         // folder hasil build UI (kosong = tanpa UI)
 }
 
 type Route struct {
@@ -61,7 +64,7 @@ const (
 func newApp(st *Store, key []byte, cfg Config) *App {
 	home, _ := os.UserHomeDir()
 	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now,
-		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", timeout: 120 * time.Second,
+		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", timeout: 120 * time.Second, longTimeout: 30 * time.Minute,
 		nginxDir: filepath.Join(home, "Developer/_ops/web/nginx"), certDir: "/opt/homebrew/etc/nginx/certs", logDir: "/opt/homebrew/var/log/nginx/sites", errLog: "/opt/homebrew/var/log/nginx/error.log"}
 }
 
@@ -91,6 +94,21 @@ func routes() []Route {
 		{"GET", "/api/sites/{name}/ssl", Full, hSSLGet},
 		{"POST", "/api/sites/{name}/ssl/renew", Full, hSSLRenew},
 		{"GET", "/api/sites/{name}/logs", Full, hLogs},
+		{"GET", "/api/jobs/{id}", Full, hJob},
+		{"GET", "/api/php", Full, hPHPList},
+		{"POST", "/api/php/{version}/install", Full, hPHPInstall},
+		{"POST", "/api/php/{version}/remove", Full, hPHPRemove},
+		{"GET", "/api/runtime", Full, hRuntimeList},
+		{"POST", "/api/runtime/{tool}/{version}/install", Full, hRuntimeInstall},
+		{"POST", "/api/runtime/{tool}/{version}/use", Full, hRuntimeUse},
+		{"POST", "/api/runtime/{tool}/{version}/remove", Full, hRuntimeRemove},
+		{"GET", "/api/tasks/{kind}", Full, hTasksList},
+		{"POST", "/api/tasks/{kind}", Full, hTaskAdd},
+		{"POST", "/api/tasks/{kind}/{name}/restart", Full, hTaskRestart},
+		{"POST", "/api/tasks/{kind}/{name}/remove", Full, hTaskRemove},
+		{"GET", "/api/tasks/{kind}/{name}/logs", Full, hTaskLogs},
+		{"GET", "/api/updates", Full, hUpdatesCheck},
+		{"POST", "/api/updates/apply", Full, hUpdatesApply},
 	}
 }
 
@@ -100,8 +118,12 @@ func (a *App) Handler() http.Handler {
 		mux.HandleFunc(rt.Method+" "+rt.Path, a.wrap(rt))
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		secHeaders(w)
-		jsonOut(w, 404, map[string]string{"error": "not found"})
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			secHeaders(w)
+			jsonOut(w, 404, map[string]string{"error": "not found"})
+			return
+		}
+		a.serveStatic(w, r)
 	})
 	return mux
 }
@@ -127,7 +149,12 @@ func jerr(w http.ResponseWriter, code int, msg string) {
 }
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	return decodeN(w, r, v, maxBodySize)
+}
+
+// decodeN membatasi ukuran body per rute; editor config butuh lebih besar dari default.
+func decodeN(w http.ResponseWriter, r *http.Request, v any, limit int64) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
 	if err := d.Decode(v); err != nil {

@@ -71,6 +71,7 @@ func main() {
 	svc := fs.String("key-service", "panel-totp-key", "nama item Keychain")
 	addr := fs.String("addr", "127.0.0.1:9100", "alamat listen (harus loopback)")
 	origin := fs.String("origin", "https://panel.lab", "origin yang diizinkan")
+	uiDir := fs.String("ui", filepath.Join(userHome(), "Developer/_ops/web/panel/ui/dist"), "folder hasil build UI")
 	stdin := fs.Bool("password-stdin", false, "baca password dari stdin (otomasi/tes)")
 	cmd, rest := os.Args[1], os.Args[2:]
 	sub := ""
@@ -102,8 +103,10 @@ func main() {
 		if err != nil {
 			fatal(err.Error())
 		}
+		st.MarkStaleJobs()
 		app := newApp(st, key, Config{Origins: []string{*origin}})
-		srv := &http.Server{Addr: *addr, Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
+		app.uiDir = *uiDir
+		srv := &http.Server{Addr: *addr, Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 150 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 		fmt.Println("panel mendengarkan di", *addr)
 		fatal(srv.ListenAndServe().Error())
 	case cmd == "user" && sub == "list":
@@ -193,4 +196,9 @@ func readPassword(fromStdin bool) string {
 		fatal("password tidak sama")
 	}
 	return string(a)
+}
+
+func userHome() string {
+	h, _ := os.UserHomeDir()
+	return h
 }

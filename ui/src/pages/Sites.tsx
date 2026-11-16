@@ -1,0 +1,588 @@
+import { useEffect, useState } from "react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { errText, fmtTime, get, post } from "../api";
+import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, Tabs, useLoad } from "../ui";
+
+interface Site {
+  name: string;
+  host: string;
+  mode: string;
+  target: string;
+  php?: string;
+  system: boolean;
+}
+interface Rewrite {
+  from: string;
+  to: string;
+  flag: string;
+}
+interface Model {
+  mode: string;
+  target: string;
+  php?: string;
+  preset?: string;
+  rewrites: Rewrite[];
+  max_body_mb: number;
+  read_timeout_s: number;
+  force_https: boolean;
+  gzip: boolean;
+}
+
+const MODE_LABEL: Record<string, string> = { php: "PHP", proxy: "Proxy", statis: "Statis", kustom: "Kustom" };
+const PHP_VERSIONS = ["8.2", "8.3", "8.4", "8.5"];
+
+export default function Sites({ sub }: { sub: string }) {
+  return sub ? <SiteDetail name={sub} /> : <SiteList />;
+}
+
+// ---------- daftar ----------
+
+function SiteList() {
+  const { data, error, loading, reload } = useLoad(() => get<{ sites: Site[] }>("/api/sites"));
+  const [adding, setAdding] = useState(false);
+  const sites = data?.sites ?? [];
+  return (
+    <>
+      <PageHead
+        title="Website"
+        desc="Situs lokal berdomain .lab, hanya terbuka dari tailnet."
+        action={
+          <button className="btn btn-primary" onClick={() => setAdding(true)}>
+            <Plus size={18} aria-hidden="true" />
+            Tambah situs
+          </button>
+        }
+      />
+      <Card>
+        <State loading={loading && !data} error={error} empty={!!data && sites.length === 0} emptyText="Belum ada situs. Pilih “Tambah situs” untuk membuat yang pertama." onRetry={reload}>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th scope="col">Situs</th>
+                  <th scope="col">Mode</th>
+                  <th scope="col">Target</th>
+                  <th scope="col">PHP</th>
+                  <th scope="col">
+                    <span className="sr">Aksi</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sites.map((s) => (
+                  <tr key={s.name}>
+                    <td>
+                      <a className="mono" href={`https://${s.host}`} target="_blank" rel="noopener noreferrer">
+                        {s.host}
+                        <ExternalLink size={13} aria-hidden="true" className="inline-ic" />
+                        <span className="sr"> (tab baru)</span>
+                      </a>
+                      {s.system && (
+                        <>
+                          {" "}
+                          <Chip tone="mute">Sistem</Chip>
+                        </>
+                      )}
+                    </td>
+                    <td>{MODE_LABEL[s.mode] ?? s.mode}</td>
+                    <td className="mono cell-trunc" title={s.target}>
+                      {s.target || "-"}
+                    </td>
+                    <td className="mono">{s.php ?? "-"}</td>
+                    <td className="cell-end">
+                      <a className="btn" href={`#/website/${s.name}`}>
+                        {s.system ? "Lihat" : "Kelola"}
+                        <span className="sr"> {s.host}</span>
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </State>
+      </Card>
+      {adding && <AddSite onClose={() => setAdding(false)} onDone={(n) => { setAdding(false); location.hash = `#/website/${n}`; }} />}
+    </>
+  );
+}
+
+function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: string) => void }) {
+  const [name, setName] = useState("");
+  const [mode, setMode] = useState("php");
+  const [target, setTarget] = useState("");
+  const [php, setPhp] = useState("8.4");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    try {
+      const body: Record<string, string> = { name, target };
+      if (mode === "php") body.php = php;
+      await post("/api/sites", body);
+      onDone(name);
+    } catch (x) {
+      setErr(errText(x));
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title="Tambah situs" onClose={onClose}>
+      <form onSubmit={submit} className="stack">
+        <Field label="Nama" hint={`Menjadi alamat https://${name || "nama"}.lab. Huruf kecil, angka, dan tanda hubung.`}>
+          {(id, d) => <input id={id} aria-describedby={d} data-autofocus value={name} onChange={(e) => setName(e.target.value.toLowerCase())} required pattern="[a-z0-9]([a-z0-9\-]{0,38}[a-z0-9])?" />}
+        </Field>
+        <Field label="Jenis situs">
+          {(id) => (
+            <select id={id} value={mode} onChange={(e) => { setMode(e.target.value); setTarget(""); }}>
+              <option value="php">PHP atau Laravel (folder public)</option>
+              <option value="statis">Statis (folder berisi index.html)</option>
+              <option value="proxy">Proxy ke aplikasi yang sudah berjalan (port)</option>
+            </select>
+          )}
+        </Field>
+        <Field label={mode === "proxy" ? "Port aplikasi" : "Folder"} hint={mode === "proxy" ? "1024 sampai 65535. Aplikasi harus mendengarkan di 127.0.0.1." : "Path absolut atau diawali ~/ dan harus di bawah ~/Developer."}>
+          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={target} onChange={(e) => setTarget(e.target.value)} required placeholder={mode === "proxy" ? "3000" : "~/Developer/org/proyek/public"} />}
+        </Field>
+        {mode === "php" && (
+          <Field label="Versi PHP">
+            {(id) => (
+              <select id={id} value={php} onChange={(e) => setPhp(e.target.value)}>
+                {PHP_VERSIONS.map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </select>
+            )}
+          </Field>
+        )}
+        {err && <Alert>{err}</Alert>}
+        <div className="row-end">
+          <button type="button" className="btn" onClick={onClose}>
+            Batal
+          </button>
+          <button className="btn btn-primary" disabled={busy || !name || !target}>
+            {busy ? "Membuat…" : "Buat situs"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ---------- detail ----------
+
+const TABS = [
+  { id: "umum", label: "Umum" },
+  { id: "rewrite", label: "Rewrite" },
+  { id: "ssl", label: "SSL" },
+  { id: "config", label: "Config nginx" },
+  { id: "log", label: "Log" },
+];
+
+function SiteDetail({ name }: { name: string }) {
+  const [tab, setTab] = useState("umum");
+  const settings = useLoad(() => get<{ kind: string; model: Model | null; system: boolean }>(`/api/sites/${name}/settings`), [name]);
+  const [removing, setRemoving] = useState(false);
+  const host = `${name}.lab`;
+  const system = settings.data?.system ?? false;
+  return (
+    <>
+      <PageHead
+        title={host}
+        desc={system ? "Situs sistem: hanya bisa dilihat dari panel." : "Atur situs, rewrite, sertifikat, dan config nginx."}
+        action={
+          <>
+            <a className="btn" href="#/website">
+              Semua situs
+            </a>
+            <a className="btn" href={`https://${host}`} target="_blank" rel="noopener noreferrer">
+              <ExternalLink size={18} aria-hidden="true" />
+              Buka situs
+              <span className="sr"> (tab baru)</span>
+            </a>
+          </>
+        }
+      />
+      <Tabs tabs={TABS} value={tab} onChange={setTab} label="Bagian situs" />
+      <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
+        {tab === "umum" || tab === "rewrite" ? (
+          <State loading={settings.loading && !settings.data} error={settings.error} onRetry={settings.reload}>
+            {settings.data &&
+              (settings.data.model ? (
+                <SettingsForm key={tab} name={name} kind={settings.data.kind} initial={settings.data.model} system={system} section={tab} onSaved={settings.reload} />
+              ) : (
+                <Card>
+                  <p>
+                    Situs ini memakai config kustom yang tidak bisa diubah lewat formulir. Gunakan tab <strong>Config nginx</strong>.
+                  </p>
+                </Card>
+              ))}
+          </State>
+        ) : tab === "ssl" ? (
+          <Ssl name={name} />
+        ) : tab === "config" ? (
+          <ConfigEditor name={name} system={system} onSaved={settings.reload} />
+        ) : (
+          <Logs name={name} />
+        )}
+      </div>
+      {!system && tab === "umum" && (
+        <Card title="Hapus situs" className="danger-zone">
+          <p className="muted">Menghapus config dan sertifikat situs ini. Folder proyek tidak disentuh.</p>
+          <button className="btn btn-danger" onClick={() => setRemoving(true)}>
+            <Trash2 size={18} aria-hidden="true" />
+            Hapus {host}
+          </button>
+        </Card>
+      )}
+      {removing && (
+        <ConfirmDialog
+          title={`Hapus ${host}`}
+          word={name}
+          verb="Hapus situs"
+          body={<p>Situs akan berhenti dilayani. Aksi ini meminta kode TOTP ulang.</p>}
+          onConfirm={async () => {
+            await post(`/api/sites/${name}/remove`, { confirm: name });
+            location.hash = "#/website";
+          }}
+          onClose={() => setRemoving(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function SettingsForm({ name, kind, initial, system, section, onSaved }: { name: string; kind: string; initial: Model; system: boolean; section: string; onSaved: () => void }) {
+  const [m, setM] = useState<Model>({ ...initial, rewrites: initial.rewrites ?? [] });
+  const [replace, setReplace] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const set = <K extends keyof Model>(k: K, v: Model[K]) => setM((p) => ({ ...p, [k]: v }));
+  const presets = m.mode === "php" ? ["laravel", "wordpress"] : m.mode === "statis" ? ["static", "spa"] : [];
+  const kindLabel: Record<string, string> = { template: "Dibuat panel", legacy: "Dibuat addsite.sh (belum dikelola panel)", custom: "Diedit manual lewat editor config" };
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    try {
+      const body: Record<string, unknown> = { ...m, max_body_mb: Number(m.max_body_mb), read_timeout_s: Number(m.read_timeout_s) };
+      if (replace) body.replace = true;
+      await post(`/api/sites/${name}/settings`, body);
+      setMsg({ tone: "ok", text: "Tersimpan. nginx diuji lalu dimuat ulang; perubahan aktif dalam sekitar 1 detik." });
+      setTimeout(onSaved, 700);
+    } catch (x) {
+      setMsg({ tone: "bad", text: errText(x) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const addRule = () => set("rewrites", [...m.rewrites, { from: "", to: "", flag: "" }]);
+  const editRule = (i: number, k: keyof Rewrite, v: string) => set("rewrites", m.rewrites.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
+  const dropRule = (i: number) => set("rewrites", m.rewrites.filter((_, j) => j !== i));
+
+  return (
+    <form onSubmit={save} className="stack-l">
+      <p className="small muted">
+        Status config: <Chip tone={kind === "custom" ? "warn" : "info"}>{kindLabel[kind] ?? kind}</Chip>
+        {kind === "legacy" && " Menyimpan akan menggantikan config dengan template panel; versi lama dicadangkan."}
+      </p>
+      {kind === "custom" && !system && (
+        <label className="check">
+          <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
+          Timpa config yang diedit manual (versi lama tetap tersimpan di tab Config nginx)
+        </label>
+      )}
+      <fieldset className="fs" disabled={system || busy}>
+        {section === "umum" ? (
+          <Card title="Pengaturan umum">
+            <div className="grid2">
+              <Field label="Jenis situs">
+                {(id) => (
+                  <select id={id} value={m.mode} onChange={(e) => setM({ ...m, mode: e.target.value, preset: e.target.value === "php" ? "laravel" : e.target.value === "statis" ? "static" : "", php: e.target.value === "php" ? (m.php || "8.4") : "" })}>
+                    <option value="php">PHP</option>
+                    <option value="statis">Statis</option>
+                    <option value="proxy">Proxy</option>
+                  </select>
+                )}
+              </Field>
+              <Field label={m.mode === "proxy" ? "Port aplikasi" : "Folder"}>
+                {(id) => <input id={id} className="mono" value={m.target} onChange={(e) => set("target", e.target.value)} required />}
+              </Field>
+              {m.mode === "php" && (
+                <Field label="Versi PHP">
+                  {(id) => (
+                    <select id={id} value={m.php} onChange={(e) => set("php", e.target.value)}>
+                      {PHP_VERSIONS.map((v) => (
+                        <option key={v}>{v}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+              )}
+              {presets.length > 0 && (
+                <Field label="Preset routing" hint={m.mode === "php" ? "Laravel: hanya index.php yang dijalankan. WordPress: semua file .php." : "Statis: rute tak dikenal 404. SPA: dialihkan ke index.html."}>
+                  {(id, d) => (
+                    <select id={id} aria-describedby={d} value={m.preset} onChange={(e) => set("preset", e.target.value)}>
+                      {presets.map((p) => (
+                        <option key={p}>{p}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+              )}
+              <Field label="Batas unggah (MB)">{(id) => <input id={id} type="number" min={1} max={1024} value={m.max_body_mb} onChange={(e) => set("max_body_mb", Number(e.target.value))} required />}</Field>
+              <Field label="Timeout baca (detik)">{(id) => <input id={id} type="number" min={10} max={600} value={m.read_timeout_s} onChange={(e) => set("read_timeout_s", Number(e.target.value))} required />}</Field>
+            </div>
+            <div className="checks">
+              <label className="check">
+                <input type="checkbox" checked={m.force_https} onChange={(e) => set("force_https", e.target.checked)} />
+                Paksa HTTPS (alihkan port 80 ke 443)
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={m.gzip} onChange={(e) => set("gzip", e.target.checked)} />
+                Kompres respons (gzip)
+              </label>
+            </div>
+          </Card>
+        ) : (
+          <Card
+            title="Aturan rewrite"
+            action={
+              <button type="button" className="btn" onClick={addRule} disabled={m.rewrites.length >= 50}>
+                <Plus size={18} aria-hidden="true" />
+                Tambah aturan
+              </button>
+            }
+          >
+            <p className="small muted">Dijalankan berurutan sebelum routing preset. Pola regex tanpa spasi; tujuan diawali / atau http(s)://. Contoh: dari <span className="mono">^/lama/(.*)$</span> ke <span className="mono">/baru/$1</span> dengan flag permanent.</p>
+            {m.rewrites.length === 0 ? (
+              <div className="state">
+                <p className="muted">Belum ada aturan rewrite.</p>
+              </div>
+            ) : (
+              <div className="tbl-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th scope="col">Dari (regex)</th>
+                      <th scope="col">Ke</th>
+                      <th scope="col">Flag</th>
+                      <th scope="col">
+                        <span className="sr">Hapus</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {m.rewrites.map((r, i) => (
+                      <tr key={i}>
+                        <td>
+                          <input aria-label={`Aturan ${i + 1}: dari`} className="mono" value={r.from} onChange={(e) => editRule(i, "from", e.target.value)} required />
+                        </td>
+                        <td>
+                          <input aria-label={`Aturan ${i + 1}: ke`} className="mono" value={r.to} onChange={(e) => editRule(i, "to", e.target.value)} required />
+                        </td>
+                        <td>
+                          <select aria-label={`Aturan ${i + 1}: flag`} value={r.flag} onChange={(e) => editRule(i, "flag", e.target.value)}>
+                            <option value="">(tanpa)</option>
+                            {["last", "break", "redirect", "permanent"].map((f) => (
+                              <option key={f}>{f}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="cell-end">
+                          <button type="button" className="btn btn-ghost btn-icon" onClick={() => dropRule(i)} aria-label={`Hapus aturan ${i + 1}`}>
+                            <Trash2 size={18} aria-hidden="true" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
+      </fieldset>
+      {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
+      {!system && (
+        <div>
+          <button className="btn btn-primary" disabled={busy || (kind === "custom" && !replace)}>
+            {busy ? "Menyimpan…" : "Simpan dan terapkan"}
+          </button>
+        </div>
+      )}
+    </form>
+  );
+}
+
+function Ssl({ name }: { name: string }) {
+  const { data, error, loading, reload } = useLoad(() => get<any>(`/api/sites/${name}/ssl`), [name]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const renew = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await post(`/api/sites/${name}/ssl/renew`, {});
+      setMsg({ tone: "ok", text: "Sertifikat baru diterbitkan dan nginx dimuat ulang." });
+      reload();
+    } catch (x) {
+      setMsg({ tone: "bad", text: errText(x) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Sertifikat HTTPS">
+      <State loading={loading && !data} error={error} onRetry={reload}>
+        {data && !data.exists && <p className="muted">Belum ada sertifikat untuk {data.host}.</p>}
+        {data?.exists && (
+          <dl className="kv">
+            <div>
+              <dt>Domain</dt>
+              <dd className="mono">{(data.dns as string[]).join(", ")}</dd>
+            </div>
+            <div>
+              <dt>Penerbit</dt>
+              <dd>{data.issuer}</dd>
+            </div>
+            <div>
+              <dt>Berlaku sampai</dt>
+              <dd>
+                {fmtTime(data.not_after)}{" "}
+                <Chip tone={data.expired ? "bad" : data.days_left < 30 ? "warn" : "ok"}>{data.expired ? "Kedaluwarsa" : `${data.days_left} hari lagi`}</Chip>
+              </dd>
+            </div>
+          </dl>
+        )}
+        {data?.note && <p className="small muted">{data.note}</p>}
+      </State>
+      {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
+      <div>
+        <button className="btn" onClick={renew} disabled={busy}>
+          {busy ? "Memperbarui…" : "Terbitkan ulang sertifikat"}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+function ConfigEditor({ name, system, onSaved }: { name: string; system: boolean; onSaved: () => void }) {
+  const { data, error, loading, reload } = useLoad(() => get<{ content: string; sha: string; versions: { id: number; at: number; user: string; note: string }[] }>(`/api/sites/${name}/config`), [name]);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  useEffect(() => {
+    if (data) setText(data.content);
+  }, [data]);
+  const save = async () => {
+    if (!data) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await post(`/api/sites/${name}/config`, { content: text, sha: data.sha });
+      setMsg({ tone: "ok", text: "Config diterapkan dan nginx dimuat ulang." });
+      reload();
+      onSaved();
+    } catch (x) {
+      setMsg({ tone: "bad", text: errText(x) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const restore = async (id: number) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await post(`/api/sites/${name}/restore`, { id });
+      setMsg({ tone: "ok", text: `Versi #${id} dipulihkan.` });
+      reload();
+      onSaved();
+    } catch (x) {
+      setMsg({ tone: "bad", text: errText(x) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="stack-l">
+      <Card title="Config nginx">
+        <State loading={loading && !data} error={error} onRetry={reload}>
+          <p className="small muted">
+            Editor lanjutan. Hanya direktif yang diizinkan diterima, dan setiap blok server wajib mempertahankan <span className="mono">include .../tailnet_only.conf</span>. Config diuji dengan <span className="mono">nginx -t</span>; bila gagal, config lama dikembalikan otomatis.
+          </p>
+          <label className="sr" htmlFor="conf-text">
+            Isi config nginx
+          </label>
+          <textarea id="conf-text" className="mono editor" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} readOnly={system} rows={22} />
+          {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
+          {!system && (
+            <div>
+              <button className="btn btn-primary" onClick={save} disabled={busy || !data || text === data.content}>
+                {busy ? "Menerapkan…" : "Simpan dan terapkan"}
+              </button>
+            </div>
+          )}
+        </State>
+      </Card>
+      {data && (
+        <Card title="Riwayat versi">
+          {data.versions.length === 0 ? (
+            <div className="state">
+              <p className="muted">Belum ada versi tersimpan. Versi dibuat setiap config diubah lewat panel.</p>
+            </div>
+          ) : (
+            <ul className="list">
+              {data.versions.map((v) => (
+                <li key={v.id} className="list-row">
+                  <div>
+                    <p>
+                      <span className="mono">#{v.id}</span> {v.note}
+                    </p>
+                    <p className="small muted">
+                      {fmtTime(v.at)} oleh {v.user}
+                    </p>
+                  </div>
+                  {!system && (
+                    <button className="btn" onClick={() => restore(v.id)} disabled={busy}>
+                      Pulihkan
+                      <span className="sr"> versi {v.id}</span>
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function Logs({ name }: { name: string }) {
+  const [kind, setKind] = useState("access");
+  const { data, error, loading, reload } = useLoad(() => get<{ lines: string[]; note: string }>(`/api/sites/${name}/logs?kind=${kind}&n=100`), [name, kind]);
+  return (
+    <Card
+      title="Log"
+      action={
+        <div className="row">
+          <select aria-label="Jenis log" value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="access">Akses</option>
+            <option value="error">Error</option>
+          </select>
+          <button className="btn" onClick={reload}>
+            Muat ulang
+          </button>
+        </div>
+      }
+    >
+      <State loading={loading && !data} error={error} empty={!!data && data.lines.length === 0} emptyText={kind === "access" ? "Belum ada log akses. Log per situs aktif setelah pengaturan disimpan lewat panel." : "Tidak ada error untuk situs ini."} onRetry={reload}>
+        <pre className="logbox mono">{data?.lines.join("\n")}</pre>
+      </State>
+    </Card>
+  );
+}
