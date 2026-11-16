@@ -1,0 +1,322 @@
+package main
+
+import (
+	"crypto/subtle"
+	"encoding/json"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type Level int
+
+const (
+	Public Level = iota // tanpa sesi
+	Pwd                 // sesi tahap password (menunggu TOTP)
+	Full                // sesi penuh (password + TOTP)
+	Any                 // Pwd atau Full
+)
+
+type Config struct {
+	Origins []string // origin yang diizinkan, mis. https://panel.lab
+}
+
+type App struct {
+	st    *Store
+	key   []byte
+	cfg   Config
+	dummy string
+	now   func() time.Time
+}
+
+type Route struct {
+	Method, Path string
+	Level        Level
+	H            func(*App, http.ResponseWriter, *http.Request, *Session)
+}
+
+const (
+	lockWindow  = 15 * time.Minute
+	maxPerUser  = 5
+	maxPerIP    = 10
+	cookieName  = "__Host-panel"
+	maxBodySize = 8 << 10
+)
+
+func newApp(st *Store, key []byte, cfg Config) *App {
+	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now}
+}
+
+// routes adalah SATU-SATUNYA daftar rute. Tes memastikan semua yang bukan Public menolak permintaan tanpa sesi.
+func routes() []Route {
+	return []Route{
+		{"GET", "/healthz", Public, hHealth},
+		{"POST", "/api/auth/login", Public, hLogin},
+		{"POST", "/api/auth/totp", Pwd, hTOTP},
+		{"POST", "/api/auth/logout", Any, hLogout},
+		{"POST", "/api/auth/stepup", Full, hStepUp},
+		{"GET", "/api/me", Full, hMe},
+		{"GET", "/api/audit", Full, hAudit},
+	}
+}
+
+func (a *App) Handler() http.Handler {
+	mux := http.NewServeMux()
+	for _, rt := range routes() {
+		mux.HandleFunc(rt.Method+" "+rt.Path, a.wrap(rt))
+	}
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		secHeaders(w)
+		jsonOut(w, 404, map[string]string{"error": "not found"})
+	})
+	return mux
+}
+
+func secHeaders(w http.ResponseWriter) {
+	h := w.Header()
+	h.Set("Cache-Control", "no-store")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("X-Frame-Options", "DENY")
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+	h.Set("Cross-Origin-Opener-Policy", "same-origin")
+}
+
+func jsonOut(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(v)
+}
+
+func jerr(w http.ResponseWriter, code int, msg string) { jsonOut(w, code, map[string]string{"error": msg}) }
+
+func decode(w http.ResponseWriter, r *http.Request, v any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(v); err != nil {
+		code := 400
+		if strings.Contains(err.Error(), "too large") {
+			code = 413
+		}
+		jerr(w, code, "bad request")
+		return false
+	}
+	return true
+}
+
+func (a *App) clientIP(r *http.Request) string {
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			p := strings.Split(xff, ",")
+			last := strings.TrimSpace(p[len(p)-1]) // nilai terakhir ditambahkan nginx; yang lebih awal bisa dipalsukan klien
+			if net.ParseIP(last) != nil {
+				return last
+			}
+		}
+	}
+	return host
+}
+
+func (a *App) originOK(r *http.Request) bool {
+	if sf := r.Header.Get("Sec-Fetch-Site"); sf != "" && sf != "same-origin" && sf != "none" {
+		return false
+	}
+	o := r.Header.Get("Origin")
+	if o == "" {
+		return true
+	}
+	allowed := a.cfg.Origins
+	if len(allowed) == 0 {
+		allowed = []string{"https://" + r.Host, "http://" + r.Host}
+	}
+	for _, x := range allowed {
+		if o == x {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) session(r *http.Request) *Session {
+	c, err := r.Cookie(cookieName)
+	if err != nil {
+		return nil
+	}
+	return a.st.GetSession(c.Value, a.now())
+}
+
+func (a *App) wrap(rt Route) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		secHeaders(w)
+		var ss *Session
+		if rt.Level != Public {
+			ss = a.session(r)
+			if ss == nil || (rt.Level == Pwd && ss.Stage != "pwd") || (rt.Level == Full && ss.Stage != "full") {
+				jerr(w, 401, "unauthenticated")
+				return
+			}
+		}
+		if r.Method != "GET" && r.Method != "HEAD" {
+			if !a.originOK(r) {
+				jerr(w, 403, "forbidden")
+				return
+			}
+			if ss != nil && subtle.ConstantTimeCompare([]byte(r.Header.Get("X-CSRF-Token")), []byte(ss.CSRF)) != 1 {
+				jerr(w, 403, "forbidden")
+				return
+			}
+		}
+		rt.H(a, w, r, ss)
+	}
+}
+
+func (a *App) setCookie(w http.ResponseWriter, tok string, maxAge int) {
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: tok, Path: "/", MaxAge: maxAge, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
+}
+
+func (a *App) locked(name, ip string) bool {
+	since := a.now().Add(-lockWindow)
+	return a.st.CountAttempts("u:"+name, since) >= maxPerUser || a.st.CountAttempts("ip:"+ip, since) >= maxPerIP
+}
+
+func (a *App) fail(name, ip string) {
+	a.st.AddAttempt("u:"+name, a.now())
+	a.st.AddAttempt("ip:"+ip, a.now())
+}
+
+func tooMany(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", strconv.Itoa(int(lockWindow.Seconds())))
+	jerr(w, 429, "terlalu banyak percobaan, coba lagi nanti")
+}
+
+// ---------- handler ----------
+
+func hHealth(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
+	jsonOut(w, 200, map[string]string{"status": "ok"})
+}
+
+func hLogin(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
+	var in struct{ Name, Password string }
+	if !decode(w, r, &in) {
+		return
+	}
+	name, ip := strings.ToLower(strings.TrimSpace(in.Name)), a.clientIP(r)
+	if len(name) > 40 || len(in.Password) > 256 {
+		jerr(w, 401, "login gagal")
+		return
+	}
+	if a.locked(name, ip) {
+		a.st.Audit(name, "login_locked", "", ip, a.now())
+		tooMany(w)
+		return
+	}
+	u := a.st.GetUser(name)
+	ok := false
+	if u != nil && !u.Disabled {
+		ok = verifyPassword(u.PassHash, in.Password)
+	} else {
+		verifyPassword(a.dummy, in.Password) // samakan waktu respons
+	}
+	if !ok {
+		a.fail(name, ip)
+		a.st.Audit(name, "login_fail", "password", ip, a.now())
+		jerr(w, 401, "login gagal")
+		return
+	}
+	tok, ss := a.st.NewSession(u.ID, "pwd", a.now())
+	a.setCookie(w, tok, int(pwdTTL.Seconds()))
+	a.st.Audit(name, "login_pwd_ok", "", ip, a.now())
+	jsonOut(w, 200, map[string]any{"need_totp": true, "csrf": ss.CSRF})
+}
+
+// verifyCode memeriksa TOTP atau recovery code untuk user sesi. Gagal dihitung sebagai percobaan.
+func (a *App) verifyCode(ss *Session, code, ip string) bool {
+	u := a.st.GetUser(ss.User)
+	if u == nil {
+		return false
+	}
+	code = strings.TrimSpace(code)
+	if len(code) == 6 {
+		secret, err := open(a.key, u.TOTPEnc)
+		if err != nil {
+			return false
+		}
+		step, ok := verifyTOTP(secret, code, a.now(), u.TOTPLast)
+		return ok && a.st.UseTOTPStep(u.ID, step)
+	}
+	return len(code) == 11 && a.st.UseRecovery(u.ID, code)
+}
+
+func hTOTP(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
+	var in struct{ Code string }
+	if !decode(w, r, &in) {
+		return
+	}
+	ip := a.clientIP(r)
+	if a.locked(ss.User, ip) {
+		a.st.Audit(ss.User, "totp_locked", "", ip, a.now())
+		tooMany(w)
+		return
+	}
+	if !a.verifyCode(ss, in.Code, ip) {
+		a.fail(ss.User, ip)
+		a.st.Audit(ss.User, "totp_fail", "", ip, a.now())
+		jerr(w, 401, "kode salah")
+		return
+	}
+	a.st.DelSession(ss.ID)
+	tok, full := a.st.NewSession(ss.UserID, "full", a.now()) // sesi baru: id berganti setelah naik tahap
+	a.st.ClearAttempts("u:" + ss.User)
+	a.setCookie(w, tok, int(absTTL.Seconds()))
+	a.st.Audit(ss.User, "login_ok", "", ip, a.now())
+	jsonOut(w, 200, map[string]any{"ok": true, "csrf": full.CSRF})
+}
+
+func hLogout(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
+	a.st.DelSession(ss.ID)
+	a.setCookie(w, "", -1)
+	a.st.Audit(ss.User, "logout", "", a.clientIP(r), a.now())
+	jsonOut(w, 200, map[string]bool{"ok": true})
+}
+
+func hStepUp(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
+	var in struct{ Code string }
+	if !decode(w, r, &in) {
+		return
+	}
+	ip := a.clientIP(r)
+	if a.locked(ss.User, ip) {
+		tooMany(w)
+		return
+	}
+	if !a.verifyCode(ss, in.Code, ip) {
+		a.fail(ss.User, ip)
+		a.st.Audit(ss.User, "stepup_fail", "", ip, a.now())
+		jerr(w, 401, "kode salah")
+		return
+	}
+	a.st.SetStepUp(ss.ID, a.now().Add(stepupTTL))
+	a.st.Audit(ss.User, "stepup_ok", "", ip, a.now())
+	jsonOut(w, 200, map[string]any{"ok": true, "valid_seconds": int(stepupTTL.Seconds())})
+}
+
+// requireStepUp dipakai aksi destruktif (fase berikutnya).
+func (a *App) requireStepUp(w http.ResponseWriter, ss *Session) bool {
+	if ss.StepUp > a.now().Unix() {
+		return true
+	}
+	jerr(w, 403, "butuh verifikasi TOTP ulang")
+	return false
+}
+
+func hMe(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
+	jsonOut(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.now().Unix()})
+}
+
+func hAudit(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
+	jsonOut(w, 200, map[string]any{"rows": a.st.RecentAudit(100)})
+}
