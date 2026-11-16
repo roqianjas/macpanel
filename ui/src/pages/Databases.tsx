@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Archive, Plus, Trash2 } from "lucide-react";
-import { errText, get, post } from "../api";
+import { Archive, ArchiveRestore, Plus, Trash2 } from "lucide-react";
+import { errText, fmtTime, get, post } from "../api";
+import { trackJob } from "../jobs";
+import { fmtBytes } from "../lib";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 
 type Engine = "mysql" | "pgsql";
@@ -11,6 +13,7 @@ export default function Databases() {
   const isSys = (n: string) => (data?.system ?? ["dev"]).includes(n);
   const [adding, setAdding] = useState(false);
   const [dropping, setDropping] = useState<{ engine: Engine; name: string } | null>(null);
+  const [restoring, setRestoring] = useState<{ engine: Engine; name: string } | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState("");
 
@@ -61,6 +64,11 @@ export default function Databases() {
                         {busy === `${en}/${n}` ? "Membuat dump…" : "Dump"}
                         <span className="sr"> {n}</span>
                       </button>
+                      <button className="btn" onClick={() => setRestoring({ engine: en, name: n })}>
+                        <ArchiveRestore size={18} aria-hidden="true" />
+                        Pulihkan
+                        <span className="sr"> {n}</span>
+                      </button>
                       <button className="btn btn-danger-ghost" onClick={() => setDropping({ engine: en, name: n })}>
                         <Trash2 size={18} aria-hidden="true" />
                         Hapus
@@ -76,6 +84,20 @@ export default function Databases() {
         ))}
         <p className="small muted">Untuk melihat isi tabel pakai Adminer di db.lab atau DBeaver lewat tailnet. Kata sandi proyek ada di berkas ~/.config/macminiops/projects di Mac mini.</p>
       </State>
+      {restoring && (
+        <RestoreDialog
+          engine={restoring.engine}
+          name={restoring.name}
+          onClose={() => setRestoring(null)}
+          onStarted={(job, file) => {
+            trackJob(job, `Pulihkan ${restoring.name} dari ${file}`, (j) => {
+              setNote(j.status === "ok" ? { tone: "ok", text: `${restoring.name} dipulihkan dari ${file}.` } : { tone: "bad", text: j.output || "Pemulihan gagal." });
+              void reload();
+            });
+            setRestoring(null);
+          }}
+        />
+      )}
       {adding && <AddDB onClose={() => setAdding(false)} onDone={() => { setAdding(false); reload(); }} />}
       {dropping && (
         <ConfirmDialog
@@ -142,6 +164,51 @@ function AddDB({ onClose, onDone }: { onClose: () => void; onDone: () => void })
           </button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function RestoreDialog({ engine, name, onClose, onStarted }: { engine: Engine; name: string; onClose: () => void; onStarted: (job: number, file: string) => void }) {
+  const { data, error, loading, reload } = useLoad(() => get<{ dumps: { file: string; at: number; size: number }[] }>(`/api/db/${engine}/${name}/dumps`));
+  const [file, setFile] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const dumps = data?.dumps ?? [];
+  const pick = file || dumps[0]?.file || "";
+  const go = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await post<{ job: number }>(`/api/db/${engine}/${name}/restore`, { file: pick });
+      onStarted(r.job, pick);
+    } catch (x) {
+      setErr(errText(x));
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={`Pulihkan ${name}`} onClose={onClose}>
+      <div className="stack">
+        <p className="small">Pemulihan hanya berjalan ke database yang <strong>kosong</strong> dan tidak pernah menimpa data. Bila database ini sudah berisi, hapus isinya dulu atau pulihkan ke database baru dengan nama yang sama setelah dihapus. Meminta kode TOTP ulang.</p>
+        <State loading={loading && !data} error={error} empty={!!data && dumps.length === 0} emptyText={`Belum ada dump untuk ${name}. Buat dulu lewat tombol Dump.`} onRetry={reload}>
+          <Field label="Pilih dump">
+            {(id) => (
+              <select id={id} data-autofocus value={pick} onChange={(e) => setFile(e.target.value)}>
+                {dumps.map((d) => (
+                  <option key={d.file} value={d.file}>
+                    {fmtTime(d.at)} ({fmtBytes(d.size)})
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        </State>
+        {err && <Alert>{err}</Alert>}
+        <div className="row-end">
+          <button className="btn" onClick={onClose}>Batal</button>
+          <button className="btn btn-primary" disabled={busy || !pick} onClick={go}>{busy ? "Memulai…" : "Pulihkan"}</button>
+        </div>
+      </div>
     </Modal>
   );
 }

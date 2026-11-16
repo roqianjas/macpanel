@@ -100,6 +100,8 @@ func routes() []Route {
 		{"POST", "/api/sites/{name}/ssl/renew", Full, hSSLRenew},
 		{"GET", "/api/sites/{name}/logs", Full, hLogs},
 		{"GET", "/api/jobs/{id}", Full, hJob},
+		{"GET", "/api/db/{engine}/{name}/dumps", Full, hDBDumps},
+		{"POST", "/api/db/{engine}/{name}/restore", Full, hDBRestore},
 		{"GET", "/api/services", Full, hServicesList},
 		{"POST", "/api/services/{id}/{action}", Full, hServiceAction},
 		{"GET", "/api/services/{id}/logs", Full, hServiceLogs},
