@@ -67,7 +67,7 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .nowrap { white-space: nowrap; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.skip { position: fixed; left: 8px; top: -60px; z-index: 100; background: var(--accent); color: var(--accent-ink); padding: 10px 14px; border-radius: var(--r-s); }
+.skip { min-height: var(--tap); display: inline-flex; align-items: center; position: fixed; left: 8px; top: -60px; z-index: 100; background: var(--accent); color: var(--accent-ink); padding: 10px 14px; border-radius: var(--r-s); }
 .skip:focus { top: 8px; }
 
 /* kerangka */
@@ -86,7 +86,7 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .is-collapsed .side-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .is-collapsed .side a, .is-collapsed .side-btn { justify-content: center; padding: 0; }
 .is-collapsed .side-top { justify-content: center; }
-.sheet-close, .menu-btn, .scrim-side { display: none; }
+.btn.sheet-close, .btn.menu-btn, .scrim-side { display: none; } /* .btn.* agar menang atas display:inline-flex milik .btn */
 .col { min-width: 0; display: flex; flex-direction: column; }
 .top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 10px 24px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); min-height: 64px; }
 .top-actions { margin-left: auto; display: flex; gap: 8px; }
@@ -140,7 +140,8 @@ fieldset.fs:disabled input, fieldset.fs:disabled select { background: var(--surf
 .tab.on { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* tabel dan daftar */
-.tbl-wrap { overflow-x: auto; max-width: 100%; }
+.tbl-wrap { overflow-x: auto; max-width: 100%; position: relative; } /* position: agar .sr (absolute) di dalam tabel ikut terpotong, bukan melebarkan dokumen */
+.tabs, .list, .modal-body { position: relative; }
 .tbl { width: 100%; border-collapse: collapse; }
 .tbl th { text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -209,7 +210,7 @@ fieldset.fs:disabled input, fieldset.fs:disabled select { background: var(--surf
   .is-collapsed .side-text { position: static; width: auto; height: auto; clip-path: none; overflow: visible; }
   .is-collapsed .side a, .is-collapsed .side-btn { justify-content: flex-start; padding: 0 12px; }
   .side-bottom { display: none; }
-  .sheet-close, .menu-btn { display: inline-flex; }
+  .btn.sheet-close, .btn.menu-btn { display: inline-flex; }
   .scrim-side { position: fixed; inset: 0; z-index: 65; background: rgb(8 12 20 / 0.5); border: 0; opacity: 0; pointer-events: none; }
   .sheet-open .scrim-side { display: block; opacity: 1; pointer-events: auto; }
   .top { padding: 8px 12px; }

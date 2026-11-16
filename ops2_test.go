@@ -391,3 +391,22 @@ func TestAsyncJobsSerialized(t *testing.T) {
 		t.Fatalf("job asinkron berjalan bersamaan (harus serial): %q", b)
 	}
 }
+
+func TestSystemDatabasesProtected(t *testing.T) {
+	o := newP3Env(t)
+	o.stepup()
+	for _, n := range []string{"dev", "postgres", "mysql", "root", "template1"} {
+		for _, act := range []string{"drop", "dump"} {
+			body := `{"confirm":"` + n + `"}`
+			if c, b := o.post("/api/db/pgsql/"+n+"/"+act, body); c != 400 {
+				t.Errorf("%s %s -> %d %s (harus 400)", act, n, c, b)
+			}
+		}
+	}
+	if strings.Contains(o.calls(), "[db]") {
+		t.Fatalf("lab terpanggil untuk DB sistem: %s", o.calls())
+	}
+	if c, _ := o.post("/api/db/mysql/tokoku/drop", `{"confirm":"tokoku"}`); c != 200 {
+		t.Fatalf("DB biasa tetap harus bisa: %d", c)
+	}
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Star, Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, useLoad } from "../ui";
@@ -112,9 +112,7 @@ export default function Runtimes() {
                     <span className="mono">{r.version}</span>
                     <div className="row">
                       {r.default && (
-                        <Chip tone="info">
-                          <Star size={12} aria-hidden="true" /> Bawaan
-                        </Chip>
+                        <Chip tone="info">Bawaan</Chip>
                       )}
                       {r.pruned && <Chip tone="warn">Akan dibersihkan</Chip>}
                       {!r.default && (

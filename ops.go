@@ -159,10 +159,17 @@ func hDBList(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 	jsonOut(w, 200, map[string]any{"databases": parseDBList(res.Out), "system": []string{"dev"}})
 }
 
+// systemDBs adalah database/akun milik server sendiri; panel tidak boleh menghapus atau men-dump-nya (lab juga menolak).
+var systemDBs = map[string]bool{"dev": true, "postgres": true, "template0": true, "template1": true, "mysql": true, "sys": true, "root": true, "admin": true, "information_schema": true, "performance_schema": true}
+
 func dbParams(w http.ResponseWriter, r *http.Request) (engine, name string, ok bool) {
 	engine, name = r.PathValue("engine"), r.PathValue("name")
 	if (engine != "mysql" && engine != "pgsql") || !dbRE.MatchString(name) {
 		jerr(w, 400, "engine atau nama tidak valid")
+		return "", "", false
+	}
+	if systemDBs[name] {
+		jerr(w, 400, "database sistem tidak boleh diubah dari panel")
 		return "", "", false
 	}
 	return engine, name, true

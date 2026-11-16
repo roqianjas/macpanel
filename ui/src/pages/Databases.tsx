@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Archive, Plus, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
-import { Alert, Card, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
+import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 
 type Engine = "mysql" | "pgsql";
 const ENGINE_LABEL: Record<Engine, string> = { mysql: "MySQL 8.4", pgsql: "PostgreSQL 17" };
 
 export default function Databases() {
-  const { data, error, loading, reload } = useLoad(() => get<{ databases: Record<Engine, string[]> }>("/api/db"));
+  const { data, error, loading, reload } = useLoad(() => get<{ databases: Record<Engine, string[]>; system: string[] }>("/api/db"));
+  const isSys = (n: string) => (data?.system ?? ["dev"]).includes(n);
   const [adding, setAdding] = useState(false);
   const [dropping, setDropping] = useState<{ engine: Engine; name: string } | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
@@ -25,7 +26,7 @@ export default function Databases() {
       setBusy("");
     }
   };
-  const total = data ? data.databases.mysql.length + data.databases.pgsql.length : 0;
+  const total = data ? [...data.databases.mysql, ...data.databases.pgsql].filter((n) => !isSys(n)).length : 0;
   return (
     <>
       <PageHead
@@ -42,7 +43,7 @@ export default function Databases() {
       <State loading={loading && !data} error={error} empty={!!data && total === 0} emptyText="Belum ada database proyek. Pilih “Buat database”." onRetry={reload}>
         {(["mysql", "pgsql"] as Engine[]).map((en) => (
           <Card key={en} title={ENGINE_LABEL[en]}>
-            {(data?.databases[en] ?? []).length === 0 ? (
+            {(data?.databases[en] ?? []).filter((n) => !isSys(n)).length === 0 && !(data?.databases[en] ?? []).some(isSys) ? (
               <div className="state">
                 <p className="muted">Belum ada database {ENGINE_LABEL[en]}.</p>
               </div>
@@ -51,6 +52,9 @@ export default function Databases() {
                 {data!.databases[en].map((n) => (
                   <li key={n} className="list-row">
                     <span className="mono">{n}</span>
+                    {isSys(n) ? (
+                      <Chip tone="mute">Sistem: dikelola server</Chip>
+                    ) : (
                     <div className="row">
                       <button className="btn" disabled={busy === `${en}/${n}`} onClick={() => dump(en, n)}>
                         <Archive size={18} aria-hidden="true" />
@@ -63,6 +67,7 @@ export default function Databases() {
                         <span className="sr"> {n}</span>
                       </button>
                     </div>
+                    )}
                   </li>
                 ))}
               </ul>

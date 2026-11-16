@@ -169,7 +169,7 @@ function JobTray() {
               <X size={16} aria-hidden="true" />
             </button>
           </div>
-          {j.status !== "berjalan" && j.output && <pre className="tray-out">{j.output.slice(-600)}</pre>}
+          {j.status !== "berjalan" && j.status !== "ok" && j.output && <pre className="tray-out">{j.output.slice(-600)}</pre>}
         </div>
       ))}
     </div>
