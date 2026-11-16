@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,11 +27,17 @@ type Config struct {
 }
 
 type App struct {
-	st    *Store
-	key   []byte
-	cfg   Config
-	dummy string
-	now   func() time.Time
+	st       *Store
+	key      []byte
+	cfg      Config
+	dummy    string
+	now      func() time.Time
+	labBin   string // biner lab (path tetap)
+	home     string // HOME user; batas ~/Developer dihitung dari sini
+	sitesDir string // folder konfigurasi situs nginx (hanya dibaca panel)
+	tld      string
+	timeout  time.Duration // batas waktu tiap aksi
+	mu       sync.Mutex    // satu aksi mutasi pada satu waktu
 }
 
 type Route struct {
@@ -46,7 +55,9 @@ const (
 )
 
 func newApp(st *Store, key []byte, cfg Config) *App {
-	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now}
+	home, _ := os.UserHomeDir()
+	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now,
+		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", timeout: 120 * time.Second}
 }
 
 // routes adalah SATU-SATUNYA daftar rute. Tes memastikan semua yang bukan Public menolak permintaan tanpa sesi.
@@ -59,6 +70,14 @@ func routes() []Route {
 		{"POST", "/api/auth/stepup", Full, hStepUp},
 		{"GET", "/api/me", Full, hMe},
 		{"GET", "/api/audit", Full, hAudit},
+		{"GET", "/api/sites", Full, hSitesList},
+		{"POST", "/api/sites", Full, hSiteAdd},
+		{"POST", "/api/sites/{name}/remove", Full, hSiteRemove},
+		{"GET", "/api/db", Full, hDBList},
+		{"POST", "/api/db", Full, hDBCreate},
+		{"POST", "/api/db/{engine}/{name}/dump", Full, hDBDump},
+		{"POST", "/api/db/{engine}/{name}/drop", Full, hDBDrop},
+		{"GET", "/api/jobs", Full, hJobs},
 	}
 }
 
@@ -90,7 +109,9 @@ func jsonOut(w http.ResponseWriter, code int, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
-func jerr(w http.ResponseWriter, code int, msg string) { jsonOut(w, code, map[string]string{"error": msg}) }
+func jerr(w http.ResponseWriter, code int, msg string) {
+	jsonOut(w, code, map[string]string{"error": msg})
+}
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)

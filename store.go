@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, user_id INTEGER NOT NUL
   stepup INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS attempts(id INTEGER PRIMARY KEY, k TEXT NOT NULL, at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS att_k ON attempts(k, at);
+CREATE TABLE IF NOT EXISTS jobs(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, usr TEXT NOT NULL, action TEXT NOT NULL,
+  status TEXT NOT NULL, code INTEGER NOT NULL, output TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, usr TEXT NOT NULL, action TEXT NOT NULL,
   detail TEXT NOT NULL, ip TEXT NOT NULL, prev TEXT NOT NULL, hash TEXT NOT NULL);
 `
@@ -289,4 +291,38 @@ func (s *Store) DeleteUser(name string) bool {
 	}
 	n, _ := r.RowsAffected()
 	return n == 1
+}
+
+func (s *Store) AddJob(usr, action, status, output string, code int, now time.Time) int64 {
+	r, err := s.db.Exec("INSERT INTO jobs(at,usr,action,status,code,output) VALUES(?,?,?,?,?,?)", now.Unix(), usr, clean(action, 200), status, code, output)
+	if err != nil {
+		return 0
+	}
+	id, _ := r.LastInsertId()
+	return id
+}
+
+type JobRow struct {
+	ID     int64  `json:"id"`
+	At     int64  `json:"at"`
+	User   string `json:"user"`
+	Action string `json:"action"`
+	Status string `json:"status"`
+	Code   int    `json:"code"`
+	Output string `json:"output"`
+}
+
+func (s *Store) ListJobs(n int) []JobRow {
+	out := []JobRow{}
+	rows, err := s.db.Query("SELECT id,at,usr,action,status,code,output FROM jobs ORDER BY id DESC LIMIT ?", n)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var j JobRow
+		rows.Scan(&j.ID, &j.At, &j.User, &j.Action, &j.Status, &j.Code, &j.Output)
+		out = append(out, j)
+	}
+	return out
 }

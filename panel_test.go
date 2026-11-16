@@ -8,10 +8,13 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 )
+
+var paramRE = regexp.MustCompile(`\{[a-z]+\}`)
 
 var testKey = bytes.Repeat([]byte{7}, 32)
 
@@ -162,6 +165,7 @@ func TestEveryRouteRequiresAuth(t *testing.T) {
 	e := newEnv(t)
 	public := map[string]bool{"GET /healthz": true, "POST /api/auth/login": true}
 	for _, rt := range routes() {
+		rt.Path = paramRE.ReplaceAllString(rt.Path, "x")
 		key := rt.Method + " " + rt.Path
 		if rt.Level == Public {
 			if !public[key] {
@@ -180,6 +184,7 @@ func TestEveryRouteRequiresAuth(t *testing.T) {
 	w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-panjang-123"}`, "", "", nil)
 	c, cs := cookieOf(w), csrfOf(w)
 	for _, rt := range routes() {
+		rt.Path = paramRE.ReplaceAllString(rt.Path, "x")
 		if rt.Level == Full {
 			if w := e.do(rt.Method, rt.Path, `{}`, c, cs, nil); w.Code != 401 {
 				t.Errorf("%s dengan sesi tahap-password: %d (harus 401)", rt.Method+" "+rt.Path, w.Code)
