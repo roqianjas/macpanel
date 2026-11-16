@@ -1,88 +1,218 @@
-import { Boxes, Database, Download, Globe, Timer } from "lucide-react";
-import { get, fmtTime } from "../api";
-import { Card, Chip, PageHead, State, statusTone, useLoad } from "../ui";
+import { Activity, Boxes, Cpu, Database, Download, Globe, HardDrive, MemoryStick, Network, Server, Timer } from "lucide-react";
+import { get } from "../api";
+import { CountUp, LineChart, RangePicker, Ring, Sparkline, toneOf } from "../charts";
+import { stateText, stateTone, useMetrics, useServices, useSystem } from "../data";
+import { fmtAgo, fmtBytes, fmtRate, fmtUptime, type RangeKey } from "../lib";
+import { Card, Chip, Mark, State, usePoll } from "../ui";
+import { useState } from "react";
 
 interface Counts {
   sites: number;
-  mysql: number;
-  pgsql: number;
-  php: number;
+  sitesOn: number;
+  db: number;
   workers: number;
   jobs: number;
+  php: number;
 }
-interface JobRow {
-  id: number;
-  at: number;
-  user: string;
-  action: string;
-  status: string;
+
+async function loadCounts(): Promise<Counts> {
+  const [s, d, p, w, j] = await Promise.allSettled([get<any>("/api/sites"), get<any>("/api/db"), get<any>("/api/php"), get<any>("/api/tasks/worker"), get<any>("/api/tasks/job")]);
+  const v = <T,>(r: PromiseSettledResult<T>): any => (r.status === "fulfilled" ? r.value : null);
+  const sites = (v(s)?.sites ?? []).filter((x: any) => !x.system);
+  const db = v(d)?.databases;
+  return {
+    sites: sites.length,
+    sitesOn: sites.filter((x: any) => x.enabled).length,
+    db: db ? db.mysql.length + db.pgsql.length : 0,
+    workers: v(w)?.tasks?.length ?? 0,
+    jobs: v(j)?.tasks?.length ?? 0,
+    php: (v(p)?.php ?? []).filter((x: any) => x.installed).length,
+  };
 }
 
 export default function Overview() {
-  const c = useLoad(async (): Promise<Counts> => {
-    const [s, d, p, w, j] = await Promise.all([get<any>("/api/sites"), get<any>("/api/db"), get<any>("/api/php"), get<any>("/api/tasks/worker"), get<any>("/api/tasks/job")]);
-    return {
-      sites: s.sites.filter((x: any) => !x.system).length,
-      mysql: d.databases.mysql.length,
-      pgsql: d.databases.pgsql.length,
-      php: p.php.filter((x: any) => x.installed).length,
-      workers: w.tasks.length,
-      jobs: j.tasks.length,
-    };
-  });
-  const jobs = useLoad(() => get<{ jobs: JobRow[] }>("/api/jobs"));
-  const cards = c.data
-    ? [
-        { href: "#/website", icon: Globe, label: "Situs Anda", value: c.data.sites, hint: "di luar situs sistem" },
-        { href: "#/database", icon: Database, label: "Database", value: c.data.mysql + c.data.pgsql, hint: `${c.data.mysql} MySQL, ${c.data.pgsql} PostgreSQL` },
-        { href: "#/runtime", icon: Boxes, label: "Versi PHP terpasang", value: c.data.php, hint: "dengan pool FPM" },
-        { href: "#/tugas", icon: Timer, label: "Worker dan cron", value: c.data.workers + c.data.jobs, hint: `${c.data.workers} worker, ${c.data.jobs} cron` },
-      ]
-    : [];
+  const sys = useSystem();
+  const svc = useServices();
+  const [range, setRange] = useState<RangeKey>("1h");
+  const met = useMetrics(range);
+  const spark = useMetrics("1h");
+  const counts = usePoll(loadCounts, 60000);
+
+  const services = svc.data?.services ?? [];
+  const core = services.filter((s) => s.installed && !s.optional);
+  const bad = core.filter((s) => s.state !== "running");
+  const running = services.filter((s) => s.installed && s.state === "running").length;
+  const total = services.filter((s) => s.installed).length;
+  const si = sys.data;
+  const hasSample = !!si && si.sample_at > 0;
+  const nets = si?.nets ?? [];
+  const rx = nets.reduce((a, n) => a + n.rx_bps, 0);
+  const tx = nets.reduce((a, n) => a + n.tx_bps, 0);
+  const now = Math.floor(Date.now() / 1000);
+
+  const hero = (
+    <section className={`hero ${bad.length ? "hero-bad" : ""}`} aria-label="Status keseluruhan">
+      <div>
+        <h1 className="hero-title">
+          <Mark tone={bad.length ? "bad" : "ok"} />
+          {svc.loading && !svc.data ? "Memeriksa layanan…" : bad.length ? `${bad.length} layanan perlu dicek` : "Semua layanan berjalan"}
+        </h1>
+        <p className="hero-sub">
+          {bad.length ? `Tidak berjalan: ${bad.map((b) => b.label).join(", ")}. Buka Aplikasi untuk menyalakan atau melihat lognya.` : `${running} dari ${total} layanan terpasang berjalan di ${si?.host ?? "Mac mini"}.`}
+        </p>
+      </div>
+      <dl className="hero-facts">
+        <div>
+          <dt>Aktif sejak boot</dt>
+          <dd>{si?.boot ? fmtUptime(now - si.boot) : "n/a"}</dd>
+        </div>
+        <div>
+          <dt>IP tailnet</dt>
+          <dd className="mono">{si?.tailnet_ip || "tidak tersambung"}</dd>
+        </div>
+        <div>
+          <dt>Beban (1 mnt)</dt>
+          <dd>{hasSample ? si!.load[0].toFixed(2).replace(".", ",") : "n/a"}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+
+  const tiles = [
+    { href: "#/website", icon: Globe, label: "Website", ds: "Situs .lab, rewrite, SSL, config nginx", chip: counts.data ? `${counts.data.sitesOn} dari ${counts.data.sites} aktif` : "" },
+    { href: "#/aplikasi", icon: Server, label: "Aplikasi", ds: "nginx, PHP-FPM, database, cache", chip: svc.data ? `${running} dari ${total} berjalan` : "" },
+    { href: "#/database", icon: Database, label: "Database", ds: "MySQL dan PostgreSQL per proyek", chip: counts.data ? `${counts.data.db} proyek` : "" },
+    { href: "#/tugas", icon: Timer, label: "Worker dan cron", ds: "Pengganti Supervisor dan crontab", chip: counts.data ? `${counts.data.workers} worker, ${counts.data.jobs} cron` : "" },
+    { href: "#/runtime", icon: Boxes, label: "PHP dan runtime", ds: "Versi berdampingan, Node, Go, Python", chip: counts.data ? `${counts.data.php} PHP terpasang` : "" },
+    { href: "#/pembaruan", icon: Download, label: "Pembaruan", ds: "Upgrade aman dengan backup", chip: "" },
+  ];
+
   return (
     <>
-      <PageHead title="Ringkasan" desc="Kondisi singkat Mac mini. Grafik sumber daya ada di portal home.lab dan stats.lab." />
-      <State loading={c.loading && !c.data} error={c.error} onRetry={c.reload}>
-        <ul className="stat-grid">
-          {cards.map((k) => (
-            <li key={k.label}>
-              <a className="stat" href={k.href}>
-                <k.icon size={22} aria-hidden="true" className="stat-ic" />
-                <span className="stat-val">{k.value}</span>
-                <span className="stat-label">{k.label}</span>
-                <span className="small muted">{k.hint}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </State>
-      <Card
-        title="Aksi terakhir"
-        action={
-          <a className="btn" href="#/aktivitas">
-            <Download size={18} aria-hidden="true" />
-            Semua aktivitas
-          </a>
-        }
-      >
-        <State loading={jobs.loading && !jobs.data} error={jobs.error} empty={!!jobs.data && jobs.data.jobs.length === 0} emptyText="Belum ada aksi yang dijalankan lewat panel." onRetry={jobs.reload}>
-          <ul className="list">
-            {jobs.data?.jobs.slice(0, 6).map((j) => (
-              <li key={j.id} className="list-row">
+      {hero}
+      <ul className="tiles" aria-label="Akses cepat">
+        {tiles.map((t) => (
+          <li key={t.href}>
+            <a className="tile" href={t.href}>
+              <span className="tile-ic">
+                <t.icon size={22} aria-hidden="true" />
+              </span>
+              <b>{t.label}</b>
+              <span className="tile-ds">{t.ds}</span>
+              {t.chip && <span className="chip chip-mute">{t.chip}</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      <State loading={sys.loading && !sys.data} error={sys.error} onRetry={sys.reload}>
+        {si && (
+          <ul className="kpis" aria-label="Sumber daya">
+            <li className="card kpi">
+              <h2 className="kpi-h"><Cpu size={16} aria-hidden="true" /> CPU</h2>
+              <div className="kpi-body">
+                <Ring pct={hasSample ? si.cpu : null} label="CPU terpakai" tone={toneOf(hasSample ? si.cpu : null)} />
                 <div>
-                  <p className="mono">{j.action}</p>
-                  <p className="small muted">
-                    {fmtTime(j.at)} oleh {j.user}
-                  </p>
+                  <p className="big">{hasSample ? <CountUp value={si.cpu} decimals={0} suffix="%" /> : "n/a"}</p>
+                  <p className="small muted">{si.cores} inti</p>
                 </div>
-                <Chip tone={statusTone(j.status)} busy={j.status === "berjalan"}>
-                  {j.status}
-                </Chip>
-              </li>
-            ))}
+              </div>
+              <Sparkline pts={spark.data?.cpu ?? []} label="CPU satu jam terakhir" />
+            </li>
+            <li className="card kpi">
+              <h2 className="kpi-h"><MemoryStick size={16} aria-hidden="true" /> Memori</h2>
+              <div className="kpi-body">
+                <Ring pct={hasSample ? si.mem : null} label="Memori terpakai" tone={toneOf(hasSample ? si.mem : null)} />
+                <div>
+                  <p className="big">{hasSample ? <CountUp value={si.mem} decimals={0} suffix="%" /> : "n/a"}</p>
+                  <p className="small muted">dari {fmtBytes(si.mem_total)}</p>
+                </div>
+              </div>
+              <Sparkline pts={spark.data?.mem ?? []} label="Memori satu jam terakhir" />
+            </li>
+            <li className="card kpi">
+              <h2 className="kpi-h"><HardDrive size={16} aria-hidden="true" /> Disk</h2>
+              <div className="kpi-body">
+                <Ring pct={si.disk_total ? si.disk : null} label="Disk terpakai" tone={toneOf(si.disk)} />
+                <div>
+                  <p className="big">{si.disk_total ? <CountUp value={si.disk} decimals={0} suffix="%" /> : "n/a"}</p>
+                  <p className="small muted">{fmtBytes(si.disk_free)} bebas</p>
+                </div>
+              </div>
+              {si.disk >= 85 && <p className="callout">Disk hampir penuh. Bersihkan backup lama atau cache.</p>}
+            </li>
+            <li className="card kpi">
+              <h2 className="kpi-h"><Network size={16} aria-hidden="true" /> Jaringan</h2>
+              {nets.length === 0 ? (
+                <p className="small muted">Belum ada laju terukur. Muncul setelah dua sampel (sekitar 30 detik).</p>
+              ) : (
+                <>
+                  <p className="big">{fmtRate(rx)}</p>
+                  <p className="small muted">masuk sekarang, keluar {fmtRate(tx)}</p>
+                  <ul className="kpi-rows">
+                    {nets.map((n) => (
+                      <li key={n.iface}>
+                        {n.label}: ↓ {fmtRate(n.rx_bps)}, ↑ {fmtRate(n.tx_bps)}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <a className="small" href="#/pantau">Lihat riwayat bandwidth</a>
+            </li>
           </ul>
-        </State>
-      </Card>
+        )}
+      </State>
+
+      <div className="split">
+        <Card title={<><Activity size={18} className="icon" aria-hidden="true" /> Seberapa sibuk CPU dan memori?</>} action={<RangePicker value={range} onChange={setRange} />}>
+          <State loading={met.loading && !met.data} error={met.error} onRetry={met.reload}>
+            {met.data && (
+              <LineChart
+                title="CPU dan memori"
+                rangeKey={range}
+                domain={[0, 100]}
+                tickFmt={(v) => `${Math.round(v)}%`}
+                series={[
+                  { key: "cpu", label: "CPU", pts: met.data.cpu, fmt: (v) => `${v.toFixed(0)}%` },
+                  { key: "mem", label: "Memori", pts: met.data.mem, fmt: (v) => `${v.toFixed(0)}%` },
+                ]}
+              />
+            )}
+          </State>
+        </Card>
+        <div className="stackc">
+          <Card title="Status layanan" action={<a className="btn btn-sm" href="#/aplikasi">Kelola</a>}>
+            <State loading={svc.loading && !svc.data} error={svc.error} onRetry={svc.reload}>
+              <ul className="svc-list">
+                {services.filter((s) => s.installed).map((s) => (
+                  <li key={s.id}>
+                    <Mark tone={stateTone(s.state)} />
+                    <a href="#/aplikasi">{s.label}</a>
+                    <Chip tone={stateTone(s.state)}>{stateText[s.state]}</Chip>
+                  </li>
+                ))}
+              </ul>
+            </State>
+          </Card>
+          {si && (
+            <Card title="Sistem">
+              <dl className="sysinfo">
+                <div><dt>Host</dt><dd>{si.host}</dd></div>
+                <div><dt>Sistem</dt><dd>{si.os}</dd></div>
+                <div><dt>Prosesor</dt><dd>{si.cores} inti</dd></div>
+                <div><dt>Memori</dt><dd>{fmtBytes(si.mem_total)}</dd></div>
+                <div><dt>Disk</dt><dd>{fmtBytes(si.disk_total)}</dd></div>
+                <div>
+                  <dt>Backup terakhir</dt>
+                  <dd>{si.backup ? `${fmtAgo(now - si.backup.at)}${si.backup.local_only ? ", hanya lokal" : ""}` : "belum ada"}</dd>
+                </div>
+              </dl>
+              {si.backup?.local_only && <p className="callout">Backup masih di disk yang sama, belum offsite.</p>}
+            </Card>
+          )}
+        </div>
+      </div>
     </>
   );
 }

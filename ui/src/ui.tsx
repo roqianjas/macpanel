@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Check, LoaderCircle, TriangleAlert, X } from "lucide-react";
+import { LoaderCircle, TriangleAlert, X } from "lucide-react";
 import { errText } from "./api";
 
 /** useLoad: muat data dengan status memuat/galat/kosong yang konsisten (R-27). */
@@ -55,19 +55,59 @@ export function State({ loading, error, empty, emptyText, onRetry, children }: {
 
 export type Tone = "ok" | "warn" | "bad" | "info" | "mute";
 
-/** Status memakai bentuk ikon + teks, tidak hanya warna. */
+/** Bentuk status: lingkaran = hidup, kotak = mati, cincin = belum aktif, segitiga = peringatan. Selalu bersama teks. */
+export function Mark({ tone }: { tone: Tone }) {
+  return (
+    <svg className={`mark mark-${tone === "mute" ? "off" : tone}`} width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
+      {(tone === "ok" || tone === "info") && <circle cx="5" cy="5" r="4.2" fill="currentColor" />}
+      {tone === "bad" && <rect x="1" y="1" width="8" height="8" fill="currentColor" />}
+      {tone === "mute" && <circle cx="5" cy="5" r="3.7" fill="none" stroke="currentColor" strokeWidth="1.4" />}
+      {tone === "warn" && <path d="M5 .8 9.4 9H.6z" fill="currentColor" />}
+    </svg>
+  );
+}
+
 export function Chip({ tone = "mute", children, busy }: { tone?: Tone; children: ReactNode; busy?: boolean }) {
   return (
     <span className={`chip chip-${tone}`}>
-      {busy ? <LoaderCircle className="icon spin" size={13} aria-hidden="true" /> : tone === "ok" ? <Check className="icon" size={13} aria-hidden="true" /> : tone === "bad" ? <X className="icon" size={13} aria-hidden="true" /> : tone === "warn" ? <TriangleAlert className="icon" size={13} aria-hidden="true" /> : <span className="dot" aria-hidden="true" />}
+      {busy ? <LoaderCircle className="icon spin" size={12} aria-hidden="true" /> : <Mark tone={tone} />}
       {children}
     </span>
   );
 }
 
+/** Muat data berkala (mis. status layanan). Berhenti saat tab tersembunyi. */
+export function usePoll<T>(fn: () => Promise<T>, everyMs: number, deps: unknown[] = []) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+  const reload = useCallback(async () => {
+    try {
+      setData(await fnRef.current());
+      setError("");
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    setLoading(true);
+    void reload();
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") void reload();
+    }, everyMs);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [everyMs, ...deps]);
+  return { data, error, loading, reload };
+}
+
 export function statusTone(s: string): Tone {
-  if (["ok", "jalan", "terpasang", "aktif"].includes(s)) return "ok";
-  if (["gagal", "timeout", "terputus"].includes(s)) return "bad";
+  if (["ok", "jalan", "terpasang", "aktif", "running"].includes(s)) return "ok";
+  if (["gagal", "timeout", "terputus", "error"].includes(s)) return "bad";
   if (["terjadwal"].includes(s)) return "info";
   if (["berjalan", "tidak dimuat"].includes(s)) return "warn";
   return "mute";

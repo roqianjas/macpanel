@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { Boxes, Database, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun, Timer, X } from "lucide-react";
+import { Activity, Boxes, Database, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setStepUpHandler } from "./api";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
 import { dismissJob, useTrackedJobs } from "./jobs";
 import Overview from "./pages/Overview";
+import Monitoring from "./pages/Monitoring";
 import Sites from "./pages/Sites";
+import Apps from "./pages/Apps";
 import Databases from "./pages/Databases";
 import Runtimes from "./pages/Runtimes";
 import Tasks from "./pages/Tasks";
 import Updates from "./pages/Updates";
-import Activity from "./pages/Activity";
+import ActivityPage from "./pages/Activity";
 
 type Pref = "system" | "light" | "dark";
 
@@ -30,11 +32,10 @@ function useTheme() {
     mq.addEventListener("change", h);
     return () => mq.removeEventListener("change", h);
   }, [pref]);
-  const next = () => setPref((p) => (p === "system" ? "light" : p === "light" ? "dark" : "system"));
-  return { pref, next };
+  return { pref, next: () => setPref((p) => (p === "system" ? "light" : p === "light" ? "dark" : "system")) };
 }
 
-// ---------- login ----------
+// ---------- masuk ----------
 
 function Login({ onDone }: { onDone: (user: string) => void }) {
   const [step, setStep] = useState<"pwd" | "totp">("pwd");
@@ -76,7 +77,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
   return (
     <main className="login" id="main">
       <div className="login-card card">
-        <div className="brand login-brand">
+        <div className="brand">
           <span className="brand-ic">
             <KeyRound size={20} aria-hidden="true" />
           </span>
@@ -94,8 +95,8 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
           </form>
         ) : (
           <form onSubmit={submitCode} className="stack">
-            <p className="muted">Buka Google Authenticator (atau aplikasi TOTP Anda) dan masukkan kode 6 digit untuk akun ini. Kode recovery juga diterima.</p>
-            <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} autoFocus inputMode="text" autoComplete="one-time-code" className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} required spellCheck={false} />}</Field>
+            <p className="muted small">Masukkan kode 6 digit dari Google Authenticator (atau aplikasi TOTP Anda). Satu kode recovery juga diterima.</p>
+            <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} autoFocus autoComplete="one-time-code" className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} required spellCheck={false} />}</Field>
             {err && <Alert>{err}</Alert>}
             <div className="row-end">
               <button type="button" className="btn" onClick={() => { setStep("pwd"); setErr(""); }}>
@@ -112,8 +113,6 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
     </main>
   );
 }
-
-// ---------- step-up ----------
 
 function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
   const [code, setCode] = useState("");
@@ -135,7 +134,7 @@ function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
   return (
     <Modal title="Verifikasi ulang" onClose={() => resolve(false)}>
       <form onSubmit={submit} className="stack">
-        <p>Aksi ini penting. Masukkan kode TOTP yang baru (tunggu kode berikutnya bila baru dipakai untuk masuk). Berlaku 5 menit.</p>
+        <p className="small">Aksi ini penting. Masukkan kode TOTP yang baru (tunggu kode berikutnya bila baru dipakai untuk masuk). Berlaku 5 menit.</p>
         <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} data-autofocus className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" spellCheck={false} required />}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
@@ -151,8 +150,6 @@ function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
   );
 }
 
-// ---------- penampil job ----------
-
 function JobTray() {
   const jobs = useTrackedJobs().filter((j) => !j.dismissed);
   if (!jobs.length) return null;
@@ -165,7 +162,7 @@ function JobTray() {
               {j.status === "berjalan" ? "Berjalan" : j.status === "ok" ? "Selesai" : j.status}
             </Chip>
             <span className="tray-label">{j.label}</span>
-            <button className="btn btn-ghost btn-icon" onClick={() => dismissJob(j.id)} aria-label={`Sembunyikan ${j.label}`}>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => dismissJob(j.id)} aria-label={`Sembunyikan ${j.label}`}>
               <X size={16} aria-hidden="true" />
             </button>
           </div>
@@ -178,20 +175,21 @@ function JobTray() {
 
 // ---------- kerangka ----------
 
-const NAV = [
-  { id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard },
-  { id: "website", label: "Website", icon: Globe },
-  { id: "database", label: "Database", icon: Database },
-  { id: "runtime", label: "PHP dan runtime", icon: Boxes },
-  { id: "tugas", label: "Worker dan cron", icon: Timer },
-  { id: "pembaruan", label: "Pembaruan", icon: Download },
-  { id: "aktivitas", label: "Aktivitas", icon: History },
+interface NavItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+}
+const GROUPS: { label: string; items: NavItem[] }[] = [
+  { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
+  { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
+  { label: "Sistem", items: [{ id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }] },
 ];
+const ALL = GROUPS.flatMap((g) => g.items);
 
 function parseHash(): { page: string; sub: string } {
-  const h = location.hash.replace(/^#\/?/, "");
-  const [page, sub = ""] = h.split("/");
-  return { page: NAV.some((n) => n.id === page) ? page : "ringkasan", sub: decodeURIComponent(sub) };
+  const [page, sub = ""] = location.hash.replace(/^#\/?/, "").split("/");
+  return { page: ALL.some((n) => n.id === page) ? page : "ringkasan", sub: decodeURIComponent(sub) };
 }
 
 function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
@@ -209,28 +207,21 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
     addEventListener("hashchange", h);
     return () => removeEventListener("hashchange", h);
   }, []);
-  useEffect(() => {
-    localStorage.setItem("panel-collapsed", collapsed ? "1" : "0");
-  }, [collapsed]);
+  useEffect(() => localStorage.setItem("panel-collapsed", collapsed ? "1" : "0"), [collapsed]);
 
   const ThemeIcon = theme.pref === "dark" ? Moon : theme.pref === "light" ? Sun : Monitor;
   const themeLabel = theme.pref === "dark" ? "Gelap" : theme.pref === "light" ? "Terang" : "Ikuti sistem";
   const page = (() => {
     switch (route.page) {
-      case "website":
-        return <Sites sub={route.sub} />;
-      case "database":
-        return <Databases />;
-      case "runtime":
-        return <Runtimes />;
-      case "tugas":
-        return <Tasks />;
-      case "pembaruan":
-        return <Updates />;
-      case "aktivitas":
-        return <Activity />;
-      default:
-        return <Overview />;
+      case "pantau": return <Monitoring />;
+      case "website": return <Sites sub={route.sub} />;
+      case "aplikasi": return <Apps />;
+      case "database": return <Databases />;
+      case "runtime": return <Runtimes />;
+      case "tugas": return <Tasks />;
+      case "pembaruan": return <Updates />;
+      case "aktivitas": return <ActivityPage />;
+      default: return <Overview />;
     }
   })();
 
@@ -245,24 +236,29 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
             <span className="brand-ic">
               <KeyRound size={18} aria-hidden="true" />
             </span>
-            <span className="side-text">Panel Mac mini</span>
+            <span className="brand-text">Panel Mac mini</span>
           </span>
           <button className="btn btn-ghost btn-icon sheet-close" onClick={() => setSheet(false)} aria-label="Tutup menu">
             <X size={18} aria-hidden="true" />
           </button>
         </div>
-        <ul>
-          {NAV.map((n) => (
-            <li key={n.id}>
-              <a href={`#/${n.id}`} className={route.page === n.id ? "on" : ""} aria-current={route.page === n.id ? "page" : undefined}>
-                <n.icon size={20} aria-hidden="true" />
-                <span className="side-text">{n.label}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        {GROUPS.map((g) => (
+          <div key={g.label} className="side-group">
+            <p className="side-label">{g.label}</p>
+            <ul>
+              {g.items.map((n) => (
+                <li key={n.id}>
+                  <a href={`#/${n.id}`} className={route.page === n.id ? "on" : ""} aria-current={route.page === n.id ? "page" : undefined}>
+                    <n.icon size={20} aria-hidden="true" />
+                    <span className="side-text">{n.label}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
         <div className="side-bottom">
-          <button className="side-btn" onClick={() => setCollapsed((c) => !c)} aria-expanded={!collapsed} aria-label={collapsed ? "Perlebar menu" : "Ciutkan menu"}>
+          <button className="side-collapse" onClick={() => setCollapsed((c) => !c)} aria-expanded={!collapsed} aria-label={collapsed ? "Perlebar menu" : "Ciutkan menu"}>
             {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
             <span className="side-text">Ciutkan</span>
           </button>
@@ -273,7 +269,7 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
           <button className="btn btn-ghost btn-icon menu-btn" onClick={() => setSheet(true)} aria-label="Buka menu" aria-expanded={sheet}>
             <Menu size={20} aria-hidden="true" />
           </button>
-          <span className="top-user muted small">
+          <span className="top-info">
             Masuk sebagai <strong className="mono">{user}</strong>
           </span>
           <div className="top-actions">
@@ -281,7 +277,7 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
               <ThemeIcon size={18} aria-hidden="true" />
               <span className="btn-text">{themeLabel}</span>
             </button>
-            <button className="btn" onClick={onLogout}>
+            <button className="btn" onClick={onLogout} aria-label="Keluar">
               <LogOut size={18} aria-hidden="true" />
               <span className="btn-text">Keluar</span>
             </button>
@@ -300,43 +296,23 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
 export default function App() {
   const [user, setUser] = useState<string | null | undefined>(undefined);
   const [stepUp, setStepUp] = useState<null | ((ok: boolean) => void)>(null);
-
   useEffect(() => {
-    setStepUpHandler(
-      () =>
-        new Promise<boolean>((resolve) => {
-          setStepUp(() => (ok: boolean) => {
-            setStepUp(null);
-            resolve(ok);
-          });
-        }),
-    );
+    setStepUpHandler(() => new Promise<boolean>((resolve) => setStepUp(() => (ok: boolean) => { setStepUp(null); resolve(ok); })));
     const un = () => setUser(null);
     addEventListener(UNAUTH, un);
     get<{ user: string; csrf: string }>("/api/me")
-      .then((r) => {
-        setCsrf(r.csrf);
-        setUser(r.user);
-      })
+      .then((r) => { setCsrf(r.csrf); setUser(r.user); })
       .catch(() => setUser(null));
     return () => removeEventListener(UNAUTH, un);
   }, []);
-
   const logout = useCallback(async () => {
-    try {
-      await api("POST", "/api/auth/logout", {});
-    } catch {
-      /* sesi mungkin sudah habis */
-    }
+    try { await api("POST", "/api/auth/logout", {}); } catch { /* sesi mungkin sudah habis */ }
     setUser(null);
   }, []);
-
   if (user === undefined)
     return (
       <main className="login" id="main">
-        <p className="muted" role="status">
-          Memuat…
-        </p>
+        <p className="muted" role="status">Memuat…</p>
       </main>
     );
   return (

@@ -45,6 +45,11 @@ type App struct {
 	bg          sync.WaitGroup // aksi latar belakang yang masih berjalan
 	mu          sync.Mutex     // satu aksi mutasi pada satu waktu
 	uiDir       string         // folder hasil build UI (kosong = tanpa UI)
+	probeAddr   string         // loopback:443 untuk pemeriksaan situs (kosong = tanpa pemeriksaan)
+	col         *Collector     // pengumpul metrik (nil di tes)
+	sysMu       sync.Mutex
+	sysCache    *SystemInfo
+	sysAt       time.Time
 }
 
 type Route struct {
@@ -64,7 +69,7 @@ const (
 func newApp(st *Store, key []byte, cfg Config) *App {
 	home, _ := os.UserHomeDir()
 	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now,
-		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", timeout: 120 * time.Second, longTimeout: 30 * time.Minute,
+		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", probeAddr: "127.0.0.1:443", timeout: 120 * time.Second, longTimeout: 30 * time.Minute,
 		nginxDir: filepath.Join(home, "Developer/_ops/web/nginx"), certDir: "/opt/homebrew/etc/nginx/certs", logDir: "/opt/homebrew/var/log/nginx/sites", errLog: "/opt/homebrew/var/log/nginx/error.log"}
 }
 
@@ -78,7 +83,7 @@ func routes() []Route {
 		{"POST", "/api/auth/stepup", Full, hStepUp},
 		{"GET", "/api/me", Full, hMe},
 		{"GET", "/api/audit", Full, hAudit},
-		{"GET", "/api/sites", Full, hSitesList},
+		{"GET", "/api/sites", Full, hSitesRich},
 		{"POST", "/api/sites", Full, hSiteAdd},
 		{"POST", "/api/sites/{name}/remove", Full, hSiteRemove},
 		{"GET", "/api/db", Full, hDBList},
@@ -95,6 +100,14 @@ func routes() []Route {
 		{"POST", "/api/sites/{name}/ssl/renew", Full, hSSLRenew},
 		{"GET", "/api/sites/{name}/logs", Full, hLogs},
 		{"GET", "/api/jobs/{id}", Full, hJob},
+		{"GET", "/api/services", Full, hServicesList},
+		{"POST", "/api/services/{id}/{action}", Full, hServiceAction},
+		{"GET", "/api/services/{id}/logs", Full, hServiceLogs},
+		{"POST", "/api/apps/{id}/install", Full, hAppInstall},
+		{"POST", "/api/apps/{id}/remove", Full, hAppRemove},
+		{"POST", "/api/sites/{name}/{action}", Full, hSiteToggle},
+		{"GET", "/api/metrics", Full, hMetrics},
+		{"GET", "/api/system", Full, hSystem},
 		{"GET", "/api/php", Full, hPHPList},
 		{"POST", "/api/php/{version}/install", Full, hPHPInstall},
 		{"POST", "/api/php/{version}/remove", Full, hPHPRemove},

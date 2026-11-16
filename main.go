@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -106,6 +107,8 @@ func main() {
 		st.MarkStaleJobs()
 		app := newApp(st, key, Config{Origins: []string{*origin}})
 		app.uiDir = *uiDir
+		app.col = newCollector(app)
+		go app.col.Run(context.Background())
 		srv := &http.Server{Addr: *addr, Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 150 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 		fmt.Println("panel mendengarkan di", *addr)
 		fatal(srv.ListenAndServe().Error())

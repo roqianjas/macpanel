@@ -37,6 +37,7 @@ func newOpsEnv(t *testing.T, fakeBody string) *opsEnv {
 	os.WriteFile(bin, []byte(script), 0o755)
 	e.app.labBin, e.app.home, e.app.sitesDir = bin, home, filepath.Join(home, "sites")
 	e.app.timeout = 5 * time.Second
+	e.app.probeAddr = "" // tes tidak boleh menyentuh jaringan
 	os.WriteFile(filepath.Join(home, "sites/demo.conf"), []byte("server {\n    root "+home+"/Developer/proj/public;\n    fastcgi_pass unix:/opt/homebrew/var/run/php-fpm-dev-8.4.sock;\n}"), 0o644)
 	os.WriteFile(filepath.Join(home, "sites/api.conf"), []byte("server { location / { proxy_pass http://127.0.0.1:3000; } }"), 0o644)
 	os.WriteFile(filepath.Join(home, "sites/home.conf"), []byte("server {\n    root /x;\n}"), 0o644)
