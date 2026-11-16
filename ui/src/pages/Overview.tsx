@@ -46,8 +46,10 @@ export default function Overview() {
   const si = sys.data;
   const hasSample = !!si && si.sample_at > 0;
   const nets = si?.nets ?? [];
-  const rx = nets.reduce((a, n) => a + n.rx_bps, 0);
-  const tx = nets.reduce((a, n) => a + n.tx_bps, 0);
+  // Angka utama hanya dari kartu jaringan fisik: lalu lintas Tailscale juga lewat sana (terenkripsi), jadi menjumlahkan utun akan menghitung dua kali.
+  const phys = nets.filter((n) => !n.ip.startsWith("100."));
+  const rx = phys.reduce((a, n) => a + n.rx_bps, 0);
+  const tx = phys.reduce((a, n) => a + n.tx_bps, 0);
   const now = Math.floor(Date.now() / 1000);
 
   const hero = (
@@ -148,7 +150,7 @@ export default function Overview() {
               ) : (
                 <>
                   <p className="big">{fmtRate(rx)}</p>
-                  <p className="small muted">masuk sekarang, keluar {fmtRate(tx)}</p>
+                  <p className="small muted">masuk sekarang, keluar {fmtRate(tx)} (kartu jaringan fisik)</p>
                   <ul className="kpi-rows">
                     {nets.map((n) => (
                       <li key={n.iface}>
