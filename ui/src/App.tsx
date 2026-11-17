@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { Activity, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
@@ -14,6 +14,7 @@ import Tasks from "./pages/Tasks";
 import Updates from "./pages/Updates";
 import ActivityPage from "./pages/Activity";
 import Backups from "./pages/Backups";
+import System from "./pages/System";
 
 type Pref = "system" | "light" | "dark";
 
@@ -185,7 +186,7 @@ interface NavItem {
 const GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
   { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
-  { label: "Sistem", items: [{ id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }] },
+  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }] },
 ];
 const ALL = GROUPS.flatMap((g) => g.items);
 
@@ -224,6 +225,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
       case "database": return <Databases />;
       case "runtime": return <Runtimes />;
       case "tugas": return <Tasks />;
+      case "sistem": return <System />;
       case "backup": return <Backups />;
       case "pembaruan": return <Updates />;
       case "aktivitas": return <ActivityPage />;

@@ -336,7 +336,9 @@ def service(a):
     if not c["ctl"]: die(f"'{c['id']}' tidak bisa dikendalikan dari sini ({c['desc']})")
     if not snapshot_one(c)[0]: die(f"'{c['id']}' belum terpasang")
     if c["kind"] == "brew":
-        r = sh([BREW, "services", a.act, c["name"]])
+        extra = []
+        if c["name"] == "mailpit" and a.act in ("start", "restart"): extra = [f"--file={mailpit_plist()}"]
+        r = sh([BREW, "services", a.act, c["name"], *extra])
     else:
         plist = str(LAUNCH / f"{c['name']}.plist"); tgt = f"gui/{UID}/{c['name']}"
         if a.act == "restart": r = sh(["/bin/launchctl", "kickstart", "-k", tgt]) if launchd_loaded(c["name"]) else sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist])
@@ -350,6 +352,18 @@ def service(a):
     now = probe(c)
     if now != want: die(f"perintah {a.act} dikirim, tetapi {c['label']} {'belum berjalan' if want else 'masih berjalan'}")
     print(f"OK: {c['label']} {'berjalan' if now else 'berhenti'}")
+
+
+def mailpit_plist():
+    """Plist bawaan Homebrew membuka Mailpit di semua antarmuka (LAN, tanpa login). Pakai plist sendiri yang terikat ke loopback."""
+    import plistlib
+    f = HOME / ".config/macminiops/mailpit.plist"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_bytes(plistlib.dumps({"Label": "sh.brew.mailpit", "KeepAlive": True, "RunAtLoad": True,
+        "ProgramArguments": ["/opt/homebrew/opt/mailpit/bin/mailpit", "--listen", "127.0.0.1:8025", "--smtp", "127.0.0.1:1025"],
+        "StandardOutPath": "/opt/homebrew/var/log/mailpit.log", "StandardErrorPath": "/opt/homebrew/var/log/mailpit.log"}))
+    os.chmod(f, 0o600)
+    return str(f)
 
 
 def snapshot_one(c):

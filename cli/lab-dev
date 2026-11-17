@@ -592,6 +592,133 @@ def dbcfg(a):
     print("OK: " + ", ".join(f"{k}={pairs[k]} (aktif: {live(k)})" for k in pairs))
 
 
+# ---------- sys: proses, disk, keamanan, docker, statistik ----------
+DEV_COMM = {"node", "php", "python", "python3", "go", "npm", "pnpm", "bun", "deno", "ruby", "vite", "esbuild", "tsx", "next-server", "composer", "java", "cargo"}
+PROTECTED_COMM = {"panel", "launchd", "nginx", "mysqld", "postgres", "redis-server", "php-fpm", "dnsmasq", "sshd", "tailscaled", "Tailscale", "WindowServer", "loginwindow", "Finder", "netdata", "kernel_task"}
+
+
+def ps_rows():
+    r = sh(["/bin/ps", "-axo", "pid=,user=,pcpu=,pmem=,rss=,etime=,comm="])
+    me = os.environ.get("USER", HOME.name); out = []
+    for l in r.stdout.splitlines():
+        f = l.split(None, 6)
+        if len(f) < 7: continue
+        pid, user, cpu, mem, rss, et, comm = f
+        out.append(dict(pid=int(pid), user=user, cpu=float(cpu), mem=float(mem), rss_mb=round(int(rss) / 1024, 1), etime=et, name=os.path.basename(comm), mine=(user == me)))
+    return out
+
+
+def sys_procs():
+    rows = [r for r in ps_rows() if r["mine"]]
+    for r in rows: r["killable"] = r["name"] in DEV_COMM and r["name"] not in PROTECTED_COMM
+    rows.sort(key=lambda r: (-r["cpu"], -r["rss_mb"]))
+    print(json.dumps(dict(procs=rows[:40], total=len(rows))))
+
+
+def sys_kill(pid):
+    if pid <= 1: die("pid tidak valid")
+    row = next((r for r in ps_rows() if r["pid"] == pid), None)
+    if not row: die("proses tidak ada")
+    if not row["mine"]: die("proses milik user lain")
+    if row["name"] in PROTECTED_COMM or row["name"] not in DEV_COMM: die(f"'{row['name']}' bukan proses pengembangan; hentikan lewat halaman Aplikasi atau terminal")
+    try: os.kill(pid, 15)
+    except OSError as e: die(f"gagal: {e}")
+    for _ in range(20):
+        time.sleep(0.25)
+        if not any(r["pid"] == pid for r in ps_rows()): print(f"OK: {row['name']} ({pid}) dihentikan (SIGTERM)"); return
+    print(f"SIGTERM terkirim ke {row['name']} ({pid}) tetapi proses belum berhenti; coba lagi nanti")
+
+
+def du_kb(path, timeout=40):
+    try:
+        r = subprocess.run(["/usr/bin/du", "-sk", str(path)], capture_output=True, text=True, timeout=timeout)
+        return int(r.stdout.split()[0]) if r.stdout.strip() else None
+    except (subprocess.TimeoutExpired, ValueError, IndexError): return None
+
+
+def sys_disk():
+    items = []
+    base = HOME / "Developer"
+    for p in sorted(base.iterdir()) if base.exists() else []:
+        if p.is_dir() and not p.is_symlink(): items.append((f"Developer/{p.name}", p))
+    for lab, p in (("Backups", HOME / "Backups"), ("Homebrew (Cellar)", Path("/opt/homebrew/Cellar")), ("mise (runtime)", HOME / ".local/share/mise")):
+        if p.exists(): items.append((lab, p))
+    rows = [dict(name=n, kb=du_kb(p)) for n, p in items[:60]]
+    rows = sorted([r for r in rows if r["kb"] is not None], key=lambda r: -r["kb"])[:30]
+    st = shutil.disk_usage("/System/Volumes/Data")
+    print(json.dumps(dict(rows=rows, total=st.total, free=st.free)))
+
+
+def sys_security():
+    fw = sh(["/usr/libexec/ApplicationFirewall/socketfilterfw", "--getglobalstate"]).stdout.strip()
+    stealth = sh(["/usr/libexec/ApplicationFirewall/socketfilterfw", "--getstealthmode"]).stdout.strip()
+    sshcfg = ""
+    for p in [Path("/etc/ssh/sshd_config")] + sorted(Path("/etc/ssh/sshd_config.d").glob("*.conf")) if Path("/etc/ssh").exists() else []:
+        try: sshcfg += p.read_text(errors="replace") + "\n"
+        except OSError: pass
+    def opt(k, default):
+        m = re.findall(rf"^\s*{k}\s+(\S+)", sshcfg, re.I | re.M)
+        return (m[0] if m else default).lower()
+    r = sh(["/usr/sbin/lsof", "-nP", "-iTCP", "-sTCP:LISTEN", "-F", "pcn"])
+    ports, pid, cmd = {}, "", ""
+    for l in r.stdout.splitlines():
+        if l.startswith("p"): pid = l[1:]
+        elif l.startswith("c"): cmd = l[1:]
+        elif l.startswith("n"):
+            addr, _, port = l[1:].rpartition(":")
+            local = addr in ("127.0.0.1", "[::1]", "localhost")
+            ports[(addr, port, cmd)] = dict(addr=addr, port=int(port) if port.isdigit() else 0, proc=cmd, exposed=not local)
+    rows = sorted(ports.values(), key=lambda x: (not x["exposed"], x["port"]))
+    ts = sh(["/usr/local/bin/tailscale", "status", "--self=true", "--peers=false"]) if Path("/usr/local/bin/tailscale").exists() else None
+    print(json.dumps(dict(firewall=fw, stealth=stealth,
+        ssh=dict(password_auth=opt("PasswordAuthentication", "yes (bawaan)"), root_login=opt("PermitRootLogin", "prohibit-password (bawaan)"), kbd_interactive=opt("KbdInteractiveAuthentication", "yes (bawaan)")),
+        ports=rows[:80])))
+
+
+def sys_docker():
+    exe = shutil.which("docker", path=ENV["PATH"])
+    if not exe: print(json.dumps(dict(installed=False))); return
+    r = sh([exe, "ps", "--format", "{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"], timeout=15)
+    if r.returncode: print(json.dumps(dict(installed=True, running=False, error=(r.stderr or "").strip()[-200:]))); return
+    cs = [dict(zip(("name", "image", "status", "ports"), l.split("\t"))) for l in r.stdout.splitlines() if l.strip()]
+    print(json.dumps(dict(installed=True, running=True, containers=cs)))
+
+
+LOG_RE = re.compile(r'^(\S+) \S+ \S+ \[([^\]]+)\] "(\S+) (\S+)[^"]*" (\d{3}) (\d+|-)')
+LOGD = Path("/opt/homebrew/var/log/nginx/sites")
+
+
+def sys_stats(name):
+    if not re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?", name or ""): die("nama situs tidak valid")
+    f = LOGD / f"{name}.log"
+    if not f.exists(): print(json.dumps(dict(exists=False))); return
+    size = f.stat().st_size
+    with open(f, "rb") as fh:
+        fh.seek(max(0, size - 8 * 1024 * 1024)); data = fh.read().decode("utf-8", "replace")
+    lines = data.splitlines()[1:] if size > 8 * 1024 * 1024 else data.splitlines()
+    from collections import Counter
+    days, status, paths, ips = Counter(), Counter(), Counter(), Counter()
+    total_b = n = 0
+    for l in lines[-300000:]:
+        m = LOG_RE.match(l)
+        if not m: continue
+        ip, ts, _meth, path, code, b = m.groups()
+        n += 1; days[ts[:11]] += 1; status[code[0] + "xx"] += 1; paths[path.split("?")[0][:80]] += 1; ips[ip] += 1
+        total_b += int(b) if b.isdigit() else 0
+    ds = sorted(days.items(), key=lambda kv: time.strptime(kv[0], "%d/%b/%Y"))[-14:]
+    print(json.dumps(dict(exists=True, requests=n, bytes=total_b, days=[dict(day=k, n=v) for k, v in ds], status=dict(status),
+                          paths=[dict(path=k, n=v) for k, v in paths.most_common(10)], ips=[dict(ip=k, n=v) for k, v in ips.most_common(8)], note=f"dari {len(lines)} baris terakhir log")))
+
+
+def sysx(a):
+    if a.act == "procs": return sys_procs()
+    if a.act == "kill": return sys_kill(a.pid)
+    if a.act == "disk": return sys_disk()
+    if a.act == "security": return sys_security()
+    if a.act == "docker": return sys_docker()
+    if a.act == "stats": return sys_stats(a.name)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
     e = top.add_parser("ext").add_subparsers(dest="act", required=True)
@@ -604,6 +731,9 @@ def main():
     q = c.add_parser("run"); q.add_argument("site"); q.add_argument("cmd", choices=["install", "install-nodev", "update", "dump-autoload", "validate"])
     d = top.add_parser("deploy").add_subparsers(dest="act", required=True)
     d.add_parser("info").add_argument("site"); q = d.add_parser("run"); q.add_argument("site"); q.add_argument("steps")
+    sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
+    for x in ("procs", "disk", "security", "docker"): sy.add_parser(x)
+    sy.add_parser("kill").add_argument("pid", type=int); sy.add_parser("stats").add_argument("name")
     dc = top.add_parser("dbcfg").add_subparsers(dest="act", required=True)
     for x in ("get", "slow"): q = dc.add_parser(x); q.add_argument("engine", choices=["mysql", "redis"])
     q = dc.add_parser("set"); q.add_argument("engine", choices=["mysql", "redis"]); q.add_argument("pairs", nargs="+")
@@ -618,6 +748,7 @@ def main():
     elif a.mod == "deploy": deploy(a)
     elif a.mod == "backup": backup(a)
     elif a.mod == "dbcfg": dbcfg(a)
+    elif a.mod == "sys": sysx(a)
 
 
 if __name__ == "__main__":
