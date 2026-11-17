@@ -119,7 +119,7 @@ export default function Docs({ sub }: { sub: string }) {
   const cur = docs.find((d) => d.name === sub) ?? (t ? shown[0] : docs[0]);
   const body = useMemo(() => (cur ? renderMarkdown(cur.content.replace(/^\s*#\s+[^\n]*\n/, "")) : []), [cur]);
   return (
-    <div className="stack">
+    <>
       <PageHead title="Dokumentasi" desc="Catatan kondisi dan cara kerja server ini. Dibaca langsung dari folder docs, jadi selalu sama dengan berkasnya." />
       <State loading={q.loading && !q.data} error={q.error} empty={!q.loading && docs.length === 0} emptyText="Belum ada dokumen di folder docs." onRetry={q.reload}>
         <div className="docs-layout">
@@ -143,6 +143,6 @@ export default function Docs({ sub }: { sub: string }) {
           </Card>
         </div>
       </State>
-    </div>
+    </>
   );
 }
