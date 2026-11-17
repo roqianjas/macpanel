@@ -6,3 +6,4 @@ panel
 ui/dist
 ui/node_modules
 .DS_Store
+__pycache__/

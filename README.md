@@ -29,22 +29,22 @@ browser -> nginx (TLS, private-network only) -> panel (Go, 127.0.0.1:9100)
 - `*.go`, `ui/` panel. `cli/` the `lab` command. `nginx/` reference config. `docs/` design and usage.
 - Docs: [docs/DESIGN.md](docs/DESIGN.md) (threat model), [docs/USAGE.md](docs/USAGE.md).
 
-## Install (manual, v0)
-Requirements: macOS on Apple Silicon, [Homebrew](https://brew.sh), `nginx`, `mkcert`, `go`, `node`+`pnpm` (mise recommended), PHP/MySQL/PostgreSQL as you need, and a private network such as Tailscale.
+## Install
+Requirements: macOS (Apple Silicon), [Homebrew](https://brew.sh), and a private network such as [Tailscale](https://tailscale.com).
 
 ```sh
 git clone https://github.com/roqianjas/macpanel ~/Developer/_ops/web/panel
 cd ~/Developer/_ops/web/panel
-(cd ui && pnpm install && pnpm run build)
-go build -o panel .
-./panel init-key                       # creates the TOTP encryption key in the macOS Keychain
-./panel user add <name>                # prints the TOTP setup key ONCE; add --role viewer for read-only
-./panel serve --origin https://panel.lab
+./install.sh --dry-run     # show the plan, change nothing
+./install.sh               # asks for confirmation (use --yes to skip)
 ```
-Then put nginx in front (see `nginx/` and `cli/addsite.sh panel 9100`) and run it with a LaunchAgent (KeepAlive). `cli/` scripts currently expect the layout `~/Developer/_ops/{scripts,web}`; `__HOME__` in `nginx/` must be replaced with your home directory.
+The installer installs missing Homebrew packages (nginx, mkcert, dnsmasq, go, node, pnpm, sqlite), lays out `~/Developer/_ops`, builds the UI and the Go binary, creates the Keychain key and the `panel` LaunchAgent (127.0.0.1:9100), and adds `https://panel.lab` to nginx. It never uses `sudo` or asks for passwords. At the end it prints the few steps you do yourself: create the admin (`panel user add <name>`, you enter the password and scan the TOTP key), and DNS for `*.lab` (needs `sudo`).
+Options: `--no-brew`, `--no-system` (skip anything outside your home folder and the build), `--tld NAME`. It will not overwrite a customised nginx.conf (prints one `include` line to add instead).
+
+Tested: a clean copy of this repo installed into an empty HOME (`--no-brew --no-system`): UI built from scratch, Go binary built, layout correct, re-run is a no-op. Not tested: the system steps on a fresh Mac (mkcert, LaunchAgent, nginx link), since the author's machine already has them.
 
 ## Known gaps
-- Hard-coded `~/Developer/_ops` layout; no installer yet.
+- The `~/Developer/_ops` layout is fixed (the installer creates it).
 - macOS Homebrew PHP compiles bundled extensions statically, so only PECL extensions can be toggled.
 - No file manager, web terminal, Docker manager or firewall/`sudo` actions by design.
 - Backups are local; no offsite upload.
