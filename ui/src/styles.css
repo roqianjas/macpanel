@@ -411,3 +411,10 @@ textarea.mono { width: 100%; }
 .docs-body .tbl { min-width: 0; }
 .docs-body .tbl td, .docs-body .tbl th { white-space: normal; vertical-align: top; }
 @media (max-width: 900px) { .docs-layout { grid-template-columns: minmax(0, 1fr); } .docs-nav { position: static; } .docs-index { flex-direction: row; flex-wrap: wrap; } }
+
+/* Dokumentasi: daftar bernomor/bullet terlihat, tabel selebar kartu. */
+.docs-body ul.docs-list { list-style: disc; } .docs-body ol.docs-list { list-style: decimal; }
+.docs-body .docs-list li { display: list-item; padding-left: 2px; }
+.docs-body .docs-list li::marker { color: var(--muted); }
+.docs-body .tbl-wrap { margin: 0; padding: 0; }
+.docs-body .tbl { width: 100%; }
