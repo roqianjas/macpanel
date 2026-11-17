@@ -161,7 +161,7 @@ func routes() []Route {
 		{"POST", "/api/sites/{name}/env", Full, hEnvSet},
 		{"GET", "/api/dbcfg/{engine}", Full, hDBCfgGet},
 		{"POST", "/api/dbcfg/{engine}", Full, hDBCfgSet},
-		{"GET", "/api/dbcfg/mysql/slow", Full, hSlowLog},
+		{"GET", "/api/dbcfg/{engine}/slow", Full, hSlowLog},
 		{"GET", "/api/users", Full, hUsers},
 		{"POST", "/api/db/{engine}/{name}/upload", Full, hDBUpload},
 		{"POST", "/api/backups/run", Full, hBackupRun},

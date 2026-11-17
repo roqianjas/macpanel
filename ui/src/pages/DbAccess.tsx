@@ -29,7 +29,7 @@ export default function DbAccess({ engine, name, onClose }: { engine: string; na
     }
   };
   return (
-    <Modal title={`Akses ${name} (${engine === "mysql" ? "MySQL" : "PostgreSQL"})`} onClose={onClose} wide>
+    <Modal title={`Akses ${name} (${{ mariadb: "MariaDB", mysql: "MySQL", pgsql: "PostgreSQL" }[engine] ?? engine})`} onClose={onClose} wide>
       <div className="stack">
         <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
           <ul className="list">

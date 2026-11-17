@@ -14,10 +14,10 @@ lo0        16384 127           127.0.0.1          25768     -    6588285    2576
 gif0*      1280  <Link#2>                             0     0          0        0     0          0     0
 en0        1500  <Link#7>    02:00:00:00:00:00        0     0          0        0     0          0     0
 en1        1500  <Link#16>   02:00:00:00:00:01   115628     0  127070191    55025     0   20695228     0
-en1        1500  192.168.0     192.168.0.103      115628     -  127070191    55025     -   20695228     -
+en1        1500  192.168.1     192.168.1.20      115628     -  127070191    55025     -   20695228     -
 utun0      1380  <Link#19>                            0     0          0        4     0        320     0
 utun4      1380  <Link#21>                          500     0       9000      700     0       12000     0
-utun4      1380  100.110.21.93/ 100.110.21.93       500     -       9000      700     -       12000     -
+utun4      1380  100.64.0.10/ 100.64.0.10       500     -       9000      700     -       12000     -
 bridge0    1500  <Link#14>   02:00:00:00:00:00        0     0          0        0     0          0     0
 awdl0      1500  <Link#17>   02:00:00:00:00:00       21     0      12303       24     0       3687     0
 `
@@ -27,19 +27,19 @@ func TestParseNetstatRealShape(t *testing.T) {
 	if len(m) != 2 {
 		t.Fatalf("hanya interface ber-IPv4 non-loopback (LAN + Tailscale): %+v", m)
 	}
-	if e := m["en1"]; e.RX != 127070191 || e.TX != 20695228 || e.IP != "192.168.0.103" {
+	if e := m["en1"]; e.RX != 127070191 || e.TX != 20695228 || e.IP != "192.168.1.20" {
 		t.Fatalf("en1 salah: %+v", e)
 	}
-	if u := m["utun4"]; u.RX != 9000 || u.TX != 12000 || u.IP != "100.110.21.93" {
+	if u := m["utun4"]; u.RX != 9000 || u.TX != 12000 || u.IP != "100.64.0.10" {
 		t.Fatalf("utun4 (kolom Address kosong, dihitung dari kanan) salah: %+v", u)
 	}
 	if _, ok := m["lo0"]; ok {
 		t.Fatal("loopback tidak boleh dilaporkan")
 	}
-	if got := ifaceLabel("utun4", "100.110.21.93"); got != "Tailscale (utun4)" {
+	if got := ifaceLabel("utun4", "100.64.0.10"); got != "Tailscale (utun4)" {
 		t.Fatal(got)
 	}
-	if got := ifaceLabel("en1", "192.168.0.103"); got != "LAN (en1)" {
+	if got := ifaceLabel("en1", "192.168.1.20"); got != "LAN (en1)" {
 		t.Fatal(got)
 	}
 	if len(parseNetstat("sampah\n\n")) != 0 {
@@ -120,7 +120,7 @@ func netText(rx, tx int) string {
 	r, x := itoa(int64(rx)), itoa(int64(tx))
 	return "Name Mtu Network Address Ipkts Ierrs Ibytes Opkts Oerrs Obytes Coll\n" +
 		"en1 1500 <Link#16> 02:00:00:00:00:01 1 0 " + r + " 1 0 " + x + " 0\n" +
-		"en1 1500 192.168.0 192.168.0.103 1 - " + r + " 1 - " + x + " -\n"
+		"en1 1500 192.168.1 192.168.1.20 1 - " + r + " 1 - " + x + " -\n"
 }
 
 func TestCollectorRatesCounterResetAndNullOnFailure(t *testing.T) {

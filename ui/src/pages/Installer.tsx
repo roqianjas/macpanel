@@ -30,18 +30,20 @@ export function InstallModal({ onClose, onDone }: { onClose: () => void; onDone:
   const [kind, setKind] = useState<"laravel" | "wordpress">("laravel");
   const [name, setName] = useState("");
   const [php, setPhp] = useState("8.4");
+  const [db, setDb] = useState("mariadb");
   const { busy, err, run } = useRun(onDone);
   const ok = NAME.test(name);
   return (
     <Modal title="Pasang cepat" onClose={onClose}>
-      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run("/api/installer", { kind, name, php }, `Pasang ${kind} ${name}`, name); }}>
-        <p className="small muted">Membuat folder di <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, database MySQL baru, kredensial, dan situs <span className="mono">&lt;nama&gt;.lab</span>. Butuh internet dan beberapa menit. Bila gagal di tengah, semua yang baru dibuat dibersihkan. Meminta kata sandi ulang.</p>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run("/api/installer", { kind, name, php, db }, `Pasang ${kind} ${name}`, name); }}>
+        <p className="small muted">Membuat folder di <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, database baru (MariaDB atau MySQL), kredensial, dan situs <span className="mono">&lt;nama&gt;.lab</span>. Butuh internet dan beberapa menit. Bila gagal di tengah, semua yang baru dibuat dibersihkan. Meminta kata sandi ulang.</p>
         <div className="seg" role="group" aria-label="Jenis aplikasi">
           {(["laravel", "wordpress"] as const).map((k) => (
             <button key={k} type="button" className={`seg-btn ${kind === k ? "on" : ""}`} aria-pressed={kind === k} onClick={() => setKind(k)}>{k === "laravel" ? "Laravel" : "WordPress"}</button>
           ))}
         </div>
         <Field label="Nama situs" hint="Huruf kecil, angka, tanda hubung. Jadi nama.lab.">{(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
+        <Field label="Database">{(id) => <select id={id} value={db} onChange={(e) => setDb(e.target.value)}><option value="mariadb">MariaDB (port 3306)</option><option value="mysql">MySQL (port 3307)</option></select>}</Field>
         <Field label="Versi PHP">{(id) => <select id={id} value={php} onChange={(e) => setPhp(e.target.value)}>{["8.2", "8.3", "8.4", "8.5"].map((v) => <option key={v}>{v}</option>)}</select>}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">

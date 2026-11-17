@@ -2,7 +2,7 @@
 MP="${MACPANEL_HOME:-$HOME/MacPanel}"
 # Backup staging: ~/MacPanel/wwwroot + DB dumps + dotfiles -> ~/MacPanel/backup/staging/<timestamp>/
 # Bukan backup sungguhan sampai disalin ke media lain (disk eksternal / cloud). Lihat DEST di bawah.
-# Private key SSH SENGAJA tidak ikut. Rahasia DB tidak pernah keluar dari container.
+# Private key SSH SENGAJA tidak ikut. Kata sandi DB tidak ikut dicetak ke log.
 set -euo pipefail
 export PATH=/opt/homebrew/bin:$PATH
 TS=$(date +%Y%m%d-%H%M%S)
@@ -17,7 +17,10 @@ set -a; . "$HOME/.config/macminiops/db.env"; set +a
 PGPASSWORD="$POSTGRES_PASSWORD" /opt/homebrew/opt/postgresql@17/bin/pg_dumpall --no-role-passwords -h 127.0.0.1 -U dev | gzip > "$OUT/postgres-all.sql.gz"
 
 echo "[2/5] MySQL dump"
-MYSQL_PWD="$MYSQL_ROOT_PASSWORD" /opt/homebrew/opt/mysql@8.4/bin/mysqldump -h127.0.0.1 -uroot --all-databases --single-transaction --no-tablespaces --routines --events | gzip > "$OUT/mysql-all.sql.gz"
+MYSQL_PWD="$MYSQL_ROOT_PASSWORD" /opt/homebrew/opt/mysql@8.4/bin/mysqldump -h127.0.0.1 -P3307 -uroot --all-databases --single-transaction --no-tablespaces --routines --events | gzip > "$OUT/mysql-all.sql.gz"
+if [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
+  MYSQL_PWD="$MARIADB_ROOT_PASSWORD" /opt/homebrew/opt/mariadb@11.8/bin/mariadb-dump -h127.0.0.1 -P3306 -uroot --all-databases --single-transaction --routines --events | gzip > "$OUT/mariadb-all.sql.gz"
+fi
 
 echo "[3/5] ~/MacPanel/wwwroot (tanpa node_modules/.venv/build cache, tanpa .env)"
 # bagian ini bernama 'developer' demi kompatibilitas arsip lama; isinya MacPanel (situs, server, docs) tanpa folder backup

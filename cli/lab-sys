@@ -258,7 +258,8 @@ CATALOG = [
     S("php-8.4", "PHP-FPM 8.4", "PHP", "brew", "php@8.4", sock="/opt/homebrew/var/run/php-fpm-dev-8.4.sock", log=str(LOGD / "php-fpm.log"), desc="Pool dev (unix socket); log master FPM dipakai bersama semua versi PHP"),
     S("php-8.5", "PHP-FPM 8.5", "PHP", "brew", "php", sock="/opt/homebrew/var/run/php-fpm-dev-8.5.sock", log=str(LOGD / "php-fpm.log"), desc="Pool dev (unix socket); log master FPM dipakai bersama semua versi PHP"),
     S("postgresql", "PostgreSQL 17", "Database", "brew", "postgresql@17", port=5432, log=str(LOGD / "postgresql@17.log"), desc="127.0.0.1:5432"),
-    S("mysql", "MySQL 8.4", "Database", "brew", "mysql@8.4", port=3306, log="/opt/homebrew/var/mysql/*.err", desc="127.0.0.1:3306"),
+    S("mariadb", "MariaDB 11.8", "Database", "launchd", "com.macminiops.mariadb", port=3306, log=str(HOME / "Library/Logs/mariadb.log"), desc="127.0.0.1:3306 (port bawaan MySQL/MariaDB)"),
+    S("mysql", "MySQL 8.4", "Database", "brew", "mysql@8.4", port=3307, log="/opt/homebrew/var/mysql/*.err", desc="127.0.0.1:3307"),
     S("redis", "Redis", "Cache dan antrean", "brew", "redis", port=6379, log=str(LOGD / "redis.log"), desc="127.0.0.1:6379"),
     S("memcached", "Memcached", "Cache dan antrean", "brew", "memcached", port=11211, optional=True, desc="Cache memori, opsional (port 11211)"),
     S("9router", "9Router", "Alat pengembangan", "launchd", "com.macminiops.9router", port=20128, optional=True, log=str(HOME / "Library/Logs/9router.log"), desc="Router/proxy model AI lokal (127.0.0.1:20128, lewat 9router.lab di tailnet). Password bawaan hanya bisa diganti dari Mac ini sendiri di http://127.0.0.1:20128"),
@@ -311,6 +312,8 @@ def snapshot():
         if c["kind"] == "brew": installed, ver = c["name"] in vers, vers.get(c["name"], "")
         else:
             installed, ver = (LAUNCH / f"{c['name']}.plist").exists(), ""
+            if installed and c["id"] == "mariadb":
+                ver = brew_versions().get("mariadb@11.8", "")
             if installed and c["id"] == "9router":
                 try: ver = json.loads((NR_DIR / "node_modules/9router/package.json").read_text()).get("version", "")
                 except (OSError, ValueError): pass
@@ -346,12 +349,19 @@ def service(a):
         r = sh([BREW, "services", a.act, c["name"], *extra])
     else:
         plist = str(LAUNCH / f"{c['name']}.plist"); tgt = f"gui/{UID}/{c['name']}"
-        if a.act == "restart": r = sh(["/bin/launchctl", "kickstart", "-k", tgt]) if launchd_loaded(c["name"]) else sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist])
+        if a.act == "restart":
+            # bootout (SIGTERM, shutdown bersih) lalu bootstrap; kickstart -k memakai SIGKILL dan membahayakan database
+            if launchd_loaded(c["name"]):
+                sh(["/bin/launchctl", "bootout", tgt])
+                for _ in range(180):
+                    if not launchd_loaded(c["name"]): break
+                    time.sleep(0.5)
+            r = sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist])
         elif a.act == "stop": r = sh(["/bin/launchctl", "bootout", tgt])
         else: r = sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist]) if not launchd_loaded(c["name"]) else sh(["/bin/true"])
     if r.returncode: die((r.stderr or r.stdout).strip()[-300:] or "gagal")
     want = a.act != "stop"
-    for _ in range(120 if c["id"] == "9router" else 20):  # 9router menyiapkan runtime SQLite saat start pertama (±20 dtk)
+    for _ in range(120 if c["id"] in ("9router", "mariadb") else 20):  # 9router menyiapkan runtime SQLite saat start pertama (±20 dtk)
         time.sleep(0.5)
         if probe(c) == want: break
     now = probe(c)

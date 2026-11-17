@@ -120,7 +120,7 @@ export default function Docs({ sub }: { sub: string }) {
   const body = useMemo(() => (cur ? renderMarkdown(cur.content.replace(/^\s*#\s+[^\n]*\n/, "")) : []), [cur]);
   return (
     <>
-      <PageHead title="Dokumentasi" desc="Catatan kondisi dan cara kerja server ini. Dibaca langsung dari folder docs, jadi selalu sama dengan berkasnya." />
+      <PageHead title="Dokumentasi" desc="Panduan menggunakan panel: website, database, backup, aplikasi, dan keamanan." />
       <State loading={q.loading && !q.data} error={q.error} empty={!q.loading && docs.length === 0} emptyText="Belum ada dokumen di folder docs." onRetry={q.reload}>
         <div className="docs-layout">
           <nav className="docs-nav" aria-label="Daftar dokumen">

@@ -11,12 +11,13 @@ interface Key {
 }
 
 const ENGINES = [
+  { id: "mariadb", label: "MariaDB" },
   { id: "mysql", label: "MySQL" },
   { id: "redis", label: "Redis" },
 ];
 
 export default function DbConfig() {
-  const [eng, setEng] = useState("mysql");
+  const [eng, setEng] = useState("mariadb");
   return (
     <Card title="Pengaturan server">
       <Tabs tabs={ENGINES} value={eng} onChange={setEng} label="Server database" />
@@ -33,6 +34,7 @@ function Form({ engine }: { engine: string }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [slow, setSlow] = useState<string | null>(null);
+  const isMy = engine === "mysql" || engine === "mariadb";
   const changed = (q.data?.keys ?? []).filter((k) => (edit[k.key] ?? "").trim() !== "" && edit[k.key].trim() !== k.value);
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ function Form({ engine }: { engine: string }) {
   };
   const openSlow = async () => {
     try {
-      setSlow((await get<{ log: string }>("/api/dbcfg/mysql/slow")).log || "(kosong)");
+      setSlow((await get<{ log: string }>(`/api/dbcfg/${engine}/slow`)).log || "(kosong)");
     } catch (x) {
       setNote({ tone: "bad", text: errText(x) });
     }
@@ -63,7 +65,7 @@ function Form({ engine }: { engine: string }) {
   return (
     <form onSubmit={save} className="stack">
       <p className="small muted">
-        Disimpan di berkas khusus panel (bukan {engine === "mysql" ? "my.cnf" : "redis.conf"} asli). {engine === "mysql" ? "MySQL" : "Redis"} dimulai ulang sebentar; bila tidak naik dengan nilai baru, perubahan dikembalikan otomatis. Kolom kosong berarti tidak diubah.
+        Disimpan di berkas khusus panel (bukan {isMy ? "my.cnf" : "redis.conf"} asli). {{ mariadb: "MariaDB", mysql: "MySQL" }[engine] ?? "Redis"} dimulai ulang sebentar; bila tidak naik dengan nilai baru, perubahan dikembalikan otomatis. Kolom kosong berarti tidak diubah.
       </p>
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
@@ -75,7 +77,7 @@ function Form({ engine }: { engine: string }) {
           ))}
         </div>
         <div className="row-end">
-          {engine === "mysql" && (
+          {isMy && (
             <button type="button" className="btn" onClick={openSlow}>
               Lihat slow log
             </button>
@@ -86,7 +88,7 @@ function Form({ engine }: { engine: string }) {
         </div>
       </State>
       {slow !== null && (
-        <Modal title="Slow query log MySQL" onClose={() => setSlow(null)} wide>
+        <Modal title={`Slow query log ${engine === "mariadb" ? "MariaDB" : "MySQL"}`} onClose={() => setSlow(null)} wide>
           <pre className="logbox mono" tabIndex={0} aria-label="Slow log">{slow}</pre>
         </Modal>
       )}

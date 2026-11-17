@@ -1,130 +1,381 @@
-# Panel
+# Usage
 
-Panel web untuk mengelola environment lokal seperti aaPanel/cPanel: situs, database, versi PHP dan runtime, worker, cron, pembaruan. Alamat: **https://panel.lab** (hanya dari tailnet). Kode: `~/MacPanel/server/panel` (Go + SQLite, UI React). Desain, model ancaman, dan status per fase: `web/panel/docs/DESIGN.md`.
+Panel user guide (also shown inside the panel under Dokumentasi, in Indonesian).
 
-## Status (2026-11-16)
-| Fase | Isi | Status |
+
+---
+
+# Pengenalan
+
+MacPanel adalah panel web untuk mengelola Mac sebagai server pengembangan: website (nginx), versi PHP, database, runtime, worker dan cron, deploy, backup, dan pemantauan. Cara kerjanya meniru aaPanel/cPanel, tetapi berjalan native di macOS tanpa Docker.
+
+## Cara mengakses
+- Buka `https://panel.lab` dari perangkat yang tersambung ke jaringan privat (Tailscale). Dari jaringan lain alamat ini ditolak (403).
+- Masuk dengan nama pengguna dan kata sandi, lalu kode 6 digit dari aplikasi autentikator (atau satu recovery code).
+- Centang **Percayai perangkat ini** bila ingin perangkat tersebut cukup memakai nama pengguna dan kata sandi selama 30 hari.
+
+## Peta menu
+| Grup | Menu | Fungsi |
 |---|---|---|
-| P1 | Login argon2id, TOTP (Google Authenticator), recovery code, sesi, CSRF, lockout, audit berantai | selesai, teruji |
-| P2a | Eksekutor aman, Website (tambah/hapus), Database (buat/dump/drop) | selesai, teruji |
-| P2b | Pengaturan situs, rewrite, SSL, editor nginx berpagar, versi config, log | selesai, teruji |
-| P3 | PHP, Runtime (node/go/python/pnpm), Worker, Cron, Pembaruan, job asinkron | selesai, teruji |
-| P4 | UI web, LaunchAgent, `panel.lab` | selesai, teruji |
-| P5 | Pantau (CPU, memori, disk, beban, bandwidth), Aplikasi (layanan + aplikasi opsional), jeda situs, tampilan Konsol Ramah | selesai, teruji |
-| P4c | Menggantikan `home.lab` | **belum, sengaja** (lihat bawah) |
+| Gambaran | Ringkasan | Status keseluruhan: CPU, memori, disk, jaringan, layanan |
+| Gambaran | Pantau | Grafik 1 jam, 24 jam, 7 hari, proses teratas, bandwidth |
+| Kelola | Website | Tambah, jeda, hapus, dan atur situs |
+| Kelola | Aplikasi | Layanan dan aplikasi opsional |
+| Kelola | Database | MariaDB, MySQL, PostgreSQL, Redis |
+| Kelola | PHP dan runtime | Versi PHP, ekstensi, Node, Go, Python |
+| Kelola | Worker dan cron | Proses latar dan tugas terjadwal |
+| Sistem | Sistem | Keamanan, proses, disk, DNS, Docker (lihat saja) |
+| Sistem | Backup | Jadwal, daftar arsip, pemulihan, pembersihan |
+| Sistem | Pembaruan | Pembaruan paket Homebrew |
+| Sistem | Aktivitas | Riwayat aksi, perangkat tepercaya |
+| Sistem | Dokumentasi | Halaman ini |
 
-## Cara pakai
-1. Buka https://panel.lab. Masuk dengan nama pengguna dan kata sandi, lalu kode 6 digit dari aplikasi autentikator (atau satu recovery code).
-2. Menu (dikelompokkan di rail kiri; tombol Ciutkan menyisakan ikon dengan label):
-   - **Gambaran:** Ringkasan (status keseluruhan, kartu CPU/memori/disk/jaringan, grafik, status layanan) dan Pantau (grafik CPU+memori, beban, disk, bandwidth per interface, total lalu lintas, proses teratas; rentang 1 jam, 24 jam, 7 hari).
-   - **Kelola:** Website, Aplikasi, Database, PHP dan runtime, Worker dan cron.
-   - **Sistem:** Pembaruan, Aktivitas.
-3. Aksi merusak atau berisiko (hapus, upgrade, edit config, tambah worker/cron) meminta **kata sandi ulang** (step-up; setelah benar, aksi penting lain tidak bertanya lagi selama 15 menit) dan, untuk penghapusan, mengetik ulang nama. 2FA (TOTP) hanya dipakai saat login. Tebakan sandi di step-up kena pembatasan percobaan yang sama dengan login.
-4. Pemasangan PHP/runtime dan upgrade berjalan di latar belakang. Progres tampil di pojok kanan bawah dan daftar menyegarkan diri saat selesai.
-5. Yang sengaja **tidak ada**: terminal web, pengelola berkas, aksi `sudo`. Kata sandi database tidak pernah ditampilkan.
+## Tata letak folder
+Semua berada di bawah satu folder akar (bawaan `~/MacPanel`, dapat diganti dengan variabel lingkungan `MACPANEL_HOME`).
 
-## Pantau dan bandwidth
-Panel mencatat satu sampel tiap 30 detik ke database panel dan menyimpannya 7 hari. Isinya pengukuran nyata; bila sebuah nilai gagal dibaca, disimpan kosong (bukan 0) dan grafik tidak menggambar titik itu.
-- CPU: `top -l 2` (sampel kedua). Memori: `vm_stat` (terpakai = App Memory + Wired + Compressed, definisi Activity Monitor). Disk: `statfs` volume Data. Beban: `sysctl vm.loadavg`.
-- Bandwidth: selisih penghitung byte `netstat -ibn` antar sampel, dibagi selang waktu, untuk interface ber-IPv4 non-loopback (LAN `en1` dan Tailscale `utun4` di mesin ini). Penghitung yang turun (reboot, interface baru) tidak menghasilkan laju. Total periode adalah jumlah selisih; lalu lintas saat panel mati tidak ikut terhitung.
-  - `en1` (label "LAN") adalah kartu jaringan fisik ke router: semua lalu lintas Mac mini lewat sini, termasuk internet dan paket Tailscale terenkripsi. Ia juga menghitung lalu lintas lokal (laptop ke Mac mini); memisahkan internet dari lokal butuh pencatatan per koneksi, belum ada.
-  - `utun4` (Tailscale) hanya lalu lintas di dalam terowongan; paketnya juga terhitung di `en1`. Karena itu kartu Jaringan di Ringkasan hanya menjumlahkan kartu fisik (tanpa Tailscale) agar tidak dobel.
-- Panel hanya memanggil program sistem baca-saja dengan path mutlak dan argumen tetap (tanpa masukan pengguna). Daftar proses hanya memuat nama proses, tidak ada argumen perintah.
-- Grafik pertama setelah panel dinyalakan butuh dua sampel (sekitar 30 detik).
+| Folder | Isi |
+|---|---|
+| `wwwroot/<situs>` | Berkas setiap situs |
+| `server/` | Konfigurasi nginx, panel, skrip `lab`, aplikasi pendukung |
+| `backup/` | Dump database dan arsip backup |
+| `docs/` | Dokumentasi yang tampil di menu ini |
 
-## Aplikasi (layanan)
-Halaman Aplikasi memeriksa tiap layanan langsung ke port atau socketnya, bukan dari catatan. Katalog: nginx, PHP-FPM 8.3/8.4/8.5, PostgreSQL, MySQL, Redis, Netdata, Uptime Kuma, Nginx UI, dnsmasq, panel, serta opsional Memcached dan Mailpit (bisa dipasang dan dihapus dari halaman).
-- Mulai tidak butuh verifikasi ulang; **hentikan, mulai ulang, dan hapus** meminta kata sandi ulang dan mengetik id layanan.
-- dnsmasq (berjalan sebagai root) dan panel itu sendiri tidak dikendalikan dari panel.
-- Pemasangan dan penghapusan berjalan sebagai job asinkron (pojok kanan bawah; yang sukses hilang sendiri setelah 8 detik).
-- Perintah di baliknya: `lab service list|start|stop|restart|logs`, `lab app list|install|remove` (lihat docs/06).
+## Yang sengaja tidak ada
+Terminal web, pengelola berkas, dan aksi yang butuh `sudo`. Untuk hal-hal itu panel menampilkan perintahnya dan Anda menjalankannya sendiri di Terminal.
 
-## Database: dump dan pulihkan
-Tombol **Dump** membuat `~/MacPanel/backup/db/<nama>-<engine>-<waktu>.sql.gz`. Tombol **Pulihkan** menampilkan dump milik database itu (30 terbaru) dan menjalankan `lab db restore` sebagai job asinkron dengan TOTP ulang. Pemulihan hanya ke database yang **kosong**; database yang berisi ditolak dengan pesan jelas. Database sistem (`dev`, `postgres`, ...) tidak bisa di-dump atau dipulihkan dari panel.
+---
 
-## PHP: ekstensi, pengaturan, Composer
-Halaman PHP dan runtime, tombol **Kelola** per versi:
-- **Ekstensi:** satu daftar lengkap (bawaan + tambahan) dengan pencarian dan filter. Ekstensi **Tambahan** punya saklar aktif/nonaktif dan tombol hapus; yang belum terpasang punya tombol Pasang. Katalog (semua teruji pasang, termuat, dan hapus di PHP 8.4 dan 8.5): redis, apcu, xdebug, imagick, igbinary, msgpack, pcov, yaml, memcached, mongodb. Tiap aksi memulai ulang FPM lalu memverifikasi lewat `php -m`; bila tidak termuat, perubahan dibatalkan.
-- **Ekstensi bawaan (66 di PHP 8.5)** hanya ditampilkan dengan saklar terkunci: PHP Homebrew mengompilasinya permanen (`--enable-mbstring`, `--with-curl`, dst., folder modul kosong), jadi tidak bisa dimatikan satu per satu. Ini beda dengan cPanel/aaPanel yang memakai modul terpisah. Satu-satunya jalan agar bawaan bisa diatur adalah mengompilasi PHP sendiri; belum dikerjakan.
-- **Pengaturan:** memory_limit, upload_max_filesize, post_max_size, max_execution_time, max_input_time, max_input_vars, display_errors, date.timezone. Hanya berlaku untuk situs web (pool FPM `dev`); CLI memakai php.ini. Bila `php-fpm -t` atau restart gagal, dikembalikan otomatis. Cadangan `dev.conf.bak.<waktu>` dibuat tiap simpan.
-- **FPM dan log:** mulai ulang FPM versi itu dan baca log master (satu berkas bersama semua versi).
-- **Composer:** kartu status, pasang, dan perbarui (Homebrew). Menjalankan composer per proyek ada di tab Deploy.
+# Website
 
-## Deploy per situs
-Tab Deploy (situs non-sistem): git pull --ff-only, composer install (atau --no-dev -o, update, dump-autoload), npm ci atau pnpm install, build, artisan migrate dan optimize, restart FPM. Langkah yang muncul menyesuaikan isi proyek; dijalankan berurutan, berhenti di langkah gagal, tanpa shell, TOTP ulang. Git berjalan tanpa prompt (SSH BatchMode): key ber-passphrase harus ditarik manual di terminal.
+Setiap situs dilayani nginx dan dapat diakses di `https://<nama>.lab` dengan sertifikat lokal. Berkasnya ada di `wwwroot/<nama>`.
 
-## Backup, unggah dump, peringatan, peran
-- **Backup:** halaman Backup menampilkan 14 backup terakhir dan tombol jalankan sekarang. Status offsite jujur: selama belum ada tujuan di luar disk ini, banner peringatan tetap tampil.
-- **Unggah dump:** di dialog Pulihkan (maks 256 MB, .sql atau .sql.gz). `lab db restore` memindai isi dump dan menolak perintah klien (`\!`, `system`, `source`, `\copy`, `\i`, `\o`, dll.) sebelum menyentuh database, menghapus DEFINER dan OWNER/GRANT, dan menjalankan restore sebagai user proyek (bukan root).
-- **Peringatan:** disk >=85% (penting >=92%), memori >=95%, layanan wajib mati, situs HTTP 5xx atau tidak menjawab, SSL <14 hari, backup >36 jam. Hanya tampil di panel (chip di header dan kartu di Ringkasan); tidak ada pesan keluar.
-- **Peran:** `admin` dan `viewer` (hanya-baca; semua POST ditolak server kecuali keluar). Dikelola dari terminal: `panel user add <nama> --role viewer`, `panel user role <nama> admin|viewer` (sesi dicabut), `panel user list`. DB lama otomatis dimigrasi (semua user menjadi admin).
-- **Tambah situs + database:** pilihan database di dialog Tambah situs (nama sama dengan situs, kata sandi acak, tidak ditampilkan).
+## Menambah situs
+Menu **Website** lalu **Tambah situs**. Pilih jenis:
+- **PHP**: Laravel, WordPress, atau PHP biasa; pilih versi PHP.
+- **Statis**: HTML, CSS, JS.
+- **Proxy**: meneruskan ke aplikasi lokal (Node, Go, Python) pada port tertentu.
 
-## Website: jeda dan aktifkan
-Tombol Jeda mengganti nama `<situs>.conf` menjadi `<situs>.conf.disabled` (nginx hanya memuat `*.conf`), menguji `nginx -t`, lalu reload; gagal di tahap mana pun dikembalikan. Folder proyek dan config tidak dihapus. Situs sistem tidak bisa dijeda. Daftar Website juga menampilkan status HTTP nyata (GET / lewat loopback ke nginx, dengan latensi), versi PHP, dan sisa umur sertifikat. Versi PHP situs bisa diganti dari tab Umum.
+Nama situs hanya huruf kecil, angka, dan tanda hubung. Nama sistem (misalnya `panel`, `db`) tidak dapat dipakai.
 
-## Fitur lanjutan (P7)
-- **Website per situs:** tab Domain (hingga 10 domain tambahan `nama.lab`, sertifikat mkcert dibuat ulang memuat semua nama), Akses (password dasar htpasswd apr1 hingga 20 pengguna, batas IP yang hanya boleh mempersempit tailnet, aturan allow/deny wajib diakhiri `deny all`), `.env` (baca butuh step-up, admin saja, cadangan 3 terakhir, izin 0600), Trafik (dari log akses nginx, bukan analitik pengunjung), Kloning (salin proyek + database terpisah dengan `.env` baru), dan Pasang cepat Laravel/WordPress (rollback otomatis bila gagal).
-- **Database:** Pengaturan server MySQL (`max_connections`, buffer pool, slow log) dan Redis (`maxmemory`, policy, AOF, save) lewat berkas milik panel (`my.cnf.d/20-macpanel.cnf`, `redis.d/macpanel.conf`), restart otomatis dan dikembalikan bila server tidak naik. Tombol Akses per database: lihat kredensial dan ganti kata sandi (step-up, audit tanpa isi). Penelusur Redis (cari, lihat, hapus kunci; admin saja).
-- **PHP:** pool FPM (`pm`, `pm.max_children`, dst.) di tab Pengaturan dengan validasi konsistensi mode dynamic.
-- **Backup:** jadwal harian dan retensi bisa diatur (launchd + `backup.conf`), jelajahi arsip dan ekstrak berkas ke `~/MacPanel/backup/restore/` (berkas asli tidak pernah ditimpa).
-- **Pembersihan backup:** retensi otomatis berdasarkan jumlah (`KEEP`) dan umur (`DAYS`) di `~/.config/macminiops/backup.conf`; backup harian memanggil `lab backup prune --auto` setelah selesai. Backup terbaru TIDAK PERNAH dihapus (aturan di CLI). Di halaman Backup: hapus per pilihan, pratinjau lalu bersihkan (melebihi jumlah/umur), dan bersihkan dump DB (`~/MacPanel/backup/db`) serta hasil ekstrak (`~/MacPanel/backup/restore`) per umur, otomatis bila `EXTRA_DAYS` > 0. Hanya berkas bernama pola dump/ekstrak yang dihapus; symlink dan berkas lain dilewati. `~/MacPanel/backup/retired` hanya ditampilkan ukurannya (hapus manual).
-- **Perangkat tepercaya:** saat login (dengan 2FA) centang "Percayai perangkat ini"; perangkat itu lalu cukup kata sandi selama 30 hari. Cookie `__Host-panel-trust` (HttpOnly, Secure, SameSite=Strict) berisi token acak; server hanya menyimpan hash, token dirotasi tiap dipakai, maksimum 10 perangkat per akun. Aksi berbahaya tetap minta kata sandi ulang (step-up) karena sesi tepercaya mulai tanpa step-up. Dicabut per perangkat atau semuanya di Aktivitas; ganti kata sandi otomatis mencabut semua; hapus akun ikut menghapus. Kata sandi tetap wajib dan tetap kena pembatasan percobaan. Risiko yang diterima: orang yang memegang cookie tepercaya sekaligus kata sandi bisa masuk tanpa 2FA sampai dicabut. Teruji: browser nyata (centang -> keluar -> masuk tanpa 2FA -> cabut -> minta 2FA lagi), 4 tes Go, mutasi 10/10.
-- **9Router (aplikasi opsional):** proxy/router model AI lokal (`npm 9router`, pemelihara decolua, MIT). Tombol Pasang di halaman Aplikasi menjalankan `lab app install 9router`: `npm install --ignore-scripts` ke `~/MacPanel/server/apps/9router` (tanpa skrip instalasi), LaunchAgent `com.macminiops.9router`, situs `https://9router.lab` khusus tailnet. Diperiksa sebelum dipasang: **bind bawaan 9router adalah `0.0.0.0`**, jadi LaunchAgent memaksa `--host 127.0.0.1` (dan `HOSTNAME`) serta `--skip-update --no-browser`; terbukti hanya `127.0.0.1:20128` yang mendengarkan, LAN dan IP tailnet langsung tertutup. **Password dashboard bawaan `123456`**: 9router menolak login jarak jauh sampai diganti, jadi ganti dari Mac ini di `http://127.0.0.1:20128` (dari laptop: `ssh -L 20128:127.0.0.1:20128 <mac>` lalu `http://localhost:20128`). Data akun/token ada di `~/.9router` (0700, tidak ikut backup panel, tidak dihapus saat Hapus). Fitur MITM bawaan 9router (ubah /etc/hosts + sertifikat, butuh sudo) tidak dipakai. `proxy.conf` kini `proxy_buffering off` agar streaming (SSE) tidak tertahan; berlaku untuk semua situs proxy.
-- **Dokumentasi:** menu Dokumentasi membaca `~/MacPanel/docs/NN-nama.md` (hanya berkas bernama pola itu, tanpa symlink, maks 400 KB) dan menampilkannya lewat renderer Markdown yang tidak pernah menyisipkan HTML mentah. Ada pencarian dan tautan antar dokumen.
-- **Webhook deploy (GitHub):** tab Deploy per situs. Penerima berjalan di listener terpisah `127.0.0.1:9101` (`--hook-addr`) yang hanya melayani `POST /hook/{situs}`; panel (9100) tidak ikut terbuka. Keamanan: HMAC-SHA256 (`X-Hub-Signature-256`), secret 64 hex disimpan terenkripsi dan tampil sekali, hanya branch terpilih, langkah deploy dari konfigurasi (bukan payload), tolak replay (`X-GitHub-Delivery`), jeda 15 dtk, satu deploy sekaligus per situs, kunci IP setelah tanda tangan salah berulang, semua penolakan 404 seragam. Agar GitHub menjangkaunya, ekspos HANYA port 9101 (Tailscale Funnel atau Cloudflare Tunnel); itu keputusan pemilik dan tidak dilakukan otomatis. Teruji nyata dengan repo git: push sah men-deploy (v1 -> v2), tanpa/salah tanda tangan 404, branch lain diabaikan, replay ditolak, LAN ke 9101 tertutup; mutasi 21/21.
-- **DNS (baca saja):** tab DNS di Sistem: dnsmasq menjawab, wildcard vs IP Tailscale, `/etc/resolver`, resolusi tiap situs. Tidak ada tulis (butuh sudo).
-- **Installer:** `install.sh` (lihat README repo).
-- **Sistem:** halaman Keamanan (firewall, SSH, port yang mendengarkan), Proses (hentikan hanya proses pengembangan, SIGTERM), Disk per folder, status Docker (baca saja).
-- **Akun:** ganti kata sandi sendiri (step-up, sesi lain dicabut).
-- **Temuan nyata:** Mailpit dari Homebrew mendengarkan di semua antarmuka (`*:8025`, `*:1025`, tanpa login). Diperbaiki: dijalankan dengan plist milik panel yang terikat 127.0.0.1; diverifikasi LAN dan tailnet tertutup.
-- **Sengaja tidak ada:** file manager, terminal web, backup S3, firewall/SSH dari web (butuh sudo).
-- **Teruji:** 50 mutan keamanan, 44 tertangkap langsung; 3 ditutup dengan tes tambahan (batas 20 IP, 20 pengguna, 3 cadangan); 3 sisanya setara karena pengaman ganda (viewer diblok global di server.go, `deny all` dicek dua tempat). Uji mesin nyata: pool FPM/MySQL/Redis, rotasi sandi DB (lama ditolak, baru jalan), jadwal launchd, ekstrak arsip + path jahat, penginstal Laravel/WordPress, kloning dengan data.
-- **Uji browser (Chromium, mesin asli):** Domain tambahan (3 nama menjawab HTTPS), password dasar + batas IP (401/200/403 sesuai), `.env`, Trafik (angka cocok dengan permintaan uji), Akses DB + ganti sandi (login dengan sandi baru berhasil), penelusur Redis, pengaturan Redis (nilai aktif berubah), jelajah+ekstrak backup, ganti sandi akun, kloning situs. Audit 390px dan tema terang: tanpa overflow halaman, target >=44px, kontras lulus.
-- **Bug yang ditemukan lewat uji ini dan diperbaiki:** (1) salah kata sandi saat ganti sandi membalas 401 sehingga UI mengeluarkan sesi (kini 400); (2) tombol Hentikan proses bisa menyasar python milik Hermes (kini dilindungi lewat baris perintah); (3) tabel Sistem memakai kelas CSS yang tidak ada; (4) dua teks usang. Kloning tidak membawa alias/password dasar/batas IP (situs baru dari template bersih).
-- **Belum diuji:** Pasang cepat lewat tombol UI (hanya via `lab appinstall`), Safari/Firefox/pembaca layar.
+## Pasang cepat
+Tombol **Pasang cepat** membuat proyek Laravel atau WordPress lengkap: folder, database baru, berkas `.env` atau `wp-config.php`, dan situsnya. Anda dapat memilih MariaDB atau MySQL. Bila gagal di tengah, semua yang baru dibuat dibersihkan otomatis.
 
-## Operasional
-- LaunchAgent `com.macminiops.panel` (`~/Library/LaunchAgents`), `KeepAlive`, bind `127.0.0.1:9100`, log `~/Library/Logs/panel.log` (ikut `logrotate.sh`).
-- Nginx: `web/nginx/sites/panel.conf`, `tailnet_only`, proxy ke 9100.
-- Mulai ulang: `launchctl kickstart -k gui/$(id -u)/com.macminiops.panel`.
-- Setelah mengubah kode:
-  - UI: `cd ~/MacPanel/server/panel/ui && mise exec -- pnpm run build` (cukup muat ulang browser, tanpa restart).
-  - Server: `cd ~/MacPanel/server/panel && mise exec -- go build -o panel . && launchctl kickstart -k gui/$(id -u)/com.macminiops.panel`.
-- Tes: `mise exec -- go test ./... -race` (sekitar 100 detik; tes yang menyentuh mesin asli diaktifkan dengan `PANEL_REAL=1|2|3`).
-- CLI: `panel init-key | user add <nama> | user remove <nama> | user list | audit verify | serve`. Lewat SSH, Keychain login terkunci: jalankan dulu `security unlock-keychain ~/Library/Keychains/login.keychain-db`.
-- Jangan tempel setup key atau recovery code ke chat. Bila bocor: `panel user remove <nama>` lalu buat ulang (pernah terjadi sekali; sudah dirotasi).
+## Pengaturan per situs
+Klik nama situs untuk membuka tab:
+| Tab | Fungsi |
+|---|---|
+| Umum | Versi PHP, jeda atau aktifkan, kloning |
+| Domain | Domain tambahan (sertifikat dibuat ulang agar memuat semua nama) |
+| Akses | Kata sandi dasar (basic auth) dan batas IP |
+| .env | Lihat dan ubah berkas `.env` (membutuhkan verifikasi ulang) |
+| Trafik | Ringkasan log akses: status, halaman, dan IP teratas |
+| Deploy | Tarik kode dari git, composer, npm/pnpm, migrasi; juga webhook GitHub |
+| Rewrite | Aturan rewrite dan redirect |
+| SSL | Status dan perpanjangan sertifikat |
+| Config nginx | Editor konfigurasi dengan riwayat versi dan uji sebelum diterapkan |
+| Log | Log akses dan error |
 
-## Setelah reboot atau mati listrik
-FileVault berhenti di layar unlock, jadi LaunchAgent (termasuk panel, worker, cron) baru jalan **setelah Anda login** di Mac mini. Panel membaca kunci enkripsi dari Keychain login; bila Keychain belum terbuka, panel menolak start dan launchd mencoba lagi tiap 30 detik (perilaku aman, bukan galat). Reboot terencana: `sudo fdesetup authrestart` (dijalankan Anda sendiri). **Belum diuji**: perilaku nyata setelah reboot penuh.
+Konfigurasi yang gagal pada `nginx -t` tidak diterapkan.
 
-## Backup dan restore
-- `backup.sh` (02:30) menyalin DB panel `~/.config/macminiops/panel/panel.db` sebagai satu snapshot (`sqlite3 .backup`, `integrity_check` ok) ke `~/MacPanel/backup/staging/<waktu>/panel.db`, masuk checksum.
-- Kunci enkripsi TOTP ada di Keychain dan **sengaja tidak ikut backup**. Akibatnya, pada Mac baru snapshot tidak bisa membuka secret TOTP lama: buat ulang pengguna (`panel init-key`, `panel user add`) dan daftarkan ulang ke aplikasi autentikator.
-- Backup masih lokal (disk yang sama), belum offsite. Restore snapshot diuji: terbuka dan datanya terbaca (1 user, 4 baris audit).
+## Menjeda dan menghapus
+- **Jeda** menonaktifkan situs tanpa menghapus berkas.
+- **Hapus** menghapus konfigurasi dan sertifikat; folder proyek tidak dihapus. Anda harus mengetik ulang nama situs.
+- Situs sistem tidak dapat dijeda atau dihapus.
 
-## Keamanan singkat
-Panel hanya memanggil `lab` (argv list, tanpa shell, env bersih, timeout), semua keputusan akses di server, aksi merusak butuh TOTP ulang dan ketik nama, situs dan database sistem tidak bisa diubah/dihapus dari panel, perintah worker/cron dibatasi (program dan flag yang diizinkan, path di bawah `~/Developer`), editor config memakai allowlist direktif dan wajib mempertahankan pembatas tailnet. Cookie `__Host-` HttpOnly/Secure/SameSite=Strict, CSP ketat, UI disajikan dari daftar berkas yang dikenal (tanpa listing folder).
+## Webhook deploy (GitHub)
+Di tab Deploy, aktifkan webhook, pilih branch dan langkah deploy yang diizinkan. Panel menampilkan secret satu kali; simpan di pengaturan webhook GitHub. Setiap permintaan diverifikasi tanda tangannya, dan permintaan tidak sah dijawab 404. Penerima webhook mendengarkan hanya di loopback; mengeksposnya ke internet (misalnya lewat tunnel) adalah keputusan Anda dan tidak dilakukan otomatis.
 
-Terverifikasi dari luar (2026-11-16): akses lewat IP LAN 403, port 9100 tertutup dari LAN, API tanpa sesi 401, `/.env`, `/panel.db`, traversal, dan listing folder tidak bocor.
+---
 
-## Yang diuji dan yang belum
-Teruji: 87 tes Go (`-race`, 0 gagal; 3 tes mesin-asli opsional dilewati) dan 9 tes UI (format, sumbu, geometri), uji mutasi (sengaja merusak penjaga lalu memastikan tes gagal), dan uji UI di browser asli dengan mesin asli: login dua langkah, step-up TOTP, situs (tambah, rewrite, edit config, restore, hapus), database (buat, dump, hapus), worker dan cron (tambah, restart, hapus), pasang dan hapus PHP 8.2 sebagai job asinkron. Responsif 390px dan 1280px tanpa overflow, target sentuh ≥44px, kontras ≥4,5:1 di dua tema, navigasi keyboard.
+# Database
 
-Uji tambahan P5 (browser asli, mesin asli): login, Ringkasan, Pantau (grafik dengan data nyata), pasang-nyalakan-mulai ulang-hentikan-hapus Memcached, jeda dan aktifkan situs (nginx menjawab 200 lalu menolak lalu 200 lagi), ganti PHP 8.4 ke 8.3 (nginx menjawab 8.3.36), hapus situs; 390px dan 1440px tanpa overflow, target sentuh >=44px di ponsel, tema terang dan gelap.
+Semua server database mendengarkan hanya di `127.0.0.1`; tidak ada yang terbuka ke jaringan.
 
-Belum teruji atau diketahui:
-- Bandwidth hanya mencakup interface yang punya IPv4; interface yang baru muncul tercatat mulai sampel berikutnya. Laju memakai selisih penghitung 30 detik, jadi lonjakan lebih pendek dari itu terrata-rata.
-- Memori dihitung seperti Activity Monitor (App Memory + Wired + Compressed; cache file tidak dihitung). Sebelum 2026-11-17 panel memakai `memory_pressure` (100 - bebas) yang menganggap cache sebagai bebas sehingga tampak jauh lebih rendah (26% vs 66%); riwayat grafik sebelum tanggal itu memakai definisi lama.
-- Perilaku setelah reboot penuh (Keychain di bawah launchd).
-- `lab update apply` pada paket nyata lewat panel (saat diuji belum ada paket yang perlu di-upgrade). Jadwal cron `--at` sudah teruji: dijadwalkan 21:33, jalan 21:33:05, exit 0.
-- `govulncheck`: dipindai 2026-11-16 (v1.9.0, basis data 11 Nov): tidak ada kerentanan. Percobaan ulang kadang timeout jaringan.
-- Pemindaian parser nginx terhadap tafsir nginx pada kasus langka; `root` situs bisa menyajikan folder lain di bawah `~/Developer` oleh pemilik sesi penuh + TOTP.
-- Tampilan di Safari/Firefox dan pembaca layar; hanya Chromium yang diuji.
+| Mesin | Port | Catatan |
+|---|---|---|
+| MariaDB | 3306 | Port bawaan MySQL/MariaDB; mesin bawaan saat membuat database baru |
+| MySQL | 3307 | Berjalan berdampingan dengan MariaDB |
+| PostgreSQL | 5432 | |
+| Redis | 6379 | Tanpa kata sandi, hanya loopback |
 
-## Kenapa `home.lab` belum diganti
-Portal `home.lab` memuat grafik sumber daya, status layanan, log tersaring, dan dokumentasi; panel belum punya itu. Mengganti sekarang berarti kehilangan fitur. `home.lab` tetap hidup sampai panel setara.
+Klien yang terhubung lewat `localhost` memakai socket `/tmp/mysql.sock` yang menunjuk ke MariaDB. Untuk MySQL gunakan `127.0.0.1` dengan port 3307.
 
+## Membuat database
+Menu **Database** lalu **Buat database**. Panel membuat database dan satu pengguna dengan nama sama, serta kata sandi acak. Kata sandi disimpan di berkas kredensial proyek dan tidak pernah ditampilkan di layar; opsional ditulis ke kunci `DB_*` di `.env` proyek.
 
-## Portal home.lab dihapus (2026-11-17)
-`home.lab` dan `hello.lab` dihapus atas permintaan; dokumentasinya pindah ke menu Dokumentasi panel dan grafik sumber daya ada di Ringkasan/Pantau. LaunchAgent `portal-build` dinonaktifkan (plist diarsipkan di `backup/retired`). Kode portal masih ada di `server/portal` (belum dihapus).
+Pada Laravel isi `.env` seperti berikut (ganti `DB_PORT` sesuai mesin):
+```
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+```
+Driver `mysql` dipakai untuk MariaDB maupun MySQL.
+
+## Aksi per database
+- **Dump**: menyimpan `<nama>-<mesin>-<waktu>.sql.gz` di `backup/db`.
+- **Pulihkan**: memulihkan dari dump database itu atau dari berkas yang Anda unggah. Perintah klien berbahaya di dalam dump ditolak.
+- **Akses**: melihat nama pengguna, mengganti kata sandi, atau menampilkan kredensial (membutuhkan verifikasi ulang).
+- **Hapus**: menghapus database dan penggunanya; dump terakhir dibuat dulu. Anda harus mengetik ulang nama.
+
+## Pengaturan server
+Bagian **Pengaturan server** mengubah nilai penting MariaDB, MySQL (`max_connections`, `innodb_buffer_pool_size`, `max_allowed_packet`, slow query log) dan Redis (`maxmemory`, kebijakan eviction, AOF, save). Nilai disimpan di berkas khusus panel, server dimulai ulang sebentar, dan bila gagal naik, perubahan dikembalikan otomatis.
+
+## Adminer
+`https://db.lab` menyediakan antarmuka web untuk MariaDB, MySQL, dan PostgreSQL. Pilih sistem yang sesuai dan isi server serta port:
+| Sistem | Server |
+|---|---|
+| MySQL / MariaDB | `127.0.0.1:3306` (MariaDB) atau `127.0.0.1:3307` (MySQL) |
+| PostgreSQL | `127.0.0.1:5432` |
+
+Gunakan kredensial proyek dari menu Database. Kata sandi akun administrator server ada di berkas rahasia milik pemilik mesin dan tidak dibagikan lewat panel.
+
+## Redis
+Penelusur Redis di halaman Database memungkinkan mencari dan melihat kunci, serta menghapusnya (hanya admin).
+
+## Klien lain
+Aplikasi seperti DBeaver dapat terhubung langsung ke `127.0.0.1` pada port di atas. Dari komputer lain gunakan SSH tunnel ke mesin ini.
+
+---
+
+# PHP dan runtime
+
+## PHP
+Beberapa versi PHP (8.2 sampai 8.5) dapat dipasang berdampingan. Setiap situs memilih versinya sendiri, dan tiap versi memiliki pool PHP-FPM sendiri.
+
+Menu **PHP dan runtime** menyediakan:
+- Pasang atau hapus versi PHP.
+- **Ekstensi**: saklar untuk ekstensi PECL (redis, apcu, xdebug, imagick, dan lain-lain). Ekstensi bawaan PHP Homebrew sudah terkompilasi dan tidak dapat dimatikan.
+- **php.ini**: ubah nilai umum seperti `memory_limit`, `upload_max_filesize`, `max_execution_time`.
+- **Pool FPM**: mode proses dan `pm.max_children` dengan validasi konsistensi.
+- **Composer**: lihat dan perbarui.
+
+## Runtime
+Node, pnpm, Go, dan Python dikelola oleh `mise`. Menu ini memperlihatkan versi yang terpasang dan memungkinkan memasang versi lain atau mengubah versi bawaan. Pemasangan berjalan di latar belakang; progresnya tampil di pojok kanan bawah.
+
+## Worker dan cron
+Menu **Worker dan cron** adalah pengganti Supervisor dan crontab, berjalan di atas launchd.
+- **Worker**: proses yang selalu hidup dan dihidupkan ulang otomatis (queue Laravel, bot, dan sejenisnya). Tentukan folder, perintah, versi PHP, dan jumlah proses.
+- **Cron**: tugas terjadwal, per interval (misalnya tiap 1 menit) atau pada jam tertentu.
+- Log tiap worker dan cron dapat dilihat dari halaman yang sama.
+
+---
+
+# Backup
+
+## Isi backup
+Setiap backup berisi: berkas semua situs (`wwwroot`), dump seluruh database (MariaDB, MySQL, PostgreSQL), berkas konfigurasi pribadi (dotfiles), kunci publik SSH, dan snapshot database panel, ditambah daftar kontrol `SHA256SUMS` untuk memeriksa keutuhan. Kunci privat SSH dan kunci enkripsi TOTP sengaja tidak ikut. Arsip disimpan di folder `backup/`.
+
+## Jadwal dan retensi
+- Jadwal harian dijalankan oleh launchd; jam dan retensi dapat diatur di halaman **Backup**.
+- Retensi menurut jumlah arsip (`KEEP`) dan umur (`DAYS`). Arsip terbaru tidak pernah dihapus.
+
+## Halaman Backup
+- Lihat daftar arsip dan ukurannya.
+- **Jelajahi** isi arsip dan ekstrak berkas ke `backup/restore/`; berkas aslinya tidak ditimpa.
+- **Bersihkan**: hapus per pilihan atau otomatis menurut retensi, dengan pratinjau sebelum dijalankan. Hanya berkas berpola dump atau ekstrak yang dihapus.
+
+## Penting
+Backup disimpan di disk yang sama dengan data. Itu melindungi dari salah hapus, tetapi **bukan** dari kerusakan disk atau kehilangan perangkat. Salin folder `backup/` secara berkala ke disk eksternal atau layanan lain, dan uji pemulihan secara berkala.
+
+---
+
+# Aplikasi dan layanan
+
+Menu **Aplikasi** memeriksa setiap layanan langsung ke port atau socketnya, bukan dari catatan, sehingga statusnya mencerminkan keadaan nyata.
+
+## Layanan inti
+nginx, PHP-FPM (tiap versi), MariaDB, MySQL, PostgreSQL, Redis, dan dnsmasq (DNS untuk domain `.lab`). Tersedia tombol mulai, hentikan, mulai ulang, dan lihat log. Panel sendiri tidak dapat dihentikan dari panel, dan dnsmasq (berjalan sebagai root) hanya ditampilkan; kendalinya lewat `sudo` di Terminal.
+
+## Aplikasi bawaan
+Dipasang saat penyiapan mesin dan dikelola dari tombol mulai/hentikan; semuanya hanya mendengarkan `127.0.0.1` dan disajikan lewat nginx pada jaringan privat:
+| Aplikasi | Alamat | Fungsi |
+|---|---|---|
+| Adminer | `db.lab` | Antarmuka web database |
+| Uptime Kuma | `kuma.lab` | Pemantau uptime |
+| Netdata | `stats.lab` | Metrik sistem terperinci |
+
+## Aplikasi opsional
+Tombol **Pasang** memasang aplikasi dan membuat alamat `<nama>.lab`:
+| Aplikasi | Fungsi |
+|---|---|
+| Mailpit | Menangkap email uji coba (SMTP lokal) |
+| Memcached | Cache memori |
+| 9Router | Router dan proxy model AI |
+
+Catatan 9Router: dashboard memakai kata sandi bawaan dari pembuatnya. 9Router menolak login jarak jauh sampai kata sandi itu diganti, jadi ganti terlebih dulu dari mesin itu sendiri di `http://127.0.0.1:20128` (dari komputer lain: `ssh -L 20128:127.0.0.1:20128 <mesin>`, lalu buka `http://localhost:20128`). Data akun disimpan di `~/.9router` dan tidak ikut backup panel.
+
+## Menghapus aplikasi opsional
+Hapus memerlukan verifikasi ulang dan mengetik nama aplikasi. Data pengguna aplikasi tidak dihapus.
+
+## Domain `.lab`
+dnsmasq menjawab semua `*.lab` dengan alamat jaringan privat mesin ini, dan nginx menyajikan HTTPS memakai sertifikat lokal (mkcert). Perangkat klien perlu memercayai CA lokal tersebut dan memakai mesin ini sebagai DNS untuk domain `.lab` (di Tailscale: Split DNS).
+
+---
+
+# Pemantauan dan sistem
+
+## Ringkasan dan Pantau
+Panel mencatat satu sampel tiap 30 detik dan menyimpannya 7 hari. Grafik hanya berisi pengukuran nyata; bila satu nilai gagal dibaca, titiknya kosong (bukan 0).
+
+- **CPU**: pemakaian total.
+- **Memori**: App Memory + Wired + Compressed, sama dengan definisi Activity Monitor macOS (memori yang dipakai cache tidak dihitung terpakai).
+- **Disk**: volume data.
+- **Beban**: load average.
+- **Bandwidth**: selisih byte per antarmuka jaringan; total periode adalah jumlah selisih, sehingga reboot tidak menurunkan angka.
+
+## Peringatan
+Panel menandai disk hampir penuh, memori tinggi, layanan mati, situs yang menjawab error, sertifikat yang akan kedaluwarsa, dan backup yang sudah lama.
+
+## Halaman Sistem
+| Tab | Isi |
+|---|---|
+| Keamanan | Status firewall, SSH, enkripsi disk, dan port yang sedang mendengarkan |
+| Proses | Proses pengembangan yang berjalan; dapat dihentikan dengan SIGTERM (proses sistem dilindungi) |
+| Disk | Pemakaian per folder |
+| DNS | Status dnsmasq dan resolusi tiap situs (hanya baca) |
+| Docker | Status Docker bila terpasang (hanya baca) |
+
+Perubahan yang membutuhkan `sudo` (firewall, DNS sistem, sharing) tidak dilakukan panel. Panel hanya menampilkan perintahnya.
+
+## Pembaruan
+Menu **Pembaruan** menampilkan paket Homebrew yang usang. Pembaruan berjalan di latar belakang dan progresnya tampil di pojok kanan bawah. Versi database ditetapkan (MariaDB 11.8, MySQL 8.4, PostgreSQL 17) sehingga tidak naik ke versi mayor tanpa Anda sadari.
+
+---
+
+# Akun dan keamanan
+
+## Login
+- Kata sandi disimpan dengan argon2id. Percobaan salah berulang mengunci akun dan alamat IP sementara.
+- Kode TOTP (Google Authenticator atau sejenisnya) diminta saat login. Setiap kode hanya dapat dipakai sekali.
+- Saat pengaturan awal, kunci TOTP dan 10 recovery code ditampilkan **sekali**. Simpan di tempat aman (pengelola kata sandi). Satu recovery code hanya berlaku sekali.
+
+## Perangkat tepercaya
+Pada login lengkap, centang **Percayai perangkat ini**. Perangkat itu lalu cukup memakai nama pengguna dan kata sandi selama 30 hari.
+- Setiap akun memiliki maksimum 10 perangkat tepercaya.
+- Sesi baru dari perangkat tepercaya tetap meminta verifikasi ulang kata sandi untuk aksi berbahaya.
+- Cabut satu atau semua perangkat di **Aktivitas**. Mengganti kata sandi atau menghapus akun mencabut semuanya.
+- Risiko: orang yang memegang perangkat tepercaya sekaligus kata sandi dapat masuk tanpa kode 2FA sampai perangkat itu dicabut.
+
+## Verifikasi ulang untuk aksi berbahaya
+Aksi seperti menghapus situs atau database, melihat kredensial, mengubah konfigurasi, dan memasang aplikasi meminta **kata sandi ulang**. Setelah benar, aksi lain berlaku tanpa bertanya lagi selama 15 menit. Tebakan salah kena pembatasan yang sama dengan login. Aksi penghapusan juga meminta Anda mengetik ulang nama.
+
+## Peran
+- **Admin**: semua aksi.
+- **Viewer**: hanya melihat; tidak dapat mengubah apa pun dan tidak melihat kredensial.
+
+## Mengelola akun (dari Terminal mesin ini)
+```
+panel user add [--role admin|viewer] <nama>
+panel user list
+panel user role <nama> admin|viewer
+panel user rename <lama> <baru>
+panel user remove <nama>
+panel audit verify
+```
+Penambahan akun menampilkan kunci TOTP dan recovery code sekali saja. Ganti kata sandi sendiri dari menu akun di panel.
+
+## Log aktivitas
+Menu **Aktivitas** mencatat setiap aksi: siapa, apa, kapan, dari IP mana. Catatan saling terkait secara kriptografis sehingga perubahan atau penghapusan diam-diam dapat terdeteksi.
+
+## Model keamanan singkat
+- Panel hanya mendengarkan loopback dan hanya terbuka lewat nginx untuk jaringan privat.
+- Panel tidak memakai shell dan tidak menjalankan `sudo`; ia hanya memanggil perintah `lab` dengan argumen yang divalidasi.
+- Tidak ada terminal web maupun pengelola berkas.
+- Kata sandi database tidak pernah dikirim ke layar kecuali Anda meminta lewat aksi yang diverifikasi.
+
+---
+
+# Perintah `lab`
+
+`lab` adalah perintah di Terminal yang dipakai panel di belakang layar. Anda juga dapat memakainya langsung. Semua perintah menolak argumen yang tidak valid dan bersifat idempoten.
+
+## Website
+```
+lab site add <nama> <folder> [--php 8.4] [--wordpress]
+lab site list | remove <nama>
+lab site enable|disable <nama>               # aktifkan / jeda
+lab site cert <nama>                         # perbarui sertifikat
+lab siteclone <asal> <tujuan> [--with-db]
+lab appinstall laravel|wordpress <nama> [--php 8.4] [--db mariadb|mysql]
+```
+
+## Database
+```
+lab db create <nama> [--engine mariadb|mysql|pgsql]
+lab db list
+lab db dump <nama> [--engine ...]
+lab db restore <nama> [--engine ...] [--file <dump>]
+lab db users <nama> [--engine ...]
+lab db passwd <nama> [--engine ...]
+lab db drop <nama> [--engine ...]
+lab dbcfg get|set|slow mariadb|mysql|redis ...
+```
+Bawaan `--engine` adalah `mariadb`. Port: MariaDB 3306, MySQL 3307, PostgreSQL 5432.
+
+## PHP dan runtime
+```
+lab php list | install <ver> | remove <ver>
+lab ext list <ver> | install|remove|enable|disable <ver> <nama>
+lab ini get <ver> | set <ver> kunci=nilai
+lab composer status | install | update | run <situs> <langkah>
+lab runtime list | install | use | remove <alat> <versi>
+```
+
+## Worker dan cron
+```
+lab worker add <nama> --dir <folder> --cmd "<perintah>" [--php 8.4] [--procs 2]
+lab job add <nama> --dir <folder> --cmd "<perintah>" (--every 1m | --at 02:30)
+lab worker|job list | status | restart | remove | logs
+```
+
+## Layanan dan aplikasi
+```
+lab service list
+lab service start|stop|restart|logs <nama>
+lab app install|remove <nama>
+lab nginx test | reload
+```
+
+## Backup dan pembaruan
+```
+lab backup run | list | prune | delete | ls | extract
+lab backup config                            # jadwal dan retensi
+lab update check | apply
+```
+
+## Sistem
+```
+lab sys procs | disk | security | docker | dns | stats | kill
+```
+
+---
+
+# Pemecahan masalah
+
+## `https://panel.lab` tidak terbuka
+1. Pastikan perangkat Anda tersambung ke jaringan privat (Tailscale aktif).
+2. Pastikan DNS untuk domain `.lab` mengarah ke mesin ini (Split DNS). Cek dengan `dig panel.lab`.
+3. Peringatan sertifikat: pasang CA lokal (mkcert) di perangkat Anda.
+4. Respons **403** berarti Anda mengakses dari luar jaringan privat; itu disengaja.
+5. Respons **502** berarti panel atau aplikasi di belakang nginx tidak berjalan. Lihat menu Aplikasi.
+
+## Panel tidak naik setelah dibangun ulang
+Muat ulang LaunchAgent dengan `launchctl bootout` lalu `launchctl bootstrap`, kemudian tunggu hingga 75 detik. Jangan memakai `kickstart -k`; ia mematikan paksa proses.
+
+## Situs menampilkan 502
+Layanan PHP-FPM atau aplikasi yang diproksi tidak berjalan atau versinya tidak terpasang. Periksa menu Aplikasi dan tab Log situs.
+
+## Tidak bisa login ke Adminer
+Pilih sistem yang tepat (MySQL untuk MariaDB dan MySQL, PostgreSQL untuk Postgres), isi server `127.0.0.1:<port>`, dan pakai kredensial proyek dari menu Database. Port MariaDB 3306, MySQL 3307, PostgreSQL 5432.
+
+## Aplikasi Laravel tidak terhubung ke database
+Cocokkan `DB_PORT` di `.env` dengan mesinnya: 3306 untuk MariaDB, 3307 untuk MySQL. Setelah mengubah `.env`, jalankan `php artisan config:clear`.
+
+## Lupa kata sandi atau kehilangan perangkat 2FA
+Gunakan satu recovery code saat login. Bila tidak ada, buat ulang akun dari Terminal mesin ini (`panel user add`) atau minta administrator lain mengganti kata sandinya.
+
+## Disk penuh
+Menu Sistem, tab Disk menunjukkan folder terbesar. Bersihkan backup lama dari halaman Backup, dan cache paket dengan `brew cleanup`.
+
+## Mac tidak terjangkau setelah restart
+Setelah restart pada disk terenkripsi, layanan penuh hanya naik setelah seseorang masuk di layar. Hindari restart saat jauh dari mesin, kecuali Anda yakin sambungan jaringan privat naik sebelum login.

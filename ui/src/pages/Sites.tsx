@@ -232,7 +232,8 @@ function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: stri
             {(id, dd) => (
               <select id={id} aria-describedby={dd} value={dbEngine} onChange={(e) => setDbEngine(e.target.value)}>
                 <option value="">Tanpa database</option>
-                <option value="mysql">MySQL</option>
+                <option value="mariadb">MariaDB (3306)</option>
+                <option value="mysql">MySQL (3307)</option>
                 <option value="pgsql">PostgreSQL</option>
               </select>
             )}

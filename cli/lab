@@ -2,7 +2,7 @@
 """lab: CLI kecil untuk environment lokal (mirip aaPanel). Modul saat ini: db.
 
   lab db list
-  lab db create <nama> [--engine mysql|pgsql] [--env <file .env proyek>]
+  lab db create <nama> [--engine mariadb|mysql|pgsql] [--env <file .env proyek>]
   lab db dump <nama> [--engine ...]            -> ~/MacPanel/backup/db/<nama>-<waktu>.sql.gz
   lab db drop <nama> [--engine ...]            -> minta ketik ulang nama
   lab db restore <nama> [--engine ...] [--file <dump.sql.gz>]  -> ke database yang sudah ada DAN kosong; tanpa --file = dump terbaru
@@ -18,6 +18,16 @@ CRED = HOME / ".config/macminiops"
 PROJ = CRED / "projects"
 BK = ROOT / "backup/db"
 MY = "/opt/homebrew/opt/mysql@8.4/bin/"
+MA = "/opt/homebrew/opt/mariadb@11.8/bin/"
+# Keluarga MySQL: dua mesin terpisah. MariaDB memakai port bawaan 3306; MySQL 3307 (lihat my.cnf.d/10-local.cnf).
+ENG = {
+    "mariadb": dict(bin=MA, cli="mariadb", dump="mariadb-dump", port=3306, key="MARIADB_ROOT_PASSWORD", label="MariaDB"),
+    "mysql": dict(bin=MY, cli="mysql", dump="mysqldump", port=3307, key="MYSQL_ROOT_PASSWORD", label="MySQL"),
+}
+ENGINES = list(ENG) + ["pgsql"]
+
+
+def is_my(e): return e in ENG
 PG = "/opt/homebrew/opt/postgresql@17/bin/"
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 RESERVED = {"mysql", "sys", "information_schema", "performance_schema", "postgres", "template0", "template1", "root", "dev", "admin"}
@@ -40,10 +50,11 @@ def check_name(n):
     if n in RESERVED: die(f"nama '{n}' dicadangkan")
 
 
-def my_run(sql=None, args=(), stdin=None, binary="mysql"):
-    root = load_root()
-    e = dict(os.environ, MYSQL_PWD=root["MYSQL_ROOT_PASSWORD"])
-    cmd = [MY + binary, "-h127.0.0.1", "-uroot", *args]
+def my_run(sql=None, args=(), stdin=None, binary="cli", eng="mysql"):
+    root, g = load_root(), ENG[eng]
+    if g["key"] not in root: die(f"kata sandi root {g['label']} tidak ada di db.env")
+    e = dict(os.environ, MYSQL_PWD=root[g["key"]])
+    cmd = [g["bin"] + g["dump" if binary == "dump" else "cli"], "-h127.0.0.1", f"-P{g['port']}", "-uroot", *args]
     return subprocess.run(cmd, env=e, input=sql, text=True, capture_output=True, stdin=stdin)
 
 
@@ -56,8 +67,8 @@ def pg_run(sql=None, args=(), db="postgres", binary="psql"):
 
 
 def exists(engine, n):
-    if engine == "mysql":
-        r = my_run("SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='%s'" % n, ["-N"])
+    if is_my(engine):
+        r = my_run("SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='%s'" % n, ["-N"], eng=engine)
     else:
         r = pg_run("SELECT COUNT(*) FROM pg_database WHERE datname='%s'" % n, ["-At"])
     if r.returncode: die(r.stderr.strip()[:200])
@@ -65,9 +76,10 @@ def exists(engine, n):
 
 
 def cmd_list(a):
-    print("MySQL:")
-    r = my_run("SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema','mysql','performance_schema','sys') ORDER BY 1", ["-N"])
-    print("  " + (r.stdout.strip().replace("\n", "\n  ") or "(kosong)") if not r.returncode else r.stderr)
+    for eng, g in ENG.items():
+        print(g["label"] + ":")
+        r = my_run("SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema','mysql','performance_schema','sys') ORDER BY 1", ["-N"], eng=eng)
+        print("  " + (r.stdout.strip().replace("\n", "\n  ") or "(kosong)") if not r.returncode else "  (tidak terjangkau: " + r.stderr.strip()[:80] + ")")
     print("PostgreSQL:")
     r = pg_run("SELECT datname FROM pg_database WHERE NOT datistemplate AND datname NOT IN ('postgres') ORDER BY 1", ["-At"])
     print("  " + (r.stdout.strip().replace("\n", "\n  ") or "(kosong)") if not r.returncode else r.stderr)
@@ -87,11 +99,11 @@ def cmd_create(a):
     n, eng = a.name, a.engine; check_name(n)
     if exists(eng, n): die(f"database '{n}' sudah ada di {eng}")
     pw = secrets.token_urlsafe(24).replace("-", "x").replace("_", "y")
-    if eng == "mysql":
+    if is_my(eng):
         r = my_run(f"CREATE DATABASE `{n}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; "
                    f"CREATE USER '{n}'@'127.0.0.1' IDENTIFIED BY '{pw}'; CREATE USER '{n}'@'localhost' IDENTIFIED BY '{pw}'; "
-                   f"GRANT ALL ON `{n}`.* TO '{n}'@'127.0.0.1'; GRANT ALL ON `{n}`.* TO '{n}'@'localhost';")
-        port, conn = 3306, "mysql"
+                   f"GRANT ALL ON `{n}`.* TO '{n}'@'127.0.0.1'; GRANT ALL ON `{n}`.* TO '{n}'@'localhost';", eng=eng)
+        port, conn = ENG[eng]["port"], "mysql"  # driver 'mysql' juga dipahami MariaDB; sah untuk semua versi Laravel/WordPress
     else:
         r = pg_run(f'CREATE ROLE "{n}" LOGIN PASSWORD \'{pw}\'; GRANT "{n}" TO dev WITH SET TRUE; CREATE DATABASE "{n}" OWNER "{n}" ENCODING \'UTF8\'; REVOKE ALL ON DATABASE "{n}" FROM PUBLIC;')
         port, conn = 5432, "pgsql"
@@ -108,8 +120,8 @@ def cmd_create(a):
 
 
 def cleanup(eng, n):
-    if eng == "mysql":
-        my_run(f"DROP DATABASE IF EXISTS `{n}`; DROP USER IF EXISTS '{n}'@'127.0.0.1'; DROP USER IF EXISTS '{n}'@'localhost';")
+    if is_my(eng):
+        my_run(f"DROP DATABASE IF EXISTS `{n}`; DROP USER IF EXISTS '{n}'@'127.0.0.1'; DROP USER IF EXISTS '{n}'@'localhost';", eng=eng)
     else:
         pg_run(f'DROP DATABASE IF EXISTS "{n}"; DROP ROLE IF EXISTS "{n}";')
 
@@ -119,9 +131,10 @@ def cmd_dump(a):
     if not exists(eng, n): die("database tidak ada")
     BK.mkdir(parents=True, exist_ok=True); os.chmod(BK, 0o700)
     out = BK / f"{n}-{eng}-{time.strftime('%Y%m%d-%H%M%S')}.sql.gz"
-    if eng == "mysql":
-        root = load_root(); e = dict(os.environ, MYSQL_PWD=root["MYSQL_ROOT_PASSWORD"])
-        p = subprocess.run([MY + "mysqldump", "-h127.0.0.1", "-uroot", "--single-transaction", "--no-tablespaces", "--routines", "--events", n], env=e, capture_output=True)
+    if is_my(eng):
+        g = ENG[eng]; root = load_root(); e = dict(os.environ, MYSQL_PWD=root.get(g["key"], ""))
+        extra = ["--no-tablespaces"] if eng == "mysql" else []
+        p = subprocess.run([g["bin"] + g["dump"], "-h127.0.0.1", f"-P{g['port']}", "-uroot", "--single-transaction", *extra, "--routines", "--events", n], env=e, capture_output=True)
     else:
         root = load_root(); e = dict(os.environ, PGPASSWORD=root["POSTGRES_PASSWORD"])
         p = subprocess.run([PG + "pg_dump", "-h127.0.0.1", "-Udev", n], env=e, capture_output=True)
@@ -146,8 +159,8 @@ def dump_files(n, eng):
 
 
 def table_count(eng, n):
-    if eng == "mysql":
-        r = my_run("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='%s'" % n, ["-N"])
+    if is_my(eng):
+        r = my_run("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='%s'" % n, ["-N"], eng=eng)
     else:
         r = pg_run("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema')", ["-At"], db=n)
     if r.returncode: die("gagal memeriksa isi database: " + r.stderr.strip()[:200])
@@ -178,7 +191,7 @@ def project_cred(n, eng):
 
 def line_check(eng, s, no):
     t = s.replace("\\\\", "")  # pasangan backslash ganda bukan awal perintah
-    if eng == "mysql":
+    if is_my(eng):
         if MY_WORD.match(s) or MY_BAD.search(t): raise Reject(f"baris {no} memuat perintah klien MySQL yang tidak diizinkan (shell/berkas)")
     else:
         if PG_SAFE_LINE.match(s): return
@@ -198,7 +211,7 @@ def clean_lines(path, eng):
             if total > MAX_DUMP: raise Reject("dump terlalu besar setelah dekompresi (>4 GB)")
             s = raw.decode("latin-1")
             line_check(eng, s, no)
-            if eng == "mysql" and "DEFINER" in s.upper(): s = DEFINER.sub("", s)
+            if is_my(eng) and "DEFINER" in s.upper(): s = DEFINER.sub("", s)
             elif eng == "pgsql" and PG_STRIP.match(s): s = "\n"
             yield s.encode("latin-1")
 
@@ -229,9 +242,9 @@ def cmd_restore(a):
     if c: die(f"database '{n}' tidak kosong ({c} tabel); restore tidak menimpa data. Hapus isinya dulu atau pakai database baru")
     cred = project_cred(n, eng)  # dijalankan sebagai user proyek (hak hanya pada database itu), bukan root
     scan_dump(f, eng)  # tolak dump yang memuat perintah klien (shell, baca/tulis berkas) SEBELUM menyentuh database
-    if eng == "mysql":
-        e = dict(os.environ, MYSQL_PWD=cred["DB_PASSWORD"])
-        cmd = [MY + "mysql", "-h127.0.0.1", "-u" + cred["DB_USERNAME"], n]
+    if is_my(eng):
+        g = ENG[eng]; e = dict(os.environ, MYSQL_PWD=cred["DB_PASSWORD"])
+        cmd = [g["bin"] + g["cli"], "-h127.0.0.1", f"-P{g['port']}", "-u" + cred["DB_USERNAME"], n]
     else:
         e = dict(os.environ, PGPASSWORD=cred["DB_PASSWORD"])
         cmd = [PG + "psql", "-X", "-h127.0.0.1", "-U", cred["DB_USERNAME"], "-v", "ON_ERROR_STOP=1", "-q", "-d", n]
@@ -250,7 +263,7 @@ def cmd_restore(a):
 def cmd_users(a):
     n, eng = a.name, a.engine; check_name(n)
     if not exists(eng, n): die("database tidak ada")
-    if eng == "mysql": r = my_run(f"SELECT user,host FROM mysql.user WHERE user='{n}'", ["-N", "-B"])
+    if is_my(eng): r = my_run(f"SELECT user,host FROM mysql.user WHERE user='{n}'", ["-N", "-B"], eng=eng)
     else: r = pg_run(f"SELECT rolname FROM pg_roles WHERE rolname='{n}'", ["-At"])
     if r.returncode: die("gagal membaca user: " + r.stderr.strip()[:200])
     rows = [ln.split("\t") for ln in r.stdout.splitlines() if ln.strip()]
@@ -263,7 +276,7 @@ def cmd_passwd(a):
     if not exists(eng, n): die("database tidak ada")
     kv = project_cred(n, eng)
     pw = secrets.token_urlsafe(24).replace("-", "x").replace("_", "y")
-    if eng == "mysql": r = my_run(f"ALTER USER '{n}'@'127.0.0.1' IDENTIFIED BY '{pw}'; ALTER USER '{n}'@'localhost' IDENTIFIED BY '{pw}'; FLUSH PRIVILEGES;")
+    if is_my(eng): r = my_run(f"ALTER USER '{n}'@'127.0.0.1' IDENTIFIED BY '{pw}'; ALTER USER '{n}'@'localhost' IDENTIFIED BY '{pw}'; FLUSH PRIVILEGES;", eng=eng)
     else: r = pg_run(f"ALTER ROLE \"{n}\" PASSWORD '{pw}';")
     if r.returncode: die("ganti kata sandi gagal: " + r.stderr.strip()[:200])
     kv["DB_PASSWORD"] = pw
@@ -283,7 +296,7 @@ def main():
     db = sp.add_parser("db").add_subparsers(dest="act", required=True)
     db.add_parser("list").set_defaults(f=cmd_list)
     for nm, fn in (("create", cmd_create), ("dump", cmd_dump), ("drop", cmd_drop), ("restore", cmd_restore), ("users", cmd_users), ("passwd", cmd_passwd), ("creds", cmd_creds)):
-        p = db.add_parser(nm); p.add_argument("name"); p.add_argument("--engine", choices=["mysql", "pgsql"], default="mysql"); p.set_defaults(f=fn)
+        p = db.add_parser(nm); p.add_argument("name"); p.add_argument("--engine", choices=ENGINES, default="mariadb"); p.set_defaults(f=fn)
         if nm == "create": p.add_argument("--env")
         if nm == "restore": p.add_argument("--file")
     a = ap.parse_args(); a.f(a)

@@ -147,6 +147,9 @@ def ext_act(a):
                     print(f"brew install {b}: percobaan {i + 1} gagal, ulangi...", flush=True); time.sleep(8)
                 else: die(f"brew install {b} gagal setelah 4 percobaan (jaringan?)")
             pecl = str(php_home(v) / "bin/pecl")
+            # Cellar/<php>/pecl adalah symlink ke lib/php/pecl; bila tujuan belum ada, pecl gagal mkdir.
+            try: (php_home(v) / "pecl").resolve().mkdir(parents=True, exist_ok=True)
+            except OSError as e: die(f"tidak bisa membuat folder pecl: {e}")
             env = dict(ENV, PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig", CPPFLAGS="-I/opt/homebrew/include", CFLAGS="-I/opt/homebrew/include", LDFLAGS="-L/opt/homebrew/lib")
             for i in range(3):
                 r = subprocess.run([pecl, "install", "-f"] + ([f"--configureoptions={EXTS[n]['cfg']}"] if EXTS[n].get("cfg") else []) + [n], env=env, input="\n" * 10, text=True, capture_output=True)
@@ -623,8 +626,13 @@ MYSQL_KEYS = {
     "slow_query_log": (lambda s: s in ("0", "1"), "0 atau 1"),
     "long_query_time": (lambda s: re.fullmatch(r"\d{1,2}(\.\d)?", s) and float(s) <= 60, "detik, 0-60"),
 }
+DBPORT = {"mariadb": 3306, "mysql": 3307}
 MYSQL_FILE = Path("/opt/homebrew/etc/my.cnf.d/20-macpanel.cnf")
 MYSQL_SLOW = "/opt/homebrew/var/mysql/macpanel-slow.log"
+MARIADB_DIR = Path("/opt/homebrew/etc/mariadb")
+MARIADB_FILE = MARIADB_DIR / "my.cnf.d/20-macpanel.cnf"
+MARIADB_SLOW = "/opt/homebrew/var/mariadb/macpanel-slow.log"
+MARIADB_LABEL = "com.macminiops.mariadb"
 REDIS_KEYS = {
     "maxmemory": (lambda s: s == "0" or re.fullmatch(r"\d{1,5}(mb|gb)", s), "0 (tanpa batas) atau mis. 256mb, 2gb"),
     "maxmemory-policy": (lambda s: s in ("noeviction", "allkeys-lru", "volatile-lru", "allkeys-lfu", "volatile-lfu", "allkeys-random", "volatile-ttl"), "noeviction, allkeys-lru, volatile-lru, ..."),
@@ -644,13 +652,25 @@ def _kv_file(path, keys):
     return cur
 
 
-def mysql_live(k):
+def my_live(eng, k):
     root = {}
     for ln in (HOME / ".config/macminiops/db.env").read_text().splitlines():
         if "=" in ln and not ln.startswith("#"): a, b = ln.split("=", 1); root[a.strip()] = b.strip().strip("'\"")
-    e = dict(ENV, MYSQL_PWD=root.get("MYSQL_ROOT_PASSWORD", ""))
-    r = subprocess.run(["/opt/homebrew/opt/mysql@8.4/bin/mysql", "-h127.0.0.1", "-uroot", "-N", "-e", f"SELECT @@{k}"], env=e, text=True, capture_output=True)
+    if eng == "mariadb": cli, key = "/opt/homebrew/opt/mariadb@11.8/bin/mariadb", "MARIADB_ROOT_PASSWORD"
+    else: cli, key = "/opt/homebrew/opt/mysql@8.4/bin/mysql", "MYSQL_ROOT_PASSWORD"
+    e = dict(ENV, MYSQL_PWD=root.get(key, ""))
+    r = subprocess.run([cli, "-h127.0.0.1", f"-P{DBPORT[eng]}", "-uroot", "-N", "-e", f"SELECT @@{k}"], env=e, text=True, capture_output=True)
     return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def restart_launchd(label, wait=90):
+    """Hentikan dengan SIGTERM (bootout, bukan kickstart -k yang SIGKILL: berbahaya untuk database), tunggu benar-benar mati, lalu muat lagi."""
+    plist = str(HOME / "Library/LaunchAgents" / f"{label}.plist"); dom = f"gui/{os.getuid()}"
+    sh(["/bin/launchctl", "bootout", f"{dom}/{label}"])
+    for _ in range(wait * 2):
+        if sh(["/bin/launchctl", "print", f"{dom}/{label}"]).returncode != 0: break
+        time.sleep(0.5)
+    return sh(["/bin/launchctl", "bootstrap", dom, plist])
 
 
 def redis_live(k):
@@ -661,15 +681,15 @@ def redis_live(k):
 
 def dbcfg(a):
     eng = a.engine
-    keys, path = (MYSQL_KEYS, MYSQL_FILE) if eng == "mysql" else (REDIS_KEYS, REDIS_INC)
-    live = mysql_live if eng == "mysql" else redis_live
+    keys, path = {"mysql": (MYSQL_KEYS, MYSQL_FILE), "mariadb": (MYSQL_KEYS, MARIADB_FILE)}.get(eng, (REDIS_KEYS, REDIS_INC))
+    live = (lambda k: my_live(eng, k)) if eng in DBPORT else redis_live
     if a.act == "get":
         cur = _kv_file(path, keys)
         print(json.dumps(dict(engine=eng, keys=[dict(key=k, value=cur.get(k, ""), live=live(k), hint=h) for k, (_, h) in keys.items()])))
         return
     if a.act == "slow":
-        if eng != "mysql": die("slow log hanya untuk MySQL")
-        p = Path(MYSQL_SLOW)
+        if eng not in DBPORT: die("slow log hanya untuk MariaDB/MySQL")
+        p = Path(MARIADB_SLOW if eng == "mariadb" else MYSQL_SLOW)
         print("\n".join(p.read_text(errors="replace").splitlines()[-200:]) if p.exists() else "(log kosong; aktifkan slow_query_log)")
         return
     pairs = {}
@@ -684,10 +704,15 @@ def dbcfg(a):
     old = path.read_text() if path.exists() else None
     path.parent.mkdir(parents=True, exist_ok=True)
     if old is not None: shutil.copy2(path, f"{path}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
-    if eng == "mysql":
+    if eng in DBPORT:
+        slow = MARIADB_SLOW if eng == "mariadb" else MYSQL_SLOW
         body = "# Dikelola MacPanel (`lab dbcfg`). Jangan edit manual.\n[mysqld]\n" + "".join(f"{k} = {v}\n" for k, v in cur.items())
-        if cur.get("slow_query_log") == "1": body += f"slow_query_log_file = {MYSQL_SLOW}\n"
-        svc, port = "mysql@8.4", 3306
+        if cur.get("slow_query_log") == "1": body += f"slow_query_log_file = {slow}\n"
+        svc, port = ("mariadb", 3306) if eng == "mariadb" else ("mysql@8.4", 3307)
+        if eng == "mariadb":  # my.cnf MariaDB hanya dibaca lewat --defaults-file; pastikan folder include-nya dimuat
+            mc = MARIADB_DIR / "my.cnf"; inc = f"!includedir {MARIADB_DIR}/my.cnf.d"; t = mc.read_text()
+            if inc not in t:
+                shutil.copy2(mc, f"{mc}.bak.{time.strftime('%Y%m%d-%H%M%S')}"); mc.write_text(t.rstrip("\n") + f"\n\n{inc}\n")
     else:
         body = "# Dikelola MacPanel (`lab dbcfg`). Jangan edit manual.\n"
         for k, v in cur.items():
@@ -700,7 +725,7 @@ def dbcfg(a):
             shutil.copy2(REDIS_CONF, f"{REDIS_CONF}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
             REDIS_CONF.write_text(t.rstrip("\n") + f"\n\n# MacPanel\n{inc}\n")
     path.write_text(body)
-    sh([BREW, "services", "restart", svc])
+    restart_launchd(MARIADB_LABEL) if eng == "mariadb" else sh([BREW, "services", "restart", svc])
     ok = False
     for _ in range(40):
         time.sleep(0.5)
@@ -711,7 +736,7 @@ def dbcfg(a):
     if not good:
         if old is None: path.unlink(missing_ok=True)
         else: path.write_text(old)
-        sh([BREW, "services", "restart", svc]); die(f"{eng} tidak naik dengan pengaturan baru; dikembalikan")
+        restart_launchd(MARIADB_LABEL) if eng == "mariadb" else sh([BREW, "services", "restart", svc]); die(f"{eng} tidak naik dengan pengaturan baru; dikembalikan")
     print("OK: " + ", ".join(f"{k}={pairs[k]} (aktif: {live(k)})" for k in pairs))
 
 
@@ -994,10 +1019,11 @@ def app_install(a):
     dbs = []
     try:
         print("== database ==", flush=True)
-        need(lab("db", "create", n, "--engine", "mysql"), "buat database"); dbs.append((n, "mysql"))
+        deng = a.db
+        need(lab("db", "create", n, "--engine", deng), "buat database"); dbs.append((n, deng))
         import json as _j
-        cred = _j.loads(need(lab("db", "creds", n, "--engine", "mysql"), "baca kredensial"))
-        kv = {"DB_HOST": "127.0.0.1", "DB_PORT": "3306", "DB_DATABASE": n, "DB_USERNAME": cred["DB_USERNAME"], "DB_PASSWORD": cred["DB_PASSWORD"]}
+        cred = _j.loads(need(lab("db", "creds", n, "--engine", deng), "baca kredensial"))
+        kv = {"DB_HOST": "127.0.0.1", "DB_PORT": str(DBPORT[deng]), "DB_DATABASE": n, "DB_USERNAME": cred["DB_USERNAME"], "DB_PASSWORD": cred["DB_PASSWORD"]}
         php = php_bin(v)
         env = dict(ENV, COMPOSER_NO_INTERACTION="1", COMPOSER_ALLOW_SUPERUSER="0")
         if a.kind == "laravel":
@@ -1056,7 +1082,8 @@ def site_clone(a):
             text = envf.read_text()
             m = re.search(r"^DB_DATABASE=(.*)$", text, re.M)
             conn = (re.search(r"^DB_CONNECTION=(\S+)", text, re.M) or [None, "mysql"])[1]
-            eng = "pgsql" if conn in ("pgsql", "postgres", "postgresql") else "mysql"
+            pm = re.search(r"^DB_PORT=(\d+)", text, re.M)
+            eng = "pgsql" if conn in ("pgsql", "postgres", "postgresql") else ("mysql" if pm and pm.group(1) == str(DBPORT["mysql"]) else "mariadb")
             if m and m.group(1).strip().strip("\"'"):
                 srcdb = m.group(1).strip().strip("\"'")
                 print("== database baru untuk kloning ==", flush=True)
@@ -1072,7 +1099,7 @@ def site_clone(a):
                         try: os.remove(f)
                         except OSError: pass
                     else: print("catatan: database sumber bukan database proyek lab; hanya database kosong dibuat")
-                kv = {"DB_DATABASE": dst, "DB_USERNAME": cred["DB_USERNAME"], "DB_PASSWORD": cred["DB_PASSWORD"], "DB_HOST": "127.0.0.1", "APP_URL": f"https://{dst}.lab"}
+                kv = {"DB_DATABASE": dst, "DB_USERNAME": cred["DB_USERNAME"], "DB_PASSWORD": cred["DB_PASSWORD"], "DB_HOST": "127.0.0.1", "DB_PORT": str(cred.get("DB_PORT") or DBPORT.get(eng, 5432)), "APP_URL": f"https://{dst}.lab"}
                 envf.write_text(set_env_kv(text, kv)); os.chmod(envf, 0o600)
             else:
                 envf.write_text(set_env_kv(text, {"APP_URL": f"https://{dst}.lab"})) if "APP_URL=" in text else None
@@ -1096,7 +1123,7 @@ def main():
     q = c.add_parser("run"); q.add_argument("site"); q.add_argument("cmd", choices=["install", "install-nodev", "update", "dump-autoload", "validate"])
     d = top.add_parser("deploy").add_subparsers(dest="act", required=True)
     d.add_parser("info").add_argument("site"); q = d.add_parser("run"); q.add_argument("site"); q.add_argument("steps")
-    ins = top.add_parser("appinstall"); ins.add_argument("kind", choices=["laravel", "wordpress"]); ins.add_argument("name"); ins.add_argument("--php", default="8.4")
+    ins = top.add_parser("appinstall"); ins.add_argument("kind", choices=["laravel", "wordpress"]); ins.add_argument("name"); ins.add_argument("--php", default="8.4"); ins.add_argument("--db", choices=["mariadb", "mysql"], default="mariadb")
     cl = top.add_parser("siteclone"); cl.add_argument("src"); cl.add_argument("dst"); cl.add_argument("--with-db", action="store_true")
     rd = top.add_parser("redis").add_subparsers(dest="act", required=True)
     for x in ("info", "scan", "get", "del"):
@@ -1105,8 +1132,8 @@ def main():
     for x in ("procs", "disk", "security", "docker", "dns"): sy.add_parser(x)
     sy.add_parser("kill").add_argument("pid", type=int); sy.add_parser("stats").add_argument("name")
     dc = top.add_parser("dbcfg").add_subparsers(dest="act", required=True)
-    for x in ("get", "slow"): q = dc.add_parser(x); q.add_argument("engine", choices=["mysql", "redis"])
-    q = dc.add_parser("set"); q.add_argument("engine", choices=["mysql", "redis"]); q.add_argument("pairs", nargs="+")
+    for x in ("get", "slow"): q = dc.add_parser(x); q.add_argument("engine", choices=["mariadb", "mysql", "redis"])
+    q = dc.add_parser("set"); q.add_argument("engine", choices=["mariadb", "mysql", "redis"]); q.add_argument("pairs", nargs="+")
     b = top.add_parser("backup").add_subparsers(dest="act", required=True); b.add_parser("list"); b.add_parser("run")
     q = b.add_parser("config"); q.add_argument("cact", choices=["get", "set"]); q.add_argument("--time"); q.add_argument("--keep", type=int, default=7); q.add_argument("--days", type=int, default=0); q.add_argument("--extra-days", dest="extra_days", type=int, default=0)
     q = b.add_parser("prune"); q.add_argument("--keep", type=int); q.add_argument("--days", type=int); q.add_argument("--dry-run", action="store_true"); q.add_argument("--auto", action="store_true")

@@ -2,7 +2,7 @@
 
 **A self-hosted web control panel for macOS: the aaPanel / cPanel experience for a Mac mini or MacBook dev server.**
 
-Manage websites (nginx), multiple PHP versions and extensions, MySQL/PostgreSQL databases, Node/Go/Python runtimes, workers and cron (launchd), deploys, backups and monitoring from one browser UI, protected by password + TOTP and meant to be reachable only over a private network (e.g. Tailscale).
+Manage websites (nginx), multiple PHP versions and extensions, MariaDB/MySQL/PostgreSQL databases, Node/Go/Python runtimes, workers and cron (launchd), deploys, backups and monitoring from one browser UI, protected by password + TOTP and meant to be reachable only over a private network (e.g. Tailscale).
 
 > Status: early, used daily on one Mac mini (macOS, Apple Silicon). Works, tested, but not yet a one-command install. See "Install" and "Known gaps".
 
@@ -21,7 +21,7 @@ Captured from a throwaway demo instance (fake sites, empty database list, no rea
 ## Features
 - **Websites:** add/remove/pause sites (PHP, static, reverse proxy), per-site PHP version, rewrite/redirect rules, nginx config editor with version history and automatic rollback on `nginx -t` failure, local HTTPS (mkcert), logs, HTTP health + certificate expiry.
 - **PHP:** install 8.2-8.5 side by side, PECL extensions with on/off switches (redis, apcu, xdebug, imagick, igbinary, msgpack, pcov, yaml, memcached, mongodb), FPM pool settings, restart + logs, Composer.
-- **Databases:** MySQL and PostgreSQL create / dump / restore / upload dump (restore refuses dangerous client commands and runs as the project user).
+- **Databases:** MariaDB (3306), MySQL (3307) and PostgreSQL create / dump / restore / upload dump (restore refuses dangerous client commands and runs as the project user).
 - **Runtimes:** Node, Go, Python, pnpm via mise.
 - **Workers and cron:** supervisor/crontab equivalent on launchd.
 - **Deploy:** per-site git pull, composer, npm/pnpm, artisan, FPM restart.

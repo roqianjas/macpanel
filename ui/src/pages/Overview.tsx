@@ -23,7 +23,7 @@ async function loadCounts(): Promise<Counts> {
   return {
     sites: sites.length,
     sitesOn: sites.filter((x: any) => x.enabled).length,
-    db: db ? db.mysql.length + db.pgsql.length : 0,
+    db: db ? (db.mariadb?.length ?? 0) + (db.mysql?.length ?? 0) + (db.pgsql?.length ?? 0) : 0,
     workers: v(w)?.tasks?.length ?? 0,
     jobs: v(j)?.tasks?.length ?? 0,
     php: (v(p)?.php ?? []).filter((x: any) => x.installed).length,
@@ -84,7 +84,7 @@ export default function Overview() {
   const tiles = [
     { href: "#/website", icon: Globe, label: "Website", ds: "Situs .lab, rewrite, SSL, config nginx", chip: counts.data ? (counts.data.sites ? `${counts.data.sitesOn} dari ${counts.data.sites} situs aktif` : "Belum ada situs Anda") : "" },
     { href: "#/aplikasi", icon: Server, label: "Aplikasi", ds: "nginx, PHP-FPM, database, cache", chip: svc.data ? `${running} dari ${total} berjalan` : "" },
-    { href: "#/database", icon: Database, label: "Database", ds: "MySQL dan PostgreSQL per proyek", chip: counts.data ? `${counts.data.db} proyek` : "" },
+    { href: "#/database", icon: Database, label: "Database", ds: "MariaDB, MySQL dan PostgreSQL per proyek", chip: counts.data ? `${counts.data.db} proyek` : "" },
     { href: "#/tugas", icon: Timer, label: "Worker dan cron", ds: "Pengganti Supervisor dan crontab", chip: counts.data ? `${counts.data.workers} worker, ${counts.data.jobs} cron` : "" },
     { href: "#/runtime", icon: Boxes, label: "PHP dan runtime", ds: "Versi berdampingan, Node, Go, Python", chip: counts.data ? `${counts.data.php} PHP terpasang` : "" },
     { href: "#/pembaruan", icon: Download, label: "Pembaruan", ds: "Upgrade aman dengan backup", chip: "" },

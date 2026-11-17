@@ -48,17 +48,20 @@ func mbOf(s string) int {
 	return n
 }
 
-var dbcfgKeys = map[string]map[string]func(string) bool{
-	"mysql": {
-		"max_connections": func(s string) bool {
-			n, err := strconv.Atoi(s)
-			return regexp.MustCompile(`^[0-9]{2,4}$`).MatchString(s) && err == nil && n >= 10 && n <= 2000
-		},
-		"innodb_buffer_pool_size": func(s string) bool { n := mbOf(s); return n >= 64 && n <= 8192 },
-		"max_allowed_packet":      func(s string) bool { n := mbOf(s); return n >= 1 && n <= 1024 },
-		"slow_query_log":          func(s string) bool { return s == "0" || s == "1" },
-		"long_query_time":         regexp.MustCompile(`^([0-5]?[0-9](\.[0-9])?|60)$`).MatchString,
+var myCfgKeys = map[string]func(string) bool{
+	"max_connections": func(s string) bool {
+		n, err := strconv.Atoi(s)
+		return regexp.MustCompile(`^[0-9]{2,4}$`).MatchString(s) && err == nil && n >= 10 && n <= 2000
 	},
+	"innodb_buffer_pool_size": func(s string) bool { n := mbOf(s); return n >= 64 && n <= 8192 },
+	"max_allowed_packet":      func(s string) bool { n := mbOf(s); return n >= 1 && n <= 1024 },
+	"slow_query_log":          func(s string) bool { return s == "0" || s == "1" },
+	"long_query_time":         regexp.MustCompile(`^([0-5]?[0-9](\.[0-9])?|60)$`).MatchString,
+}
+
+var dbcfgKeys = map[string]map[string]func(string) bool{
+	"mariadb": myCfgKeys,
+	"mysql":   myCfgKeys,
 	"redis": {
 		"maxmemory": func(s string) bool { return s == "0" || regexp.MustCompile(`^[0-9]{1,5}(mb|gb)$`).MatchString(s) },
 		"maxmemory-policy": func(s string) bool {
@@ -83,7 +86,7 @@ type DBCfgKey struct {
 func dbcfgEngine(w http.ResponseWriter, r *http.Request) (string, bool) {
 	e := r.PathValue("engine")
 	if _, ok := dbcfgKeys[e]; !ok {
-		jerr(w, 400, "engine harus mysql atau redis")
+		jerr(w, 400, "engine harus mariadb, mysql atau redis")
 		return "", false
 	}
 	return e, true
@@ -144,7 +147,12 @@ func hDBCfgSet(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 }
 
 func hSlowLog(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
-	res := a.runLabT([]string{"dbcfg", "slow", "mysql"}, "", 20e9)
+	slowEng := r.PathValue("engine")
+	if slowEng != "mariadb" && slowEng != "mysql" {
+		jerr(w, 400, "slow log hanya untuk mariadb atau mysql")
+		return
+	}
+	res := a.runLabT([]string{"dbcfg", "slow", slowEng}, "", 20e9)
 	if res.Code != 0 {
 		jerr(w, 502, "gagal membaca slow log")
 		return

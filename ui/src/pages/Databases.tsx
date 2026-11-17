@@ -8,8 +8,8 @@ import RedisBrowser from "./RedisBrowser";
 import { fmtBytes } from "../lib";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 
-type Engine = "mysql" | "pgsql";
-const ENGINE_LABEL: Record<Engine, string> = { mysql: "MySQL 8.4", pgsql: "PostgreSQL 17" };
+type Engine = "mariadb" | "mysql" | "pgsql";
+const ENGINE_LABEL: Record<Engine, string> = { mariadb: "MariaDB 11.8 (port 3306)", mysql: "MySQL 8.4 (port 3307)", pgsql: "PostgreSQL 17 (port 5432)" };
 
 export default function Databases() {
   const { data, error, loading, reload } = useLoad(() => get<{ databases: Record<Engine, string[]>; system: string[] }>("/api/db"));
@@ -33,7 +33,7 @@ export default function Databases() {
       setBusy("");
     }
   };
-  const total = data ? [...data.databases.mysql, ...data.databases.pgsql].filter((n) => !isSys(n)).length : 0;
+  const total = data ? [...data.databases.mariadb, ...data.databases.mysql, ...data.databases.pgsql].filter((n) => !isSys(n)).length : 0;
   return (
     <>
       <PageHead
@@ -48,7 +48,7 @@ export default function Databases() {
       />
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <State loading={loading && !data} error={error} empty={!!data && total === 0} emptyText="Belum ada database proyek. Pilih “Buat database”." onRetry={reload}>
-        {(["mysql", "pgsql"] as Engine[]).map((en) => (
+        {(["mariadb", "mysql", "pgsql"] as Engine[]).map((en) => (
           <Card key={en} title={ENGINE_LABEL[en]}>
             {(data?.databases[en] ?? []).filter((n) => !isSys(n)).length === 0 && !(data?.databases[en] ?? []).some(isSys) ? (
               <div className="state">
@@ -131,7 +131,7 @@ export default function Databases() {
 
 function AddDB({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [name, setName] = useState("");
-  const [engine, setEngine] = useState<Engine>("mysql");
+  const [engine, setEngine] = useState<Engine>("mariadb");
   const [env, setEnv] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -158,7 +158,8 @@ function AddDB({ onClose, onDone }: { onClose: () => void; onDone: () => void })
         <Field label="Mesin">
           {(id) => (
             <select id={id} value={engine} onChange={(e) => setEngine(e.target.value as Engine)}>
-              <option value="mysql">MySQL 8.4</option>
+              <option value="mariadb">MariaDB 11.8 (port 3306)</option>
+              <option value="mysql">MySQL 8.4 (port 3307)</option>
               <option value="pgsql">PostgreSQL 17</option>
             </select>
           )}

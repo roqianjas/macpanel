@@ -47,7 +47,7 @@ func newEnv(t *testing.T) *env {
 	for _, c := range e.codes {
 		hs = append(hs, sha256hex(c))
 	}
-	if err := st.CreateUser("roki", hashPassword("kata-sandi-panjang-123"), enc, hs); err != nil {
+	if err := st.CreateUser("admin", hashPassword("kata-sandi-panjang-123"), enc, hs); err != nil {
 		t.Fatal(err)
 	}
 	return e
@@ -96,7 +96,7 @@ func (e *env) code(offset int) string {
 }
 
 func (e *env) login(code string) (cookie, csrf string, w *httptest.ResponseRecorder) {
-	w1 := e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-panjang-123"}`, "", "", nil)
+	w1 := e.do("POST", "/api/auth/login", `{"name":"admin","password":"kata-sandi-panjang-123"}`, "", "", nil)
 	if w1.Code != 200 {
 		e.t.Fatalf("login password: %d %s", w1.Code, w1.Body)
 	}
@@ -158,7 +158,7 @@ func TestSecretEncryptedAtRest(t *testing.T) {
 	}
 }
 
-func mustUserEnc(e *env) []byte { return e.app.st.GetUser("roki").TOTPEnc }
+func mustUserEnc(e *env) []byte { return e.app.st.GetUser("admin").TOTPEnc }
 
 // ---------- akses ----------
 
@@ -182,7 +182,7 @@ func TestEveryRouteRequiresAuth(t *testing.T) {
 		}
 	}
 	// sesi tahap password TIDAK boleh membuka rute Full
-	w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-panjang-123"}`, "", "", nil)
+	w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"kata-sandi-panjang-123"}`, "", "", nil)
 	c, cs := cookieOf(w), csrfOf(w)
 	for _, rt := range routes() {
 		rt.Path = paramRE.ReplaceAllString(rt.Path, "x")
@@ -247,7 +247,7 @@ func TestWrongAndReusedTOTP(t *testing.T) {
 
 func TestSessionIDRotatesAfterTOTP(t *testing.T) {
 	e := newEnv(t)
-	w1 := e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-panjang-123"}`, "", "", nil)
+	w1 := e.do("POST", "/api/auth/login", `{"name":"admin","password":"kata-sandi-panjang-123"}`, "", "", nil)
 	pre := cookieOf(w1)
 	w2 := e.do("POST", "/api/auth/totp", `{"code":"`+e.code(0)+`"}`, pre, csrfOf(w1), nil)
 	if cookieOf(w2) == pre || cookieOf(w2) == "" {
@@ -272,7 +272,7 @@ func TestRecoveryCodeSingleUse(t *testing.T) {
 func TestGenericLoginError(t *testing.T) {
 	e := newEnv(t)
 	a := e.do("POST", "/api/auth/login", `{"name":"tidakada","password":"kata-sandi-panjang-123"}`, "", "", nil)
-	b := e.do("POST", "/api/auth/login", `{"name":"roki","password":"salah-salah-salah"}`, "", "", nil)
+	b := e.do("POST", "/api/auth/login", `{"name":"admin","password":"salah-salah-salah"}`, "", "", nil)
 	if a.Code != b.Code || a.Body.String() != b.Body.String() {
 		t.Fatalf("galat membocorkan keberadaan akun: %d %q vs %d %q", a.Code, a.Body, b.Code, b.Body)
 	}
@@ -281,15 +281,15 @@ func TestGenericLoginError(t *testing.T) {
 func TestLockout(t *testing.T) {
 	e := newEnv(t)
 	for i := 0; i < maxPerUser; i++ {
-		if w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"salah-salah-salah"}`, "", "", nil); w.Code != 401 {
+		if w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"salah-salah-salah"}`, "", "", nil); w.Code != 401 {
 			t.Fatalf("percobaan %d: %d", i, w.Code)
 		}
 	}
-	if w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-panjang-123"}`, "", "", nil); w.Code != 429 {
+	if w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"kata-sandi-panjang-123"}`, "", "", nil); w.Code != 429 {
 		t.Fatalf("password BENAR saat terkunci harus 429, dapat %d", w.Code)
 	}
 	e.now = e.now.Add(lockWindow + time.Second)
-	if w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-panjang-123"}`, "", "", nil); w.Code != 200 {
+	if w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"kata-sandi-panjang-123"}`, "", "", nil); w.Code != 200 {
 		t.Fatalf("setelah jendela lewat harus bisa login: %d", w.Code)
 	}
 }
@@ -336,7 +336,7 @@ func TestCSRFAndOrigin(t *testing.T) {
 	if w := e.do("POST", "/api/auth/logout", "{}", c, cs, map[string]string{"Sec-Fetch-Site": "cross-site"}); w.Code != 403 {
 		t.Errorf("sec-fetch-site cross-site: %d", w.Code)
 	}
-	if w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"x"}`, "", "", map[string]string{"Origin": "https://evil.example"}); w.Code != 403 {
+	if w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"x"}`, "", "", map[string]string{"Origin": "https://evil.example"}); w.Code != 403 {
 		t.Errorf("login dari origin asing: %d", w.Code)
 	}
 	if w := e.do("POST", "/api/auth/logout", "{}", c, cs, nil); w.Code != 200 {
@@ -346,11 +346,11 @@ func TestCSRFAndOrigin(t *testing.T) {
 
 func TestBodyLimitAndStrictJSON(t *testing.T) {
 	e := newEnv(t)
-	big := `{"name":"roki","password":"` + strings.Repeat("a", 9000) + `"}`
+	big := `{"name":"admin","password":"` + strings.Repeat("a", 9000) + `"}`
 	if w := e.do("POST", "/api/auth/login", big, "", "", nil); w.Code != 413 {
 		t.Errorf("body besar: %d", w.Code)
 	}
-	if w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"x","admin":true}`, "", "", nil); w.Code != 400 {
+	if w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"x","admin":true}`, "", "", nil); w.Code != 400 {
 		t.Errorf("field tak dikenal harus 400: %d", w.Code)
 	}
 	if w := e.do("POST", "/api/auth/login", `bukan json`, "", "", nil); w.Code != 400 {
@@ -383,7 +383,7 @@ func TestSessionIdleAndAbsoluteExpiry(t *testing.T) {
 
 func TestPwdStageExpires(t *testing.T) {
 	e := newEnv(t)
-	w1 := e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-panjang-123"}`, "", "", nil)
+	w1 := e.do("POST", "/api/auth/login", `{"name":"admin","password":"kata-sandi-panjang-123"}`, "", "", nil)
 	e.now = e.now.Add(pwdTTL + time.Second)
 	if w := e.do("POST", "/api/auth/totp", `{"code":"`+e.code(0)+`"}`, cookieOf(w1), csrfOf(w1), nil); w.Code != 401 {
 		t.Fatalf("tahap password harus kedaluwarsa: %d", w.Code)
@@ -432,7 +432,7 @@ func TestAuditChainDetectsTamper(t *testing.T) {
 
 func TestAuditHasNoSecrets(t *testing.T) {
 	e := newEnv(t)
-	e.do("POST", "/api/auth/login", `{"name":"roki","password":"kata-sandi-SALAH-123"}`, "", "", nil)
+	e.do("POST", "/api/auth/login", `{"name":"admin","password":"kata-sandi-SALAH-123"}`, "", "", nil)
 	c, cs, _ := e.login(e.code(0))
 	_ = cs
 	body := e.do("GET", "/api/audit", "", c, "", nil).Body.String()
@@ -449,7 +449,7 @@ func TestAuditHasNoSecrets(t *testing.T) {
 // Penjaga atomik: dua permintaan bersamaan dengan kode yang sama, hanya satu boleh menang.
 func TestUseTOTPStepIsAtomic(t *testing.T) {
 	e := newEnv(t)
-	u := e.app.st.GetUser("roki")
+	u := e.app.st.GetUser("admin")
 	if !e.app.st.UseTOTPStep(u.ID, 100) {
 		t.Fatal("langkah pertama harus diterima")
 	}

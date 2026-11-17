@@ -135,10 +135,12 @@ func hSiteRemove(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 // ---------- Database ----------
 
 func parseDBList(out string) map[string][]string {
-	res := map[string][]string{"mysql": {}, "pgsql": {}}
+	res := map[string][]string{"mariadb": {}, "mysql": {}, "pgsql": {}}
 	cur := ""
 	for _, ln := range strings.Split(out, "\n") {
 		switch t := strings.TrimSpace(ln); {
+		case t == "MariaDB:":
+			cur = "mariadb"
 		case t == "MySQL:":
 			cur = "mysql"
 		case t == "PostgreSQL:":
@@ -162,9 +164,11 @@ func hDBList(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 // systemDBs adalah database/akun milik server sendiri; panel tidak boleh menghapus atau men-dump-nya (lab juga menolak).
 var systemDBs = map[string]bool{"dev": true, "postgres": true, "template0": true, "template1": true, "mysql": true, "sys": true, "root": true, "admin": true, "information_schema": true, "performance_schema": true}
 
+func validEngine(e string) bool { return e == "mariadb" || e == "mysql" || e == "pgsql" }
+
 func dbParams(w http.ResponseWriter, r *http.Request) (engine, name string, ok bool) {
 	engine, name = r.PathValue("engine"), r.PathValue("name")
-	if (engine != "mysql" && engine != "pgsql") || !dbRE.MatchString(name) {
+	if !validEngine(engine) || !dbRE.MatchString(name) {
 		jerr(w, 400, "engine atau nama tidak valid")
 		return "", "", false
 	}
@@ -180,7 +184,7 @@ func hDBCreate(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if (in.Engine != "mysql" && in.Engine != "pgsql") || !dbRE.MatchString(in.Name) {
+	if !validEngine(in.Engine) || !dbRE.MatchString(in.Name) {
 		jerr(w, 400, "engine atau nama tidak valid")
 		return
 	}

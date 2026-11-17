@@ -78,7 +78,7 @@ func TestChangeOwnPassword(t *testing.T) {
 		t.Fatalf("tanpa step-up harus 403: %d", c)
 	}
 	o.stepup()
-	for _, b := range []string{`{"current":"salah","new":"` + nw + `"}`, `{"current":"` + old + `","new":"pendek"}`, `{"current":"` + old + `","new":"` + old + `"}`, `{"current":"` + old + `","new":"roki"}`, `{"current":"` + old + `","new":"` + strings.Repeat("a", 257) + `"}`, `{"current":"` + old + `","new":"` + nw + `","x":1}`} {
+	for _, b := range []string{`{"current":"salah","new":"` + nw + `"}`, `{"current":"` + old + `","new":"pendek"}`, `{"current":"` + old + `","new":"` + old + `"}`, `{"current":"` + old + `","new":"admin"}`, `{"current":"` + old + `","new":"` + strings.Repeat("a", 257) + `"}`, `{"current":"` + old + `","new":"` + nw + `","x":1}`} {
 		if c, r := o.post("/api/me/password", b); c != 400 && c != 401 {
 			t.Errorf("%s -> %d %s", b, c, r)
 		}
@@ -86,7 +86,7 @@ func TestChangeOwnPassword(t *testing.T) {
 	if c, _ := o.post("/api/me/password", `{"current":"salah","new":"`+nw+`"}`); c != 400 {
 		t.Errorf("sandi saat ini salah harus 400 (401 membuat UI mengira sesi habis): %d", c)
 	}
-	if w := o.do("POST", "/api/auth/login", `{"name":"roki","password":"`+nw+`"}`, "", "", nil); w.Code == 200 {
+	if w := o.do("POST", "/api/auth/login", `{"name":"admin","password":"`+nw+`"}`, "", "", nil); w.Code == 200 {
 		t.Fatal("sandi baru tidak boleh aktif setelah permintaan ditolak")
 	}
 	if c, b := o.post("/api/me/password", `{"current":"`+old+`","new":"`+nw+`"}`); c != 200 {
@@ -98,10 +98,10 @@ func TestChangeOwnPassword(t *testing.T) {
 	if w := o.do("GET", "/api/me", "", o.cookie, "", nil); w.Code != 200 {
 		t.Errorf("sesi saat ini harus tetap hidup: %d", w.Code)
 	}
-	if w := o.do("POST", "/api/auth/login", `{"name":"roki","password":"`+old+`"}`, "", "", nil); w.Code == 200 {
+	if w := o.do("POST", "/api/auth/login", `{"name":"admin","password":"`+old+`"}`, "", "", nil); w.Code == 200 {
 		t.Error("sandi lama harus ditolak")
 	}
-	if w := o.do("POST", "/api/auth/login", `{"name":"roki","password":"`+nw+`"}`, "", "", nil); w.Code != 200 {
+	if w := o.do("POST", "/api/auth/login", `{"name":"admin","password":"`+nw+`"}`, "", "", nil); w.Code != 200 {
 		t.Errorf("sandi baru harus berlaku: %d", w.Code)
 	}
 	if au := o.do("GET", "/api/audit", "", o.cookie, "", nil).Body.String(); !strings.Contains(au, "password_change") || strings.Contains(au, nw) || strings.Contains(au, old) {

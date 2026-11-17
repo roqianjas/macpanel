@@ -138,4 +138,4 @@ Kode: `nginxconf.go` (parser + kebijakan), `siteconf.go` (model, template, pipel
 - Aplikasi: `/api/services`, `/api/services/{id}/{start|stop|restart}` (stop/restart butuh step-up), `/api/services/{id}/logs`, `/api/apps/{id}/install|remove` (katalog tetap memcached, mailpit). id divalidasi regex di panel dan lagi di `lab`.
 - Website: `GET /api/sites` kini memuat status HTTP (GET lewat loopback), latensi, umur sertifikat, dan situs dijeda; `POST /api/sites/{name}/{enable|disable}`.
 - Risiko sisa: bandwidth hanya interface ber-IPv4; laju dirata-rata per 30 dtk; probe situs menyambung ke 127.0.0.1:443 dengan SNI situs (hanya baca status baris pertama).
-- UI mengikuti `portal-ui/DESIGN.md` (palet, radius 16/10, rail berlabel, hero, kartu KPI). Ikon Lucide tetap override R-04/R-37 atas keputusan Roki.
+- UI mengikuti `portal-ui/DESIGN.md` (palet, radius 16/10, rail berlabel, hero, kartu KPI). Ikon Lucide tetap override R-04/R-37 atas keputusan pemilik.

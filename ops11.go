@@ -7,10 +7,10 @@ import (
 
 var newSiteRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$`)
 
-var reservedNames = map[string]bool{"home": true, "panel": true, "db": true, "nginx": true, "kuma": true, "stats": true, "dev": true, "mysql": true, "postgres": true, "root": true}
+var reservedNames = map[string]bool{"home": true, "panel": true, "db": true, "nginx": true, "kuma": true, "stats": true, "dev": true, "mysql": true, "mariadb": true, "postgres": true, "root": true}
 
 func hInstall(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
-	var in struct{ Kind, Name, PHP string }
+	var in struct{ Kind, Name, PHP, DB string }
 	if !decode(w, r, &in) {
 		return
 	}
@@ -29,10 +29,17 @@ func hInstall(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		jerr(w, 400, "versi PHP 8.2-8.5")
 		return
 	}
+	if in.DB == "" {
+		in.DB = "mariadb"
+	}
+	if in.DB != "mariadb" && in.DB != "mysql" {
+		jerr(w, 400, "database: mariadb atau mysql")
+		return
+	}
 	if !a.requireStepUp(w, ss) {
 		return
 	}
-	respondAsync(w, a.startAsync(ss, a.clientIP(r), "install_"+in.Kind, in.Name, []string{"appinstall", in.Kind, in.Name, "--php", in.PHP}, ""))
+	respondAsync(w, a.startAsync(ss, a.clientIP(r), "install_"+in.Kind, in.Name, []string{"appinstall", in.Kind, in.Name, "--php", in.PHP, "--db", in.DB}, ""))
 }
 
 func hClone(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {

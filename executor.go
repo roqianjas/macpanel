@@ -88,7 +88,7 @@ var (
 )
 
 var protectedSites = map[string]bool{"home": true, "nginx": true, "db": true, "kuma": true, "stats": true, "hello": true, "panel": true}
-var blockedPorts = map[int]bool{3306: true, 5432: true, 6379: true, 9100: true, 22: true}
+var blockedPorts = map[int]bool{3306: true, 3307: true, 5432: true, 6379: true, 9100: true, 22: true}
 var phpVersions = map[string]bool{"8.2": true, "8.3": true, "8.4": true, "8.5": true}
 
 // underDev mengembalikan path nyata (symlink diikuti) bila berada di bawah ~/MacPanel/wwwroot.

@@ -17,7 +17,7 @@ func trustOf(w *httptest.ResponseRecorder) string {
 	return ""
 }
 
-const loginBody = `{"name":"roki","password":"kata-sandi-panjang-123"}`
+const loginBody = `{"name":"admin","password":"kata-sandi-panjang-123"}`
 
 func (e *env) trustLogin(trust bool) (cookie, csrf, tok string) {
 	w1 := e.do("POST", "/api/auth/login", loginBody, "", "", nil)
@@ -65,7 +65,7 @@ func TestTrustedDeviceFlow(t *testing.T) {
 		t.Fatalf("tanpa cookie harus minta 2FA: %s", w.Body)
 	}
 	// kata sandi salah tetap ditolak walau cookie sah
-	if w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"salah-salah-salah"}`, "", "", map[string]string{"Cookie": trustCookie + "=" + tok2}); w.Code != 401 {
+	if w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"salah-salah-salah"}`, "", "", map[string]string{"Cookie": trustCookie + "=" + tok2}); w.Code != 401 {
 		t.Fatalf("sandi salah + cookie sah: %d", w.Code)
 	}
 	// daftar + label
@@ -108,7 +108,7 @@ func TestTrustedRevokeAndPasswordChange(t *testing.T) {
 	if w := e.do("POST", "/api/me/password", `{"current":"kata-sandi-panjang-123","new":"sandi-baru-yang-panjang-456"}`, ck, cs, nil); w.Code != 200 {
 		t.Fatalf("ganti sandi: %d %s", w.Code, w.Body)
 	}
-	if w := e.do("POST", "/api/auth/login", `{"name":"roki","password":"sandi-baru-yang-panjang-456"}`, "", "", map[string]string{"Cookie": trustCookie + "=" + tok}); strings.Contains(w.Body.String(), `"trusted"`) {
+	if w := e.do("POST", "/api/auth/login", `{"name":"admin","password":"sandi-baru-yang-panjang-456"}`, "", "", map[string]string{"Cookie": trustCookie + "=" + tok}); strings.Contains(w.Body.String(), `"trusted"`) {
 		t.Fatal("perangkat tepercaya bertahan setelah ganti sandi")
 	}
 }
@@ -123,7 +123,7 @@ func TestTrustedCapAndIsolation(t *testing.T) {
 			first = tok
 		}
 	}
-	u := e.app.st.GetUser("roki")
+	u := e.app.st.GetUser("admin")
 	if n := len(e.app.st.ListTrusted(u.ID, "", e.now)); n != maxTrusted {
 		t.Fatalf("batas perangkat: %d", n)
 	}
@@ -156,18 +156,18 @@ func TestTrustedCookieAttrsAndOtherUser(t *testing.T) {
 		t.Fatal("cookie tepercaya tidak ada")
 	}
 	tok := trustOf(w2)
-	// user lain tidak boleh memakai perangkat milik roki
+	// user lain tidak boleh memakai perangkat milik admin
 	enc, _ := seal(testKey, newTOTPSecret())
 	if err := e.app.st.CreateUser("ani", hashPassword("sandi-ani-panjang-789"), enc, nil); err != nil {
 		t.Fatal(err)
 	}
 	w := e.do("POST", "/api/auth/login", `{"name":"ani","password":"sandi-ani-panjang-789"}`, "", "", map[string]string{"Cookie": trustCookie + "=" + tok})
 	if strings.Contains(w.Body.String(), `"trusted"`) || !strings.Contains(w.Body.String(), "need_totp") {
-		t.Fatalf("cookie roki dipakai user lain: %s", w.Body)
+		t.Fatalf("cookie admin dipakai user lain: %s", w.Body)
 	}
-	// dan tidak bisa mencabut perangkat milik roki
-	roki, ani := e.app.st.GetUser("roki"), e.app.st.GetUser("ani")
-	rows := e.app.st.ListTrusted(roki.ID, "", e.now)
+	// dan tidak bisa mencabut perangkat milik admin
+	admin, ani := e.app.st.GetUser("admin"), e.app.st.GetUser("ani")
+	rows := e.app.st.ListTrusted(admin.ID, "", e.now)
 	if len(rows) != 1 || e.app.st.RevokeTrusted(ani.ID, rows[0].ID) {
 		t.Fatal("user lain bisa mencabut perangkat orang lain")
 	}
@@ -178,13 +178,13 @@ func TestRenameUser(t *testing.T) {
 	_, _, tok := e.trustLogin(true)
 	enc, _ := seal(testKey, newTOTPSecret())
 	e.app.st.CreateUser("ani", hashPassword("sandi-ani-panjang-789"), enc, nil)
-	if e.app.st.RenameUser("roki", "ani") || e.app.st.RenameUser("tidakada", "baru") {
+	if e.app.st.RenameUser("admin", "ani") || e.app.st.RenameUser("tidakada", "baru") {
 		t.Fatal("rename ke nama terpakai / user tak ada harus gagal")
 	}
-	if !e.app.st.RenameUser("roki", "rokianjas") {
+	if !e.app.st.RenameUser("admin", "rokianjas") {
 		t.Fatal("rename gagal")
 	}
-	if e.app.st.GetUser("roki") != nil || e.app.st.GetUser("rokianjas") == nil {
+	if e.app.st.GetUser("admin") != nil || e.app.st.GetUser("rokianjas") == nil {
 		t.Fatal("nama tidak berubah")
 	}
 	e.now = e.now.Add(time.Minute)
