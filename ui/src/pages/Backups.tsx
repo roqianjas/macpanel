@@ -37,7 +37,7 @@ export default function Backups() {
     <>
       <PageHead
         title="Backup"
-        desc="Berjalan otomatis tiap hari pukul 02:30. Isi: dump semua database, folder ~/Developer (tanpa node_modules dan .env), dotfile, dan database panel."
+        desc="Berjalan otomatis tiap hari (jam dan jumlah simpanan diatur di kartu Jadwal di bawah). Isi: dump semua database, folder ~/Developer (tanpa node_modules dan .env), dotfile, dan database panel."
         action={
           <button className="btn btn-primary" disabled={busy} onClick={run}>
             <DatabaseBackup size={18} aria-hidden="true" />

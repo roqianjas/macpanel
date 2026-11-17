@@ -38,7 +38,7 @@ export default function Databases() {
     <>
       <PageHead
         title="Database"
-        desc="Satu database dan satu pengguna per proyek. Kata sandi dibuat acak dan tidak pernah ditampilkan di panel."
+        desc="Satu database dan satu pengguna per proyek. Kata sandi dibuat acak; melihatnya lewat tombol Akses butuh kode TOTP ulang dan dicatat."
         action={
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
             <Plus size={18} aria-hidden="true" />

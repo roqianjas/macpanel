@@ -83,6 +83,9 @@ func TestChangeOwnPassword(t *testing.T) {
 			t.Errorf("%s -> %d %s", b, c, r)
 		}
 	}
+	if c, _ := o.post("/api/me/password", `{"current":"salah","new":"`+nw+`"}`); c != 400 {
+		t.Errorf("sandi saat ini salah harus 400 (401 membuat UI mengira sesi habis): %d", c)
+	}
 	if w := o.do("POST", "/api/auth/login", `{"name":"roki","password":"`+nw+`"}`, "", "", nil); w.Code == 200 {
 		t.Fatal("sandi baru tidak boleh aktif setelah permintaan ditolak")
 	}

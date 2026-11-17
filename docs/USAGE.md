@@ -73,7 +73,9 @@ Tombol Jeda mengganti nama `<situs>.conf` menjadi `<situs>.conf.disabled` (nginx
 - **Temuan nyata:** Mailpit dari Homebrew mendengarkan di semua antarmuka (`*:8025`, `*:1025`, tanpa login). Diperbaiki: dijalankan dengan plist milik panel yang terikat 127.0.0.1; diverifikasi LAN dan tailnet tertutup.
 - **Sengaja tidak ada:** file manager, terminal web, backup S3, firewall/SSH dari web (butuh sudo).
 - **Teruji:** 50 mutan keamanan, 44 tertangkap langsung; 3 ditutup dengan tes tambahan (batas 20 IP, 20 pengguna, 3 cadangan); 3 sisanya setara karena pengaman ganda (viewer diblok global di server.go, `deny all` dicek dua tempat). Uji mesin nyata: pool FPM/MySQL/Redis, rotasi sandi DB (lama ditolak, baru jalan), jadwal launchd, ekstrak arsip + path jahat, penginstal Laravel/WordPress, kloning dengan data.
-- **Belum diuji:** UI halaman baru di browser (hanya build + tes backend), tampilan ponsel/tema terang halaman baru.
+- **Uji browser (Chromium, mesin asli):** Domain tambahan (3 nama menjawab HTTPS), password dasar + batas IP (401/200/403 sesuai), `.env`, Trafik (angka cocok dengan permintaan uji), Akses DB + ganti sandi (login dengan sandi baru berhasil), penelusur Redis, pengaturan Redis (nilai aktif berubah), jelajah+ekstrak backup, ganti sandi akun, kloning situs. Audit 390px dan tema terang: tanpa overflow halaman, target >=44px, kontras lulus.
+- **Bug yang ditemukan lewat uji ini dan diperbaiki:** (1) salah kata sandi saat ganti sandi membalas 401 sehingga UI mengeluarkan sesi (kini 400); (2) tombol Hentikan proses bisa menyasar python milik Hermes (kini dilindungi lewat baris perintah); (3) tabel Sistem memakai kelas CSS yang tidak ada; (4) dua teks usang. Kloning tidak membawa alias/password dasar/batas IP (situs baru dari template bersih).
+- **Belum diuji:** Pasang cepat lewat tombol UI (hanya via `lab appinstall`), Safari/Firefox/pembaca layar.
 
 ## Operasional
 - LaunchAgent `com.macminiops.panel` (`~/Library/LaunchAgents`), `KeepAlive`, bind `127.0.0.1:9100`, log `~/Library/Logs/panel.log` (ikut `logrotate.sh`).

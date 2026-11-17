@@ -126,7 +126,7 @@ func hMyPassword(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	if u == nil || len(in.Current) > 256 || !verifyPassword(u.PassHash, in.Current) {
 		a.fail(ss.User, ip)
 		a.st.Audit(ss.User, "password_change_fail", "", ip, a.now())
-		jerr(w, 401, "kata sandi saat ini salah")
+		jerr(w, 400, "kata sandi saat ini salah")
 		return
 	}
 	if len(in.New) < 12 || len(in.New) > 256 || strings.EqualFold(in.New, ss.User) || in.New == in.Current {

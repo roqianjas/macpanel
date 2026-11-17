@@ -51,8 +51,8 @@ function Security() {
           </Card>
           <Card title="Port yang mendengarkan">
             <p className="small muted">Baris "terbuka" artinya tidak terikat ke loopback. Untuk nginx itu wajar karena akses dibatasi tailnet lewat konfigurasi; layanan lain sebaiknya hanya di 127.0.0.1.</p>
-            <div className="table-wrap">
-              <table className="table">
+            <div className="tbl-wrap">
+              <table className="tbl">
                 <caption className="sr">Port TCP yang mendengarkan</caption>
                 <thead><tr><th scope="col">Port</th><th scope="col">Alamat</th><th scope="col">Proses</th><th scope="col">Status</th></tr></thead>
                 <tbody>
@@ -92,8 +92,8 @@ function Procs() {
     <Card title="Proses milik Anda (40 teratas menurut CPU)" action={<button className="btn" onClick={q.reload}>Segarkan</button>}>
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
-        <div className="table-wrap">
-          <table className="table">
+        <div className="tbl-wrap">
+          <table className="tbl">
             <caption className="sr">Proses</caption>
             <thead><tr><th scope="col">PID</th><th scope="col">Nama</th><th scope="col">CPU %</th><th scope="col">RAM</th><th scope="col">Jalan</th><th scope="col"><span className="sr">Aksi</span></th></tr></thead>
             <tbody>

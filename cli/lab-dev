@@ -608,9 +608,26 @@ def ps_rows():
     return out
 
 
+PROTECT_ARGS = re.compile(r"hermes|macpanel|/panel( |$)|launchd|netdata|uptime-kuma|tailscale|dnsmasq|nginx|mysqld|postgres|redis-server|php-fpm|browser_harness|chrome", re.I)
+
+
+def cmd_map():
+    r = sh(["/bin/ps", "-axo", "pid=,command="])
+    out = {}
+    for l in r.stdout.splitlines():
+        f = l.strip().split(None, 1)
+        if len(f) == 2 and f[0].isdigit(): out[int(f[0])] = f[1]
+    return out
+
+
+def killable(row, cmds):
+    return row["name"] in DEV_COMM and row["name"] not in PROTECTED_COMM and not PROTECT_ARGS.search(cmds.get(row["pid"], ""))
+
+
 def sys_procs():
     rows = [r for r in ps_rows() if r["mine"]]
-    for r in rows: r["killable"] = r["name"] in DEV_COMM and r["name"] not in PROTECTED_COMM
+    cmds = cmd_map()
+    for r in rows: r["killable"] = killable(r, cmds)
     rows.sort(key=lambda r: (-r["cpu"], -r["rss_mb"]))
     print(json.dumps(dict(procs=rows[:40], total=len(rows))))
 
@@ -620,7 +637,8 @@ def sys_kill(pid):
     row = next((r for r in ps_rows() if r["pid"] == pid), None)
     if not row: die("proses tidak ada")
     if not row["mine"]: die("proses milik user lain")
-    if row["name"] in PROTECTED_COMM or row["name"] not in DEV_COMM: die(f"'{row['name']}' bukan proses pengembangan; hentikan lewat halaman Aplikasi atau terminal")
+    if not killable(row, cmd_map()): die(f"'{row['name']}' dilindungi atau bukan proses pengembangan; hentikan lewat halaman Aplikasi atau terminal")
+    if False: die(f"'{row['name']}' bukan proses pengembangan; hentikan lewat halaman Aplikasi atau terminal")
     try: os.kill(pid, 15)
     except OSError as e: die(f"gagal: {e}")
     for _ in range(20):
