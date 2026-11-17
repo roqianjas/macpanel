@@ -67,3 +67,27 @@ func TestStepUpRequiredMessageAndDisabledUser(t *testing.T) {
 		t.Fatalf("pesan step-up: %d %s", c, b)
 	}
 }
+
+func TestNineRouterIsOptionalAppWithSafeGuards(t *testing.T) {
+	o := newOpsEnv(t, "echo ok")
+	c, b := o.post("/api/apps/9router/install", `{}`)
+	if c != 202 {
+		t.Fatalf("install 9router: %d %s", c, b)
+	}
+	o.waitJob(jobID(t, b))
+	if !strings.Contains(o.calls(), "CALL:[app][install][9router]") {
+		t.Fatalf("argv: %s", o.calls())
+	}
+	// hapus: konfirmasi nama + step-up
+	if c, _ := o.post("/api/apps/9router/remove", `{"confirm":"salah"}`); c != 400 {
+		t.Fatalf("konfirmasi: %d", c)
+	}
+	o.now = o.now.Add(stepupTTL + time.Second)
+	if c, _ := o.post("/api/apps/9router/remove", `{"confirm":"9router"}`); c != 403 {
+		t.Fatalf("remove tanpa step-up: %d", c)
+	}
+	// aplikasi lain yang tak ada di katalog tetap ditolak
+	if c, _ := o.post("/api/apps/9router-evil/install", `{}`); c != 400 && c != 404 {
+		t.Fatalf("id asing: %d", c)
+	}
+}
