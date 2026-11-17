@@ -1,5 +1,6 @@
 /* Panel: token dan bahasa visual sama dengan portal home.lab ("Konsol Ramah", lihat portal-ui/DESIGN.md). */
 :root {
+  --tap: 44px;
   --font: "Plus Jakarta Sans", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --r-card: 16px; --r-ctl: 10px; --r-s: 6px;
@@ -281,3 +282,30 @@ select { padding-right: 8px; }
 .chips-wrap { overflow-wrap: anywhere; line-height: 1.7; margin: var(--s2) 0 0; }
 .check { display: inline-flex; align-items: center; gap: var(--s3); min-height: var(--tap); cursor: pointer; }
 .check input { width: 20px; height: 20px; flex: none; }
+
+/* ---- Kelola PHP: daftar ekstensi dengan saklar ---- */
+.modal .tabpanel { padding-top: var(--s4); }
+.ext-bar { display: grid; gap: var(--s3); grid-template-columns: minmax(0, 1fr); }
+.ext-bar input[type=search] { width: 100%; }
+.seg { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.seg-btn { min-height: var(--tap); padding: 0 var(--s4); border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.seg-btn.on { background: color-mix(in srgb, var(--primary) 12%, var(--surface)); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+.ext-list { border: 1px solid var(--line); border-radius: var(--r-ctl); max-height: min(52vh, 460px); overflow: auto; }
+.ext-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px 130px 112px; align-items: center; gap: var(--s3); padding: var(--s2) var(--s4); min-height: 52px; border-bottom: 1px solid var(--line); }
+.ext-row:last-child { border-bottom: 0; }
+.ext-name { display: grid; min-width: 0; }
+.ext-name > * { overflow-wrap: anywhere; }
+.ext-act { display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); }
+.switch { position: relative; width: 48px; height: 28px; flex: none; border-radius: 999px; border: 1px solid var(--line); background: var(--line); cursor: pointer; padding: 0; transition: background .15s; }
+.switch::before { content: ""; position: absolute; inset: -8px -4px; }
+.switch-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.switch.on { background: var(--primary); border-color: var(--primary); }
+.switch.on .switch-knob { transform: translateX(20px); }
+.switch:disabled { opacity: .55; cursor: not-allowed; }
+.switch:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .switch, .switch-knob { transition: none; } }
+@media (max-width: 760px) {
+  .ext-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--s1); }
+  .ext-row > .chip, .ext-row > .ext-state { grid-column: 1; }
+  .ext-act { grid-column: 2; grid-row: 1 / span 3; }
+}

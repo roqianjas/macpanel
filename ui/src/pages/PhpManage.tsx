@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Power, PowerOff, RefreshCw, Trash2 } from "lucide-react";
+import { Download, RefreshCw, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Chip, ConfirmDialog, Field, Modal, State, Tabs, useLoad } from "../ui";
@@ -37,11 +37,23 @@ export default function PhpManage({ version, onClose }: { version: string; onClo
   );
 }
 
+function Switch({ on, disabled, label, onChange }: { on: boolean; disabled?: boolean; label: string; onChange?: () => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} className={`switch ${on ? "on" : ""}`} onClick={onChange}>
+      <span className="switch-knob" />
+    </button>
+  );
+}
+
+type Filter = "all" | "toggle" | "builtin";
+
 function Extensions({ v }: { v: string }) {
   const q = useLoad(() => get<{ builtin: string[]; managed: Ext[] }>(`/api/php/${v}/ext`), [v]);
   const [pending, setPending] = useState<Record<string, boolean>>({});
   const [err, setErr] = useState("");
   const [rm, setRm] = useState<Ext | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [term, setTerm] = useState("");
   const act = async (e: Ext, a: "install" | "remove" | "enable" | "disable") => {
     setErr("");
     setPending((p) => ({ ...p, [e.name]: true }));
@@ -57,51 +69,72 @@ function Extensions({ v }: { v: string }) {
       setErr(errText(x));
     }
   };
-  const managed = q.data?.managed.filter((m) => m.name) ?? [];
+  const managed = (q.data?.managed ?? []).filter((m) => m.name);
+  const builtin = q.data?.builtin ?? [];
+  const t = term.trim().toLowerCase();
+  const mShow = filter === "builtin" ? [] : managed.filter((m) => !t || m.name.includes(t) || m.label.toLowerCase().includes(t));
+  const bShow = filter === "toggle" ? [] : builtin.filter((b) => !t || b.toLowerCase().includes(t));
+  const FILTERS: { id: Filter; label: string }[] = [
+    { id: "all", label: `Semua (${managed.length + builtin.length})` },
+    { id: "toggle", label: `Bisa diatur (${managed.length})` },
+    { id: "builtin", label: `Bawaan (${builtin.length})` },
+  ];
   return (
     <div className="stack">
-      <p className="small muted">Ekstensi tambahan dipasang lewat PECL dan hanya berlaku untuk PHP {v}. FPM dimulai ulang otomatis; pemasangan bisa memakan beberapa menit (progres di pojok kanan bawah).</p>
+      <div className="ext-bar">
+        <label className="sr" htmlFor="ext-q">Cari ekstensi</label>
+        <input id="ext-q" type="search" placeholder="Cari ekstensi…" value={term} onChange={(e) => setTerm(e.target.value)} autoComplete="off" />
+        <div className="seg" role="group" aria-label="Filter ekstensi">
+          {FILTERS.map((f) => (
+            <button key={f.id} type="button" className={`seg-btn ${filter === f.id ? "on" : ""}`} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {err && <Alert>{err}</Alert>}
-      <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
-        <ul className="list">
-          {managed.map((e) => (
-            <li key={e.name} className="list-row">
-              <div>
-                <p>
-                  <strong>{e.label}</strong> <span className="mono muted">{e.name}</span>
-                </p>
-                <p className="small muted">{!e.installed ? "Belum terpasang" : e.loaded ? "Terpasang dan termuat" : e.enabled ? "Terpasang, belum termuat (mulai ulang FPM)" : "Terpasang, dimatikan"}</p>
+      <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && mShow.length + bShow.length === 0} emptyText="Tidak ada ekstensi yang cocok." onRetry={q.reload}>
+        <div className="ext-list" role="list">
+          {mShow.map((e) => (
+            <div key={e.name} role="listitem" className="ext-row">
+              <div className="ext-name">
+                <strong className="mono">{e.name}</strong>
+                <span className="small muted">{e.label}</span>
               </div>
-              <div className="row">
-                <Chip tone={e.loaded ? "ok" : e.installed ? "warn" : "mute"} busy={pending[e.name]}>
-                  {pending[e.name] ? "Memproses" : e.loaded ? "Aktif" : e.installed ? "Nonaktif" : "Tidak ada"}
-                </Chip>
-                {!e.installed ? (
-                  <button className="btn" disabled={pending[e.name]} onClick={() => act(e, "install")}>
-                    <Download size={18} aria-hidden="true" />
-                    Pasang<span className="sr"> {e.label}</span>
-                  </button>
-                ) : (
+              <Chip tone="info">Tambahan</Chip>
+              <span className="small muted ext-state">{!e.installed ? "Belum terpasang" : e.loaded ? "Aktif" : "Dimatikan"}</span>
+              <div className="ext-act">
+                {e.installed ? (
                   <>
-                    <button className="btn" disabled={pending[e.name]} onClick={() => act(e, e.loaded ? "disable" : "enable")}>
-                      {e.loaded ? <PowerOff size={18} aria-hidden="true" /> : <Power size={18} aria-hidden="true" />}
-                      {e.loaded ? "Matikan" : "Aktifkan"}
-                      <span className="sr"> {e.label}</span>
-                    </button>
-                    <button className="btn btn-danger-ghost" disabled={pending[e.name]} onClick={() => setRm(e)}>
+                    <Switch on={e.loaded} disabled={pending[e.name]} label={`${e.loaded ? "Matikan" : "Aktifkan"} ${e.name}`} onChange={() => act(e, e.loaded ? "disable" : "enable")} />
+                    <button className="btn btn-icon btn-danger-ghost" disabled={pending[e.name]} onClick={() => setRm(e)} aria-label={`Hapus ${e.name}`} title="Hapus ekstensi">
                       <Trash2 size={18} aria-hidden="true" />
-                      Hapus<span className="sr"> {e.label}</span>
                     </button>
                   </>
+                ) : (
+                  <button className="btn btn-sm" disabled={pending[e.name]} onClick={() => act(e, "install")}>
+                    <Download size={16} aria-hidden="true" />
+                    {pending[e.name] ? "Memasang…" : "Pasang"}
+                    <span className="sr"> {e.name}</span>
+                  </button>
                 )}
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
-        <details className="builtin">
-          <summary>Ekstensi bawaan ({q.data?.builtin.length ?? 0}), sudah termasuk di PHP dan tidak perlu dipasang</summary>
-          <p className="mono small chips-wrap">{q.data?.builtin.join(", ")}</p>
-        </details>
+          {bShow.map((b) => (
+            <div key={b} role="listitem" className="ext-row">
+              <div className="ext-name">
+                <strong className="mono">{b}</strong>
+              </div>
+              <Chip tone="mute">Bawaan</Chip>
+              <span className="small muted ext-state">Aktif, permanen</span>
+              <div className="ext-act">
+                <Switch on disabled label={`${b}: bawaan PHP, tidak bisa dimatikan`} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="small muted">Ekstensi <strong>Bawaan</strong> dikompilasi permanen ke PHP versi Homebrew ini, jadi tidak bisa dimatikan satu per satu (berbeda dengan cPanel/aaPanel yang memakai modul terpisah). Ekstensi <strong>Tambahan</strong> dipasang lewat PECL per versi PHP dan bisa diaktifkan, dimatikan, atau dihapus. FPM dimulai ulang otomatis; pemasangan bisa beberapa menit.</p>
       </State>
       {rm && (
         <ConfirmDialog

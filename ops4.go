@@ -9,7 +9,7 @@ import (
 
 // ---------- ekstensi PHP ----------
 
-var extNames = map[string]bool{"redis": true, "apcu": true, "xdebug": true}
+var extNames = map[string]bool{"redis": true, "apcu": true, "xdebug": true, "imagick": true, "igbinary": true, "msgpack": true, "pcov": true, "yaml": true, "memcached": true, "mongodb": true}
 var extActions = map[string]bool{"install": true, "remove": true, "enable": true, "disable": true}
 
 type ExtInfo struct {

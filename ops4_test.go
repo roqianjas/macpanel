@@ -41,7 +41,7 @@ func TestExtActionGuards(t *testing.T) {
 		t.Fatalf("tanpa step-up harus 403: %d", c)
 	}
 	o.stepup()
-	for _, p := range []string{"/api/php/8.4/ext/memcached/install", "/api/php/8.4/ext/redis/exec", "/api/php/8.4/ext/re;id/install", "/api/php/8.4/ext/-f/install", "/api/php/9.9/ext/redis/install", "/api/php/8.4/ext/REDIS/install"} {
+	for _, p := range []string{"/api/php/8.4/ext/swoole/install", "/api/php/8.4/ext/redis/exec", "/api/php/8.4/ext/re;id/install", "/api/php/8.4/ext/-f/install", "/api/php/9.9/ext/redis/install", "/api/php/8.4/ext/REDIS/install"} {
 		if c, _ := o.post(p, `{}`); c != 400 && c != 404 {
 			t.Errorf("%s -> %d", p, c)
 		}
@@ -186,5 +186,21 @@ func TestBackupEndpoints(t *testing.T) {
 	o.waitJob(jobID(t, b))
 	if !strings.Contains(o.calls(), "CALL:[backup][run]") {
 		t.Fatalf("%s", o.calls())
+	}
+}
+
+func TestExtCatalogNamesAccepted(t *testing.T) {
+	o := newDevEnv(t)
+	o.stepup()
+	for _, n := range []string{"redis", "apcu", "xdebug", "imagick", "igbinary", "msgpack", "pcov", "yaml", "memcached", "mongodb"} {
+		c, b := o.post("/api/php/8.5/ext/"+n+"/enable", `{}`)
+		if c != 202 {
+			t.Errorf("%s: %d %s", n, c, b)
+			continue
+		}
+		o.waitJob(jobID(t, b))
+	}
+	if c, _ := o.post("/api/php/8.5/ext/opcache/disable", `{}`); c != 400 {
+		t.Errorf("opcache tidak boleh dikelola: %d", c)
 	}
 }
