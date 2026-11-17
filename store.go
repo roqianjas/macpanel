@@ -373,3 +373,19 @@ func (s *Store) ListJobs(n int) []JobRow {
 	}
 	return out
 }
+
+// SetPassword mengganti hash sandi dan mencabut semua sesi user kecuali sesi yang sedang dipakai.
+func (s *Store) SetPassword(uid int64, hash, keepSession string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("UPDATE users SET pass_hash=? WHERE id=?", hash, uid); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM sessions WHERE user_id=? AND id<>?", uid, keepSession); err != nil {
+		return err
+	}
+	return tx.Commit()
+}

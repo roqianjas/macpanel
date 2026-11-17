@@ -24,8 +24,8 @@ case "${1:-}" in
     echo "dihapus: $2.$TLD"; reload; exit 0;;
 esac
 
-PHPV=""; ARGS=()
-while [ $# -gt 0 ]; do case "$1" in --php) PHPV="${2:-}"; shift 2;; *) ARGS+=("$1"); shift;; esac; done
+PHPV=""; WP=0; ARGS=()
+while [ $# -gt 0 ]; do case "$1" in --php) PHPV="${2:-}"; shift 2;; --wordpress) WP=1; shift;; *) ARGS+=("$1"); shift;; esac; done
 set -- "${ARGS[@]}"
 if [ -n "$PHPV" ]; then
   [[ "$PHPV" =~ ^8\.[2-5]$ ]] || { echo "--php harus 8.3, 8.4, atau 8.5"; exit 1; }
@@ -40,7 +40,11 @@ HOST="$NAME.$TLD"; F="$N/sites/$NAME.conf"
 if [ -n "$PHPV" ]; then
   [[ ! "$TARGET" =~ ^[0-9]+$ ]] || { echo "--php butuh direktori, bukan port"; exit 1; }
   DIR=$(cd "${TARGET/#\~/$HOME}" && pwd)
+  if [ "$WP" = 1 ]; then
+    LOC=$(printf 'root %s;\n    index index.php index.html;\n    client_max_body_size 64m;\n    location / { try_files $uri $uri/ /index.php?$args; }\n    location ~ /\\.(?!well-known) { return 404; }\n    location ~ \\.php$ {\n        try_files $uri =404;\n        fastcgi_split_path_info ^(.+\\.php)(/.+)$;\n        fastcgi_pass unix:/opt/homebrew/var/run/php-fpm-dev-%s.sock;\n        include /opt/homebrew/etc/nginx/fastcgi_params;\n        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;\n        fastcgi_param PATH_INFO $fastcgi_path_info;\n        fastcgi_param HTTPS on;\n        fastcgi_read_timeout 120s;\n    }' "$DIR" "$PHPV")
+  else
   LOC=$(printf 'root %s;\n    index index.php index.html;\n    client_max_body_size 64m;\n    location / { try_files $uri $uri/ /index.php?$query_string; }\n    location ~ /\\.(?!well-known) { return 404; }\n    location ~ ^/index\\.php(/|$) {\n        fastcgi_split_path_info ^(.+\\.php)(/.+)$;\n        fastcgi_pass unix:/opt/homebrew/var/run/php-fpm-dev-%s.sock;\n        include /opt/homebrew/etc/nginx/fastcgi_params;\n        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;\n        fastcgi_param PATH_INFO $fastcgi_path_info;\n        fastcgi_param HTTPS on;\n        fastcgi_read_timeout 120s;\n    }\n    location ~ \\.php$ { return 404; }' "$DIR" "$PHPV")
+  fi
 elif [[ "$TARGET" =~ ^[0-9]+$ ]]; then
   LOC=$(printf 'location / {\n        include %s/snippets/proxy.conf;\n        proxy_pass http://127.0.0.1:%s;\n    }' "$N" "$TARGET")
 else

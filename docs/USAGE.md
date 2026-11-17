@@ -63,6 +63,18 @@ Tab Deploy (situs non-sistem): git pull --ff-only, composer install (atau --no-d
 ## Website: jeda dan aktifkan
 Tombol Jeda mengganti nama `<situs>.conf` menjadi `<situs>.conf.disabled` (nginx hanya memuat `*.conf`), menguji `nginx -t`, lalu reload; gagal di tahap mana pun dikembalikan. Folder proyek dan config tidak dihapus. Situs sistem tidak bisa dijeda. Daftar Website juga menampilkan status HTTP nyata (GET / lewat loopback ke nginx, dengan latensi), versi PHP, dan sisa umur sertifikat. Versi PHP situs bisa diganti dari tab Umum.
 
+## Fitur lanjutan (P7)
+- **Website per situs:** tab Domain (hingga 10 domain tambahan `nama.lab`, sertifikat mkcert dibuat ulang memuat semua nama), Akses (password dasar htpasswd apr1 hingga 20 pengguna, batas IP yang hanya boleh mempersempit tailnet, aturan allow/deny wajib diakhiri `deny all`), `.env` (baca butuh step-up, admin saja, cadangan 3 terakhir, izin 0600), Trafik (dari log akses nginx, bukan analitik pengunjung), Kloning (salin proyek + database terpisah dengan `.env` baru), dan Pasang cepat Laravel/WordPress (rollback otomatis bila gagal).
+- **Database:** Pengaturan server MySQL (`max_connections`, buffer pool, slow log) dan Redis (`maxmemory`, policy, AOF, save) lewat berkas milik panel (`my.cnf.d/20-macpanel.cnf`, `redis.d/macpanel.conf`), restart otomatis dan dikembalikan bila server tidak naik. Tombol Akses per database: lihat kredensial dan ganti kata sandi (step-up, audit tanpa isi). Penelusur Redis (cari, lihat, hapus kunci; admin saja).
+- **PHP:** pool FPM (`pm`, `pm.max_children`, dst.) di tab Pengaturan dengan validasi konsistensi mode dynamic.
+- **Backup:** jadwal harian dan retensi bisa diatur (launchd + `backup.conf`), jelajahi arsip dan ekstrak berkas ke `~/Backups/restore/` (berkas asli tidak pernah ditimpa).
+- **Sistem:** halaman Keamanan (firewall, SSH, port yang mendengarkan), Proses (hentikan hanya proses pengembangan, SIGTERM), Disk per folder, status Docker (baca saja).
+- **Akun:** ganti kata sandi sendiri (step-up, sesi lain dicabut).
+- **Temuan nyata:** Mailpit dari Homebrew mendengarkan di semua antarmuka (`*:8025`, `*:1025`, tanpa login). Diperbaiki: dijalankan dengan plist milik panel yang terikat 127.0.0.1; diverifikasi LAN dan tailnet tertutup.
+- **Sengaja tidak ada:** file manager, terminal web, backup S3, firewall/SSH dari web (butuh sudo).
+- **Teruji:** 50 mutan keamanan, 44 tertangkap langsung; 3 ditutup dengan tes tambahan (batas 20 IP, 20 pengguna, 3 cadangan); 3 sisanya setara karena pengaman ganda (viewer diblok global di server.go, `deny all` dicek dua tempat). Uji mesin nyata: pool FPM/MySQL/Redis, rotasi sandi DB (lama ditolak, baru jalan), jadwal launchd, ekstrak arsip + path jahat, penginstal Laravel/WordPress, kloning dengan data.
+- **Belum diuji:** UI halaman baru di browser (hanya build + tes backend), tampilan ponsel/tema terang halaman baru.
+
 ## Operasional
 - LaunchAgent `com.macminiops.panel` (`~/Library/LaunchAgents`), `KeepAlive`, bind `127.0.0.1:9100`, log `~/Library/Logs/panel.log` (ikut `logrotate.sh`).
 - Nginx: `web/nginx/sites/panel.conf`, `tailnet_only`, proxy ke 9100.

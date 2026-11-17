@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { fmtBytes } from "../lib";
+import { CloneModal, InstallModal } from "./Installer";
 import { errText, fmtTime, get, post } from "../api";
 import Deploy from "./Deploy";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, Tabs, useLoad, type Tone } from "../ui";
@@ -57,6 +58,7 @@ export default function Sites({ sub }: { sub: string }) {
 function SiteList() {
   const { data, error, loading, reload } = useLoad(() => get<{ sites: Site[] }>("/api/sites"));
   const [adding, setAdding] = useState(false);
+  const [installing, setInstalling] = useState(false);
   const [pause, setPause] = useState<Site | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const sites = data?.sites ?? [];
@@ -81,10 +83,13 @@ function SiteList() {
         title="Website"
         desc={`Situs berdomain .lab, hanya terbuka dari tailnet. ${mine.length ? `${mine.filter((s) => s.enabled).length} dari ${mine.length} situs Anda aktif.` : "Belum ada situs Anda sendiri."}`}
         action={
-          <button className="btn btn-primary" onClick={() => setAdding(true)}>
+          <>
+            <button className="btn" onClick={() => setInstalling(true)}>Pasang cepat</button>
+            <button className="btn btn-primary" onClick={() => setAdding(true)}>
             <Plus size={18} aria-hidden="true" />
             Tambah situs
           </button>
+          </>
         }
       />
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
@@ -143,6 +148,7 @@ function SiteList() {
           <p className="small muted">Status diperiksa lewat loopback ke nginx (HEAD /), bukan dari catatan. Situs yang dijeda tidak dilayani sampai diaktifkan lagi; konfigurasinya tetap tersimpan.</p>
         </State>
       </Card>
+      {installing && <InstallModal onClose={() => setInstalling(false)} onDone={(n) => { setInstalling(false); location.hash = `#/website/${n}`; }} />}
       {adding && <AddSite onClose={() => setAdding(false)} onDone={(n) => { setAdding(false); location.hash = `#/website/${n}`; }} />}
       {pause && (
         <ConfirmDialog
@@ -261,6 +267,7 @@ function SiteDetail({ name }: { name: string }) {
   const [tab, setTab] = useState("umum");
   const settings = useLoad(() => get<{ kind: string; model: Model | null; system: boolean }>(`/api/sites/${name}/settings`), [name]);
   const [removing, setRemoving] = useState(false);
+  const [cloning, setCloning] = useState(false);
   const host = `${name}.lab`;
   const system = settings.data?.system ?? false;
   const missing = settings.error.includes("tidak ada");
@@ -272,6 +279,7 @@ function SiteDetail({ name }: { name: string }) {
         action={
           <>
             <a className="btn" href="#/website">Semua situs</a>
+            {!system && !missing && <button className="btn" onClick={() => setCloning(true)}>Kloning</button>}
             <a className="btn" href={`https://${host}`} target="_blank" rel="noopener noreferrer">
               <ExternalLink size={18} aria-hidden="true" />
               Buka situs<span className="sr"> (tab baru)</span>
@@ -279,6 +287,7 @@ function SiteDetail({ name }: { name: string }) {
           </>
         }
       />
+      {cloning && <CloneModal src={name} onClose={() => setCloning(false)} onDone={(n) => { setCloning(false); location.hash = `#/website/${n}`; }} />}
       {!missing && <Tabs tabs={system ? TABS.filter((t) => t.id !== "deploy") : TABS} value={tab} onChange={setTab} label="Bagian situs" />}
       {!missing && (
         <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">

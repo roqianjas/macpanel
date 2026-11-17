@@ -74,7 +74,7 @@ def site(a):
         sys.exit(stream([s, "--remove", a.name]))
     if a.act in ("enable", "disable"): site_toggle(a.name, a.act == "enable"); return
     if a.act == "cert": cert(a.name, a.aliases); return
-    cmd = [s, a.name, a.target] + (["--php", a.php] if a.php else [])
+    cmd = [s, a.name, a.target] + (["--php", a.php] if a.php else []) + (["--wordpress"] if getattr(a, "wordpress", False) else [])
     sys.exit(stream(cmd))
 
 
@@ -394,7 +394,7 @@ def app(a):
 def main():
     ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
     s = top.add_parser("site").add_subparsers(dest="act", required=True)
-    s.add_parser("list"); p = s.add_parser("add"); p.add_argument("name"); p.add_argument("target"); p.add_argument("--php", choices=PHPS)
+    s.add_parser("list"); p = s.add_parser("add"); p.add_argument("name"); p.add_argument("target"); p.add_argument("--php", choices=PHPS); p.add_argument("--wordpress", action="store_true")
     s.add_parser("remove").add_argument("name"); q = s.add_parser("cert"); q.add_argument("name"); q.add_argument("aliases", nargs="*")
     for x in ("enable", "disable"): s.add_parser(x).add_argument("name")
     sv = top.add_parser("service").add_subparsers(dest="act", required=True); q = sv.add_parser("list"); q.add_argument("--json", action="store_true")

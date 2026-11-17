@@ -14,7 +14,7 @@
   lab backup run
 Tanpa shell: semua argumen list; nama, versi, kunci, dan nilai divalidasi.
 """
-import argparse, json, os, re, shutil, socket, subprocess, sys, time
+import argparse, secrets, json, os, re, shutil, socket, subprocess, sys, time
 from pathlib import Path
 
 HOME = Path.home()
@@ -719,6 +719,200 @@ def sysx(a):
     if a.act == "stats": return sys_stats(a.name)
 
 
+# ---------- redis: penelusur kunci (argumen berupa list, tanpa shell) ----------
+RCLI = "/opt/homebrew/bin/redis-cli"
+KEY_OK = re.compile(r"^[\x21-\x7e]{1,200}$")
+PAT_OK = re.compile(r"^[A-Za-z0-9:_.*?\-]{1,100}$")
+
+
+def rcli(db, *args, timeout=10):
+    r = subprocess.run([RCLI, "-h", "127.0.0.1", "-n", str(db), "--no-raw", *args], capture_output=True, text=True, timeout=timeout)
+    if r.returncode: die("redis-cli gagal: " + (r.stderr or r.stdout).strip()[-200:])
+    return r.stdout
+
+
+def rcli_raw(db, *args):
+    r = subprocess.run([RCLI, "-h", "127.0.0.1", "-n", str(db), "--raw", *args], capture_output=True, text=True, timeout=10)
+    if r.returncode: die("redis-cli gagal: " + (r.stderr or r.stdout).strip()[-200:])
+    return r.stdout.splitlines()
+
+
+def redis_cmd(a):
+    if not (0 <= a.db <= 15): die("db 0-15")
+    if a.act == "info":
+        n = rcli_raw(a.db, "DBSIZE")[0]; m = {k: v for k, v in (l.split(":", 1) for l in rcli_raw(a.db, "INFO", "memory") if ":" in l and not l.startswith("#"))}
+        sz = {}
+        for l in rcli_raw(a.db, "INFO", "keyspace"):
+            if l.startswith("db"): sz[l.split(":")[0]] = l.split(":", 1)[1]
+        print(json.dumps(dict(dbsize=int(n), used_memory=m.get("used_memory_human", ""), maxmemory=m.get("maxmemory_human", ""), keyspace=sz))); return
+    if a.act == "scan":
+        pat = a.arg or "*"
+        if not PAT_OK.match(pat): die("pola: huruf, angka, : _ . - * ?")
+        keys, cur = [], "0"
+        for _ in range(60):
+            out = rcli_raw(a.db, "SCAN", cur, "MATCH", pat, "COUNT", "500")
+            cur, ks = out[0], out[1:]
+            keys += ks
+            if cur == "0" or len(keys) >= 200: break
+        keys = keys[:200]
+        rows = []
+        for k in keys:
+            t = rcli_raw(a.db, "TYPE", k)[0]; ttl = rcli_raw(a.db, "TTL", k)[0]
+            rows.append(dict(key=k, type=t, ttl=int(ttl) if ttl.lstrip("-").isdigit() else -1))
+        print(json.dumps(dict(keys=rows, more=(cur != "0")))); return
+    if not KEY_OK.match(a.arg or ""): die("nama kunci tidak valid (ASCII tampak, maks 200)")
+    if a.act == "del":
+        n = rcli_raw(a.db, "DEL", a.arg)[0]; print(f"OK: {n} kunci dihapus"); return
+    t = rcli_raw(a.db, "TYPE", a.arg)[0]
+    if t == "none": die("kunci tidak ada")
+    ttl = int(rcli_raw(a.db, "TTL", a.arg)[0])
+    if t == "string":
+        ln = int(rcli_raw(a.db, "STRLEN", a.arg)[0]); val = rcli_raw(a.db, "GETRANGE", a.arg, "0", "4095")
+        body = "\n".join(val); extra = ln
+    elif t == "list": body = "\n".join(rcli_raw(a.db, "LRANGE", a.arg, "0", "99")); extra = int(rcli_raw(a.db, "LLEN", a.arg)[0])
+    elif t == "set": body = "\n".join(rcli_raw(a.db, "SRANDMEMBER", a.arg, "100")); extra = int(rcli_raw(a.db, "SCARD", a.arg)[0])
+    elif t == "zset": body = "\n".join(rcli_raw(a.db, "ZRANGE", a.arg, "0", "99", "WITHSCORES")); extra = int(rcli_raw(a.db, "ZCARD", a.arg)[0])
+    elif t == "hash": body = "\n".join(rcli_raw(a.db, "HGETALL", a.arg)[:200]); extra = int(rcli_raw(a.db, "HLEN", a.arg)[0])
+    else: body = f"(tipe {t} tidak ditampilkan)"; extra = 0
+    print(json.dumps(dict(key=a.arg, type=t, ttl=ttl, size=extra, value=body[:8192], truncated=len(body) > 8192 or extra > 100)))
+
+
+# ---------- penginstal satu klik + kloning situs ----------
+APPS_DIR = HOME / "Developer/apps"
+LABBIN = str(OPS / "scripts/lab")
+NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$")
+
+
+def lab(*args, inp=None, timeout=900):
+    r = subprocess.run([LABBIN, *args], env=ENV, text=True, capture_output=True, input=inp, timeout=timeout)
+    return r
+
+
+def need(r, what):
+    if r.returncode: die(f"{what} gagal: " + ((r.stderr or r.stdout).strip()[-300:] or "tanpa pesan"))
+    return r.stdout
+
+
+def site_exists(n): return (OPS / "web/nginx/sites" / f"{n}.conf").exists() or (OPS / "web/nginx/sites" / f"{n}.conf.disabled").exists()
+
+
+def set_env_kv(text, kv):
+    """Ganti/aktifkan baris KEY=... (termasuk yang dikomentari); tambahkan bila tidak ada."""
+    for k, v in kv.items():
+        val = v if re.fullmatch(r"[A-Za-z0-9_./:@+-]*", v) else '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        pat = re.compile(rf"^#?\s*{re.escape(k)}=.*$", re.M)
+        text = pat.sub(lambda m: f"{k}={val}", text, count=1) if pat.search(text) else text.rstrip("\n") + f"\n{k}={val}\n"
+    return text
+
+
+def rollback(dest, dbs):
+    if dest and dest.exists() and APPS_DIR in dest.parents: shutil.rmtree(dest, ignore_errors=True)
+    for n, eng in dbs: lab("db", "drop", n, "--engine", eng, inp=n + "\n")
+
+
+def app_install(a):
+    n = a.name
+    if not NAME_RE.fullmatch(n or ""): die("nama: huruf kecil, angka, tanda hubung (maks 30)")
+    if n in ("home", "panel", "db", "nginx", "kuma", "stats", "dev", "mysql", "postgres", "root"): die("nama itu dicadangkan")
+    v = a.php
+    if v not in PHPS: die(f"versi PHP: {', '.join(PHPS)}")
+    if not php_home(v).exists(): die(f"PHP {v} belum terpasang")
+    dest = APPS_DIR / n
+    if dest.exists() or site_exists(n): die("nama sudah dipakai (folder atau situs)")
+    APPS_DIR.mkdir(parents=True, exist_ok=True)
+    dbs = []
+    try:
+        print("== database ==", flush=True)
+        need(lab("db", "create", n, "--engine", "mysql"), "buat database"); dbs.append((n, "mysql"))
+        import json as _j
+        cred = _j.loads(need(lab("db", "creds", n, "--engine", "mysql"), "baca kredensial"))
+        kv = {"DB_HOST": "127.0.0.1", "DB_PORT": "3306", "DB_DATABASE": n, "DB_USERNAME": cred["DB_USERNAME"], "DB_PASSWORD": cred["DB_PASSWORD"]}
+        php = php_bin(v)
+        env = dict(ENV, COMPOSER_NO_INTERACTION="1", COMPOSER_ALLOW_SUPERUSER="0")
+        if a.kind == "laravel":
+            print("== composer create-project laravel/laravel (bisa beberapa menit) ==", flush=True)
+            for attempt in range(3):
+                if not stream([php, COMPOSER, "create-project", "laravel/laravel", str(dest), "--no-interaction", "--prefer-dist"], env=env): break
+                shutil.rmtree(dest, ignore_errors=True)
+                if attempt == 2: die("composer create-project gagal setelah 3 percobaan (cek koneksi internet)")
+                print(f"percobaan {attempt + 1} gagal, mengulang…", flush=True); time.sleep(4)
+            ef = dest / ".env"
+            ef.write_text(set_env_kv(ef.read_text(), dict(kv, DB_CONNECTION="mysql", APP_URL=f"https://{n}.lab", SESSION_DRIVER="file", CACHE_STORE="file", QUEUE_CONNECTION="sync")))
+            os.chmod(ef, 0o600)
+            print("== artisan migrate ==", flush=True)
+            if stream([php, "artisan", "migrate", "--force"], cwd=str(dest), env=env): die("artisan migrate gagal")
+            root = dest / "public"
+        else:
+            print("== unduh WordPress dari wordpress.org ==", flush=True)
+            tgz = Path(f"/tmp/wp-{os.getpid()}.tar.gz")
+            try:
+                r = subprocess.run(["/usr/bin/curl", "-fsSL", "--retry", "4", "--retry-all-errors", "-o", str(tgz), "https://wordpress.org/latest.tar.gz"], env=ENV, text=True, capture_output=True)
+                if r.returncode: die("unduh gagal: " + (r.stderr or "").strip()[-200:])
+                dest.mkdir(mode=0o755)
+                need(subprocess.run(["/usr/bin/tar", "-xzf", str(tgz), "-C", str(dest), "--strip-components=1"], text=True, capture_output=True), "ekstrak")
+            finally: tgz.unlink(missing_ok=True)
+            sample = (dest / "wp-config-sample.php").read_text()
+            def q(x): return x.replace("\\", "\\\\").replace("'", "\\'")
+            for key, val in (("DB_NAME", n), ("DB_USER", kv["DB_USERNAME"]), ("DB_PASSWORD", kv["DB_PASSWORD"]), ("DB_HOST", "127.0.0.1")):
+                sample = re.sub(rf"define\(\s*'{key}',\s*'[^']*'\s*\);", lambda m: f"define( '{key}', '{q(val)}' );", sample)
+            sample = re.sub(r"'put your unique phrase here'", lambda m: "'" + secrets.token_urlsafe(48) + "'", sample)
+            wc = dest / "wp-config.php"; wc.write_text(sample); os.chmod(wc, 0o600)
+            root = dest
+        print("== daftarkan situs ==", flush=True)
+        need(lab("site", "add", n, str(root), "--php", v, *(["--wordpress"] if a.kind == "wordpress" else [])), "tambah situs")
+    except SystemExit:
+        rollback(dest, dbs); print("dibatalkan: folder dan database yang baru dibuat dibersihkan"); raise
+    print(f"OK: {a.kind} terpasang di {dest}. Buka https://{n}.lab" + (" dan selesaikan wizard WordPress (kredensial database sudah terisi)." if a.kind == "wordpress" else "."))
+
+
+def site_clone(a):
+    src, dst = a.src, a.dst
+    if not NAME_RE.fullmatch(dst or ""): die("nama tujuan: huruf kecil, angka, tanda hubung (maks 30)")
+    if dst in ("home", "panel", "db", "nginx", "kuma", "stats", "dev", "mysql", "postgres", "root"): die("nama itu dicadangkan")
+    d, v = project(src)
+    if dst == src or site_exists(dst) or (APPS_DIR / dst).exists(): die("nama tujuan sudah dipakai")
+    if APPS_DIR in d.parents or d.parent == APPS_DIR or True:
+        pass
+    out = APPS_DIR / dst
+    APPS_DIR.mkdir(parents=True, exist_ok=True)
+    dbs = []
+    try:
+        print("== salin berkas (tanpa .git, node_modules, log) ==", flush=True)
+        r = subprocess.run(["/usr/bin/rsync", "-a", "--exclude=.git", "--exclude=node_modules", "--exclude=storage/logs/*", "--exclude=.env.bak.*", "--exclude=*.log", f"{d}/", f"{out}/"], env=ENV, text=True, capture_output=True)
+        if r.returncode: die("salin gagal: " + (r.stderr or "").strip()[-200:])
+        envf = out / ".env"
+        if envf.exists():
+            text = envf.read_text()
+            m = re.search(r"^DB_DATABASE=(.*)$", text, re.M)
+            conn = (re.search(r"^DB_CONNECTION=(\S+)", text, re.M) or [None, "mysql"])[1]
+            eng = "pgsql" if conn in ("pgsql", "postgres", "postgresql") else "mysql"
+            if m and m.group(1).strip().strip("\"'"):
+                srcdb = m.group(1).strip().strip("\"'")
+                print("== database baru untuk kloning ==", flush=True)
+                need(lab("db", "create", dst, "--engine", eng), "buat database"); dbs.append((dst, eng))
+                cred = json.loads(need(lab("db", "creds", dst, "--engine", eng), "baca kredensial"))
+                if a.with_db:
+                    if NAME_RE.fullmatch(srcdb) and lab("db", "users", srcdb, "--engine", eng).returncode == 0:
+                        o = need(lab("db", "dump", srcdb, "--engine", eng), "dump database sumber")
+                        f = o.split("OK:")[1].split("(")[0].strip()
+                        nf = str(Path(f).with_name(Path(f).name.replace(f"{srcdb}-{eng}-", f"{dst}-{eng}-", 1)))
+                        os.rename(f, nf); f = nf  # restore hanya menerima dump bernama sesuai database tujuan
+                        need(lab("db", "restore", dst, "--engine", eng, "--file", f), "pulihkan ke database baru")
+                        try: os.remove(f)
+                        except OSError: pass
+                    else: print("catatan: database sumber bukan database proyek lab; hanya database kosong dibuat")
+                kv = {"DB_DATABASE": dst, "DB_USERNAME": cred["DB_USERNAME"], "DB_PASSWORD": cred["DB_PASSWORD"], "DB_HOST": "127.0.0.1", "APP_URL": f"https://{dst}.lab"}
+                envf.write_text(set_env_kv(text, kv)); os.chmod(envf, 0o600)
+            else:
+                envf.write_text(set_env_kv(text, {"APP_URL": f"https://{dst}.lab"})) if "APP_URL=" in text else None
+        root = out / "public" if (d / "public").is_dir() else out
+        args = ["site", "add", dst, str(root)] + (["--php", v] if v else [])
+        need(lab(*args), "tambah situs")
+    except SystemExit:
+        rollback(out, dbs); print("dibatalkan: salinan dan database yang baru dibuat dibersihkan"); raise
+    print(f"OK: {src} dikloning ke {dst} ({out}). Buka https://{dst}.lab. Database kloning terpisah dari sumber (.env sudah diarahkan ke database baru).")
+
+
 def main():
     ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
     e = top.add_parser("ext").add_subparsers(dest="act", required=True)
@@ -731,6 +925,11 @@ def main():
     q = c.add_parser("run"); q.add_argument("site"); q.add_argument("cmd", choices=["install", "install-nodev", "update", "dump-autoload", "validate"])
     d = top.add_parser("deploy").add_subparsers(dest="act", required=True)
     d.add_parser("info").add_argument("site"); q = d.add_parser("run"); q.add_argument("site"); q.add_argument("steps")
+    ins = top.add_parser("appinstall"); ins.add_argument("kind", choices=["laravel", "wordpress"]); ins.add_argument("name"); ins.add_argument("--php", default="8.4")
+    cl = top.add_parser("siteclone"); cl.add_argument("src"); cl.add_argument("dst"); cl.add_argument("--with-db", action="store_true")
+    rd = top.add_parser("redis").add_subparsers(dest="act", required=True)
+    for x in ("info", "scan", "get", "del"):
+        q = rd.add_parser(x); q.add_argument("--db", type=int, default=0); q.add_argument("arg", nargs="?", default="")
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
     for x in ("procs", "disk", "security", "docker"): sy.add_parser(x)
     sy.add_parser("kill").add_argument("pid", type=int); sy.add_parser("stats").add_argument("name")
@@ -749,6 +948,9 @@ def main():
     elif a.mod == "backup": backup(a)
     elif a.mod == "dbcfg": dbcfg(a)
     elif a.mod == "sys": sysx(a)
+    elif a.mod == "redis": redis_cmd(a)
+    elif a.mod == "appinstall": app_install(a)
+    elif a.mod == "siteclone": site_clone(a)
 
 
 if __name__ == "__main__":

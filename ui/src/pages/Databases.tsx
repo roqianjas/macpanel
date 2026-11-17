@@ -4,6 +4,7 @@ import { errText, fmtTime, get, post, upload } from "../api";
 import { trackJob } from "../jobs";
 import DbConfig from "./DbConfig";
 import DbAccess from "./DbAccess";
+import RedisBrowser from "./RedisBrowser";
 import { fmtBytes } from "../lib";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 
@@ -93,6 +94,7 @@ export default function Databases() {
         <p className="small muted">Untuk melihat isi tabel pakai Adminer di db.lab atau DBeaver lewat tailnet. Kata sandi proyek ada di berkas ~/.config/macminiops/projects di Mac mini.</p>
       </State>
       <DbConfig />
+      <RedisBrowser />
       {access && <DbAccess engine={access.engine} name={access.name} onClose={() => setAccess(null)} />}
       {restoring && (
         <RestoreDialog

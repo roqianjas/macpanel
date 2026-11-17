@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestApr1MatchesOpenSSL(t *testing.T) {
@@ -278,5 +280,51 @@ func TestRawEditCannotHijackDomains(t *testing.T) {
 	edit := strings.Replace(orig, "server_name demo.lab;", "server_name demo.lab bebas.lab;", 2)
 	if c, b := o.post("/api/sites/demo/config", `{"sha":"`+sha256hex(o.siteConf("demo"))+`","content":`+jsonQuote(edit)+`}`); c != 200 {
 		t.Errorf("alias bebas harus diterima: %d %s", c, b)
+	}
+}
+
+func TestSiteExtrasCountLimits(t *testing.T) {
+	o := extrasEnv(t)
+	o.stepup()
+	ips := make([]string, 21)
+	for i := range ips {
+		ips[i] = fmt.Sprintf(`"100.64.1.%d"`, i+1)
+	}
+	if c, b := o.settings("demo", withExtra(o.goodModel("php"), `"allow_ips":[`+strings.Join(ips, ",")+`]`)); c != 400 {
+		t.Errorf("21 aturan IP harus ditolak: %d %s", c, b)
+	}
+	if c, b := o.settings("demo", withExtra(o.goodModel("php"), `"allow_ips":[`+strings.Join(ips[:20], ",")+`]`)); c != 200 {
+		t.Errorf("20 aturan IP harus diterima: %d %s", c, b)
+	}
+}
+
+func TestAuthUserCapAndEnvBackupRetention(t *testing.T) {
+	o := extrasEnv(t)
+	o.stepup()
+	for i := 0; i < 20; i++ {
+		u := "user" + string(rune('a'+i))
+		if c, b := o.post("/api/sites/demo/auth/users", `{"user":"`+u+`","password":"kata-sandi-1"}`); c != 200 {
+			t.Fatalf("pengguna ke-%d: %d %s", i+1, c, b)
+		}
+	}
+	if c, b := o.post("/api/sites/demo/auth/users", `{"user":"lebih","password":"kata-sandi-1"}`); c != 400 || !strings.Contains(b, "maksimal 20") {
+		t.Errorf("pengguna ke-21 harus ditolak: %d %s", c, b)
+	}
+	if c, _ := o.post("/api/sites/demo/auth/users", `{"user":"usera","password":"kata-sandi-baru"}`); c != 200 {
+		t.Errorf("mengganti sandi pengguna yang ada tetap boleh pada batas penuh: %d", c)
+	}
+
+	o.settings("demo", o.goodModel("php"))
+	env := filepath.Join(o.home, "Developer/proj/.env")
+	os.WriteFile(env, []byte("V=0\n"), 0o600)
+	for i := 1; i <= 6; i++ {
+		o.now = o.now.Add(2 * time.Second) // nama cadangan memakai detik
+		if c, b := o.post("/api/sites/demo/env", `{"content":"V=`+string(rune('0'+i))+`\n"}`); c != 200 {
+			t.Fatalf("simpan %d: %d %s", i, c, b)
+		}
+	}
+	baks, _ := filepath.Glob(env + ".bak.*")
+	if len(baks) != 3 {
+		t.Fatalf("hanya 3 cadangan .env yang disimpan, ada %d: %v", len(baks), baks)
 	}
 }

@@ -329,3 +329,8 @@ textarea.mono { width: 100%; }
 .bar-val { text-align: right; }
 .ellip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
 @media (max-width: 760px) { .bar-row { grid-template-columns: minmax(0, 1fr) 80px; } .bar-track { grid-column: 1 / -1; order: 3; } }
+
+.row-form { display: flex; gap: var(--s3); align-items: end; flex-wrap: wrap; }
+.row-form .field { flex: 1 1 200px; }
+.grow { flex: 1; min-width: 0; }
+.ellip-wrap { overflow-wrap: anywhere; }
