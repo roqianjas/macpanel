@@ -100,7 +100,7 @@ export default function Backups() {
           title={`Hapus ${sel.length} backup`}
           word="hapus"
           verb={`Hapus ${sel.length} backup`}
-          body={<p>Backup terpilih dihapus permanen dari disk ini. Meminta kode TOTP ulang.</p>}
+          body={<p>Backup terpilih dihapus permanen dari disk ini. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post("/api/backups/delete", { names: sel });
             setSel([]);
@@ -218,7 +218,7 @@ function Browse({ name, onClose }: { name: string; onClose: () => void }) {
             })}
           </ul>
         </State>
-        <p className="small muted">Ekstrak menyalin ke <span className="mono">~/MacPanel/backup/restore/&lt;waktu&gt;/</span>. Berkas asli tidak pernah ditimpa; salin manual bila perlu. Meminta kode TOTP ulang.</p>
+        <p className="small muted">Ekstrak menyalin ke <span className="mono">~/MacPanel/backup/restore/&lt;waktu&gt;/</span>. Berkas asli tidak pernah ditimpa; salin manual bila perlu. Meminta kata sandi ulang.</p>
       </div>
     </Modal>
   );

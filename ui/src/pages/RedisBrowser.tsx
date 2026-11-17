@@ -37,7 +37,7 @@ export default function RedisBrowser() {
   return (
     <Card title="Penelusur Redis">
       <p className="small muted">
-        Server lokal 127.0.0.1. {info.data ? `${info.data.dbsize} kunci di db ${db} · memori ${info.data.used_memory}` : ""} Melihat nilai dan menghapus kunci meminta kode TOTP ulang dan dicatat (nama kunci saja, bukan isi). Akun hanya-baca tidak bisa memakai fitur ini.
+        Server lokal 127.0.0.1. {info.data ? `${info.data.dbsize} kunci di db ${db} · memori ${info.data.used_memory}` : ""} Melihat nilai dan menghapus kunci meminta kata sandi ulang dan dicatat (nama kunci saja, bukan isi). Akun hanya-baca tidak bisa memakai fitur ini.
       </p>
       <form className="row-form" onSubmit={(e) => { e.preventDefault(); setApplied(pattern.trim() || "*"); }}>
         <Field label="Pola kunci" hint="Contoh: user:* atau cache:*. Maksimal 200 hasil.">{(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={pattern} onChange={(e) => setPattern(e.target.value)} spellCheck={false} />}</Field>

@@ -205,7 +205,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   );
 }
 
-/** Konfirmasi aksi merusak: pengguna mengetik ulang kata kunci. TOTP ulang diminta otomatis oleh api(). */
+/** Konfirmasi aksi merusak: pengguna mengetik ulang kata kunci. Kata sandi ulang diminta otomatis oleh api(). */
 export function ConfirmDialog({ title, body, word, verb, onConfirm, onClose }: { title: string; body: ReactNode; word: string; verb: string; onConfirm: () => Promise<void>; onClose: () => void }) {
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);

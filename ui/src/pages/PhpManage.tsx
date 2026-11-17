@@ -142,7 +142,7 @@ function Extensions({ v }: { v: string }) {
           title={`Hapus ${rm.label}`}
           word={rm.name}
           verb="Hapus ekstensi"
-          body={<p>Ekstensi dihapus dari PHP {v}. Aplikasi yang memakainya akan error sampai dipasang lagi. Meminta kode TOTP ulang.</p>}
+          body={<p>Ekstensi dihapus dari PHP {v}. Aplikasi yang memakainya akan error sampai dipasang lagi. Meminta kata sandi ulang.</p>}
           onConfirm={async () => act(rm, "remove")}
           onClose={() => setRm(null)}
         />
@@ -230,7 +230,7 @@ function Fpm({ v }: { v: string }) {
           title={`Mulai ulang FPM ${v}`}
           word={`php-${v}`}
           verb="Mulai ulang"
-          body={<p>Situs PHP {v} berhenti menjawab beberapa detik. Meminta kode TOTP ulang.</p>}
+          body={<p>Situs PHP {v} berhenti menjawab beberapa detik. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post(`/api/services/php-${v}/restart`, {});
             setNote({ tone: "ok", text: `FPM ${v} dimulai ulang.` });

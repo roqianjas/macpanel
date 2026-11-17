@@ -40,10 +40,10 @@ async function send(method: string, path: string, body?: unknown): Promise<{ res
   return { res, data };
 }
 
-/** Semua panggilan ke server. Bila server meminta verifikasi TOTP ulang, tampilkan dialog lalu ulangi sekali. */
+/** Semua panggilan ke server. Bila server meminta verifikasi kata sandi ulang, tampilkan dialog lalu ulangi sekali. */
 export async function api<T = any>(method: string, path: string, body?: unknown): Promise<T> {
   let { res, data } = await send(method, path, body);
-  if (res.status === 403 && typeof data?.error === "string" && data.error.includes("TOTP ulang") && stepUp) {
+  if (res.status === 403 && typeof data?.error === "string" && data.error.includes("kata sandi ulang") && stepUp) {
     if (await stepUp()) ({ res, data } = await send(method, path, body));
   }
   if (res.status === 401 && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event(UNAUTH));
@@ -51,7 +51,7 @@ export async function api<T = any>(method: string, path: string, body?: unknown)
   return data as T;
 }
 
-/** Unggah berkas mentah (dump SQL). Tanpa JSON; ulang sekali bila server minta TOTP ulang. */
+/** Unggah berkas mentah (dump SQL). Tanpa JSON; ulang sekali bila server minta kata sandi ulang. */
 export async function upload<T = any>(path: string, file: File): Promise<T> {
   const once = async () => {
     const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-CSRF-Token": csrf }, credentials: "same-origin", body: file });
@@ -65,7 +65,7 @@ export async function upload<T = any>(path: string, file: File): Promise<T> {
     return { res, data };
   };
   let { res, data } = await once();
-  if (res.status === 403 && typeof data?.error === "string" && data.error.includes("TOTP ulang") && stepUp) {
+  if (res.status === 403 && typeof data?.error === "string" && data.error.includes("kata sandi ulang") && stepUp) {
     if (await stepUp()) ({ res, data } = await once());
   }
   if (res.status === 401) window.dispatchEvent(new Event(UNAUTH));

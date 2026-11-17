@@ -28,7 +28,7 @@ Aset: akun `<user>` di Mac mini (kode, SSH key, database, backup). Panel yang bi
 | Pencurian sesi / CSRF | Cookie `__Host-`, `HttpOnly`, `Secure`, `SameSite=Strict`; token CSRF per sesi di header; cek `Origin`/`Host` |
 | Injeksi perintah/argumen | Aksi = allowlist tetap; parameter diketik dan divalidasi regex (sama dengan `lab`); `exec` dengan argv list; argumen berawalan `-` ditolak |
 | Path traversal | Folder harus di bawah `~/MacPanel/wwwroot` setelah `realpath` (symlink diikuti lalu diperiksa) |
-| Aksi destruktif tak sengaja | Konfirmasi ketik nama + **TOTP ulang** (step-up, berlaku 5 menit) untuk drop db, hapus situs, remove php, update |
+| Aksi destruktif tak sengaja | Konfirmasi ketik nama + **kata sandi ulang** (step-up, berlaku 15 menit; sejak 2026-11-17, sebelumnya TOTP 5 menit) untuk drop db, hapus situs, remove php, update |
 | Kebocoran rahasia | Password db tidak pernah dikirim ke browser atau log; output perintah disaring (`scrub`); tidak ada tombol "tampilkan password" |
 | Pelaku menghapus jejak | Audit append-only dengan hash berantai, tidak ada endpoint hapus/ubah |
 | Panel sendiri diserang dari dalam (XSS) | CSP ketat tanpa inline script, React tanpa `dangerouslySetInnerHTML`, header `no-store` untuk API |

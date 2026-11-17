@@ -264,7 +264,6 @@ CATALOG = [
     S("mailpit", "Mailpit", "Alat pengembangan", "brew", "mailpit", port=8025, optional=True, desc="Penangkap email dev: SMTP 1025, UI 127.0.0.1:8025"),
     S("netdata", "Netdata", "Monitoring", "brew", "netdata", port=19999, log=str(LOGD / "netdata/daemon.log"), desc="Metrik sistem real-time (stats.lab)"),
     S("uptime-kuma", "Uptime Kuma", "Monitoring", "launchd", "com.macminiops.uptime-kuma", port=3001, log=str(HOME / "Library/Logs/uptime-kuma.log"), desc="Pemantau uptime (kuma.lab)"),
-    S("nginx-ui", "Nginx UI", "Alat pengembangan", "brew", "nginx-ui", port=9000, log=str(LOGD / "nginx-ui.log"), desc="Editor config nginx (nginx.lab)"),
     S("dnsmasq", "dnsmasq", "Jaringan", "brew", "dnsmasq", ctl=False, proc="dnsmasq", desc="DNS *.lab; dijalankan sebagai root, kendali lewat sudo di terminal"),
     S("panel", "Panel", "Sistem", "launchd", "com.macminiops.panel", port=9100, ctl=False, log=str(HOME / "Library/Logs/panel.log"), desc="Panel ini; tidak bisa dihentikan dari dirinya sendiri"),
 ]

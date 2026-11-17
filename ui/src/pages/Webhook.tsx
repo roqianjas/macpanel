@@ -99,10 +99,10 @@ export default function Webhook({ name, steps }: { name: string; steps: { id: st
         </Modal>
       )}
       {rotate && (
-        <ConfirmDialog title="Buat secret baru" word={name} verb="Buat secret baru" body={<p>Secret lama langsung tidak berlaku; perbarui webhook di GitHub. Meminta kode TOTP ulang.</p>} onConfirm={async () => { await save(true); }} onClose={() => setRotate(false)} />
+        <ConfirmDialog title="Buat secret baru" word={name} verb="Buat secret baru" body={<p>Secret lama langsung tidak berlaku; perbarui webhook di GitHub. Meminta kata sandi ulang.</p>} onConfirm={async () => { await save(true); }} onClose={() => setRotate(false)} />
       )}
       {del && (
-        <ConfirmDialog title="Hapus webhook" word={name} verb="Hapus webhook" body={<p>Webhook dihapus dan secret dibuang. Meminta kode TOTP ulang.</p>} onConfirm={async () => { await post(`/api/sites/${name}/hook/remove`, {}); q.reload(); }} onClose={() => setDel(false)} />
+        <ConfirmDialog title="Hapus webhook" word={name} verb="Hapus webhook" body={<p>Webhook dihapus dan secret dibuang. Meminta kata sandi ulang.</p>} onConfirm={async () => { await post(`/api/sites/${name}/hook/remove`, {}); q.reload(); }} onClose={() => setDel(false)} />
       )}
     </Card>
   );

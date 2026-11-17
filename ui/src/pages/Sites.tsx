@@ -155,7 +155,7 @@ function SiteList() {
           title={`Jeda ${pause.host}`}
           word={pause.name}
           verb="Jeda situs"
-          body={<p>Situs berhenti dilayani (nginx tidak lagi memuat konfigurasinya). Folder proyek dan konfigurasi tidak dihapus. Meminta kode TOTP ulang.</p>}
+          body={<p>Situs berhenti dilayani (nginx tidak lagi memuat konfigurasinya). Folder proyek dan konfigurasi tidak dihapus. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post(`/api/sites/${pause.name}/disable`, {});
             setNote({ tone: "ok", text: `${pause.host} dijeda.` });
@@ -335,7 +335,7 @@ function SiteDetail({ name }: { name: string }) {
           title={`Hapus ${host}`}
           word={name}
           verb="Hapus situs"
-          body={<p>Situs akan berhenti dilayani. Aksi ini meminta kode TOTP ulang.</p>}
+          body={<p>Situs akan berhenti dilayani. Aksi ini meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post(`/api/sites/${name}/remove`, { confirm: name });
             location.hash = "#/website";
@@ -712,7 +712,7 @@ function AuthUsers({ name, enabled }: { name: string; enabled: boolean }) {
           title={`Hapus pengguna ${rm}`}
           word={rm}
           verb="Hapus pengguna"
-          body={<p>Pengguna ini tidak bisa masuk lagi. Meminta kode TOTP ulang.</p>}
+          body={<p>Pengguna ini tidak bisa masuk lagi. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post(`/api/sites/${name}/auth/users/${rm}/remove`, {});
             q.reload();
@@ -760,7 +760,7 @@ function EnvEditor({ name }: { name: string }) {
   };
   return (
     <Card title="Berkas .env proyek">
-      <p className="small muted">Berisi rahasia (kata sandi database, kunci aplikasi). Membukanya meminta kode TOTP ulang dan dicatat di audit; isinya tidak pernah dicatat. Akun hanya-baca tidak bisa membukanya. Berkas disimpan dengan izin 0600.</p>
+      <p className="small muted">Berisi rahasia (kata sandi database, kunci aplikasi). Membukanya meminta kata sandi ulang dan dicatat di audit; isinya tidak pernah dicatat. Akun hanya-baca tidak bisa membukanya. Berkas disimpan dengan izin 0600.</p>
       {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
       {state !== "open" ? (
         <div>

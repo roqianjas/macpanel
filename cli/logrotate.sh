@@ -8,8 +8,6 @@ LIMIT_KB=${LIMIT_KB:-5120}; KEEP=${KEEP:-5}
 LOGS=(
   /opt/homebrew/var/log/nginx/access.log
   /opt/homebrew/var/log/nginx/error.log
-  /opt/homebrew/var/log/nginx-ui.log
-  /opt/homebrew/var/log/nginx-ui.err.log
   /opt/homebrew/var/log/netdata/collector.log
   /opt/homebrew/var/log/netdata/daemon.log
   /opt/homebrew/var/log/netdata/access.log

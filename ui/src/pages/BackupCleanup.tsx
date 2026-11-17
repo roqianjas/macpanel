@@ -68,7 +68,7 @@ export function CleanupCard({ onChanged }: { onChanged: () => void }) {
           title="Hapus backup lama"
           word="hapus"
           verb={`Hapus ${plan.remove.length} backup`}
-          body={<p>{plan.remove.length} backup ({fmtBytes(total)}) dihapus permanen dari disk ini. Backup terbaru tetap ada. Meminta kode TOTP ulang.</p>}
+          body={<p>{plan.remove.length} backup ({fmtBytes(total)}) dihapus permanen dari disk ini. Backup terbaru tetap ada. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post("/api/backups/prune", { keep: Number(k), days: Number(dd) });
             setPlan(null);
@@ -137,7 +137,7 @@ function Row({ kind, title, info, onDone }: { kind: "db" | "restore"; title: str
           title={`Hapus ${title.toLowerCase()}`}
           word="hapus"
           verb={`Hapus ${pv.count} item`}
-          body={<p>{pv.count} item ({fmtBytes(pv.kb * 1024)}) dihapus permanen. Meminta kode TOTP ulang.</p>}
+          body={<p>{pv.count} item ({fmtBytes(pv.kb * 1024)}) dihapus permanen. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post("/api/backups/extras", { kind, days: Number(days) });
             setPv(null);

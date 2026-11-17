@@ -77,7 +77,7 @@ export default function DbAccess({ engine, name, onClose }: { engine: string; na
             Ganti kata sandi
           </button>
         </div>
-        <p className="small muted">Melihat kredensial dan mengganti sandi meminta kode TOTP ulang dan dicatat di audit (tanpa isi). Setelah sandi diganti, perbarui <span className="mono">.env</span> aplikasi yang memakainya.</p>
+        <p className="small muted">Melihat kredensial dan mengganti sandi meminta kata sandi ulang dan dicatat di audit (tanpa isi). Setelah sandi diganti, perbarui <span className="mono">.env</span> aplikasi yang memakainya.</p>
       </div>
       {rotate && (
         <ConfirmDialog

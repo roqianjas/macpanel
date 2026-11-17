@@ -26,7 +26,7 @@ Captured from a throwaway demo instance (fake sites, empty database list, no rea
 - **Workers and cron:** supervisor/crontab equivalent on launchd.
 - **Deploy:** per-site git pull, composer, npm/pnpm, artisan, FPM restart.
 - **Monitoring:** CPU, memory, disk, load, per-interface bandwidth with 7-day history; alerts for disk, memory, services, site errors, SSL expiry, stale backups.
-- **Security:** loopback bind, TOTP, step-up for destructive actions, hash-chained audit log, admin/viewer roles, no web shell.
+- **Security:** loopback bind, TOTP at login, password step-up for destructive actions, hash-chained audit log, admin/viewer roles, no web shell.
 - UI: React + Vite, light/dark, responsive, accessible (keyboard, 44px targets, reduced motion). Backend: one Go binary with SQLite.
 
 ## How it is built

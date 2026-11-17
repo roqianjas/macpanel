@@ -445,7 +445,7 @@ func hLogout(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 }
 
 func hStepUp(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
-	var in struct{ Code string }
+	var in struct{ Password string }
 	if !decode(w, r, &in) {
 		return
 	}
@@ -454,10 +454,11 @@ func hStepUp(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		tooMany(w)
 		return
 	}
-	if !a.verifyCode(ss, in.Code, ip) {
+	u := a.st.GetUser(ss.User)
+	if u == nil || u.Disabled || len(in.Password) > 256 || !verifyPassword(u.PassHash, in.Password) {
 		a.fail(ss.User, ip)
 		a.st.Audit(ss.User, "stepup_fail", "", ip, a.now())
-		jerr(w, 401, "kode salah")
+		jerr(w, 400, "kata sandi salah") // 400 (bukan 401) agar UI tidak mengeluarkan sesi
 		return
 	}
 	a.st.SetStepUp(ss.ID, a.now().Add(stepupTTL))
@@ -470,7 +471,7 @@ func (a *App) requireStepUp(w http.ResponseWriter, ss *Session) bool {
 	if ss.StepUp > a.now().Unix() {
 		return true
 	}
-	jerr(w, 403, "butuh verifikasi TOTP ulang")
+	jerr(w, 403, "butuh verifikasi kata sandi ulang")
 	return false
 }
 

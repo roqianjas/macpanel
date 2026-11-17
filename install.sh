@@ -116,6 +116,10 @@ fi
 say "Selesai. Langkah yang perlu Anda lakukan sendiri"
 NEXT+=("Buat akun admin: $PANEL/panel user add <nama>   (kata sandi dan kunci TOTP diisi/dicatat oleh Anda; masukkan kunci ke Google Authenticator)")
 NEXT+=("DNS *.$TLD (butuh sudo): echo 'address=/$TLD/<IP-Tailscale-atau-127.0.0.1>' ke $BREWP/etc/dnsmasq.conf, lalu 'sudo brew services start dnsmasq' dan 'echo nameserver 127.0.0.1 | sudo tee /etc/resolver/$TLD'")
+if ! command -v tailscale >/dev/null 2>&1 && [ ! -d /Applications/Tailscale.app ]; then
+  NEXT+=("Tailscale belum ada. Disarankan versi Homebrew (jalan sebelum login, cocok untuk reboot jarak jauh): brew install tailscale && sudo brew services start tailscale && sudo tailscale up --hostname=<nama-mesin> --accept-routes --operator=\$USER")
+fi
+NEXT+=("Setelah IP tailnet diketahui ('tailscale ip -4'): pasang di dnsmasq.conf (listen-address dan address=/$TLD/), lalu tambahkan split DNS '$TLD' ke IP itu di admin console Tailscale. IP berubah bila Tailscale dipasang ulang.")
 NEXT+=("Jalankan nginx: brew services start nginx    (bila belum)")
 NEXT+=("Buka https://panel.$TLD dari perangkat di tailnet Anda")
 i=1; for n in "${NEXT[@]}"; do echo "  $i. $n"; i=$((i+1)); done

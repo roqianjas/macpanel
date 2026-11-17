@@ -213,7 +213,7 @@ function AddTask({ kind, onClose, onDone }: { kind: "worker" | "job"; onClose: (
           )}
         </div>
         {err && <Alert>{err}</Alert>}
-        <p className="small muted">Aksi ini meminta kode TOTP ulang karena menjalankan kode proyek terus-menerus.</p>
+        <p className="small muted">Aksi ini meminta kata sandi ulang karena menjalankan kode proyek terus-menerus.</p>
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>
             Batal

@@ -64,7 +64,7 @@ export default function Deploy({ name }: { name: string }) {
               ) : (
                 <p className="small muted">Folder ini bukan repositori git, jadi langkah git pull tidak tersedia.</p>
               )}
-              <p className="small muted">Langkah dijalankan berurutan dan berhenti di langkah pertama yang gagal. Git memakai SSH tanpa prompt: bila key butuh passphrase, tarik manual di terminal. Meminta kode TOTP ulang.</p>
+              <p className="small muted">Langkah dijalankan berurutan dan berhenti di langkah pertama yang gagal. Git memakai SSH tanpa prompt: bila key butuh passphrase, tarik manual di terminal. Meminta kata sandi ulang.</p>
             </Card>
             <Card title="Langkah deploy">
               {steps.length === 0 ? (

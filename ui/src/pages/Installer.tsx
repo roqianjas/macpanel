@@ -35,7 +35,7 @@ export function InstallModal({ onClose, onDone }: { onClose: () => void; onDone:
   return (
     <Modal title="Pasang cepat" onClose={onClose}>
       <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run("/api/installer", { kind, name, php }, `Pasang ${kind} ${name}`, name); }}>
-        <p className="small muted">Membuat folder di <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, database MySQL baru, kredensial, dan situs <span className="mono">&lt;nama&gt;.lab</span>. Butuh internet dan beberapa menit. Bila gagal di tengah, semua yang baru dibuat dibersihkan. Meminta kode TOTP ulang.</p>
+        <p className="small muted">Membuat folder di <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, database MySQL baru, kredensial, dan situs <span className="mono">&lt;nama&gt;.lab</span>. Butuh internet dan beberapa menit. Bila gagal di tengah, semua yang baru dibuat dibersihkan. Meminta kata sandi ulang.</p>
         <div className="seg" role="group" aria-label="Jenis aplikasi">
           {(["laravel", "wordpress"] as const).map((k) => (
             <button key={k} type="button" className={`seg-btn ${kind === k ? "on" : ""}`} aria-pressed={kind === k} onClick={() => setKind(k)}>{k === "laravel" ? "Laravel" : "WordPress"}</button>
@@ -61,7 +61,7 @@ export function CloneModal({ src, onClose, onDone }: { src: string; onClose: () 
   return (
     <Modal title={`Kloning ${src}.lab`} onClose={onClose}>
       <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run(`/api/sites/${src}/clone`, { dst, with_db: withDb }, `Kloning ${src} ke ${dst}`, dst); }}>
-        <p className="small muted">Menyalin folder proyek (tanpa <span className="mono">.git</span>, <span className="mono">node_modules</span>, dan log) ke <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, membuat situs baru, dan database baru terpisah dengan kredensial sendiri; <span className="mono">.env</span> salinan diarahkan ke database baru sehingga staging tidak menyentuh data sumber. Meminta kode TOTP ulang.</p>
+        <p className="small muted">Menyalin folder proyek (tanpa <span className="mono">.git</span>, <span className="mono">node_modules</span>, dan log) ke <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, membuat situs baru, dan database baru terpisah dengan kredensial sendiri; <span className="mono">.env</span> salinan diarahkan ke database baru sehingga staging tidak menyentuh data sumber. Meminta kata sandi ulang.</p>
         <Field label="Nama situs baru">{(id) => <input id={id} className="mono" value={dst} onChange={(e) => setDst(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
         <div className="checks">
           <label className="check"><input type="checkbox" checked={withDb} onChange={(e) => setWithDb(e.target.checked)} />Salin juga isi database (bila proyek memakai database lab dengan nama sama)</label>

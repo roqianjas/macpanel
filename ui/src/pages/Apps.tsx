@@ -128,7 +128,7 @@ export default function Apps() {
                 : confirm.s.group === "Database" || confirm.s.id === "nginx" || confirm.s.group === "PHP"
                   ? "Situs atau aplikasi yang memakainya akan terputus sebentar."
                   : "Layanan akan terputus sebentar."}{" "}
-              Aksi ini meminta kode TOTP ulang.
+              Aksi ini meminta kata sandi ulang.
             </p>
           }
           onConfirm={async () => {

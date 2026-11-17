@@ -35,7 +35,7 @@ const (
 	idleTTL   = 30 * time.Minute
 	absTTL    = 12 * time.Hour
 	pwdTTL    = 5 * time.Minute
-	stepupTTL = 5 * time.Minute
+	stepupTTL = 15 * time.Minute
 )
 
 type Store struct{ db *sql.DB }

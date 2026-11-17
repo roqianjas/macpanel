@@ -54,8 +54,7 @@ func (o *opsEnv) post(path, body string) (int, string) {
 func (o *opsEnv) calls() string { b, _ := os.ReadFile(o.log); return string(b) }
 
 func (o *opsEnv) stepup() {
-	o.now = o.now.Add(31 * time.Second)
-	if w := o.do("POST", "/api/auth/stepup", `{"code":"`+o.code(0)+`"}`, o.cookie, o.csrf, nil); w.Code != 200 {
+	if w := o.do("POST", "/api/auth/stepup", `{"password":"kata-sandi-panjang-123"}`, o.cookie, o.csrf, nil); w.Code != 200 {
 		o.t.Fatalf("stepup: %d", w.Code)
 	}
 }

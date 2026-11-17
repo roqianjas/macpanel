@@ -42,7 +42,7 @@ func TestTrustedDeviceFlow(t *testing.T) {
 		t.Fatal("cookie tepercaya tidak keluar")
 	}
 	// step-up di sesi ini, supaya terbukti tidak 'terbawa' ke sesi tepercaya
-	if w := e.do("POST", "/api/auth/stepup", `{"code":"`+e.code(1)+`"}`, ck, cs, nil); w.Code != 200 {
+	if w := e.do("POST", "/api/auth/stepup", `{"password":"kata-sandi-panjang-123"}`, ck, cs, nil); w.Code != 200 {
 		t.Fatalf("stepup: %d %s", w.Code, w.Body)
 	}
 	// login berikutnya: kata sandi saja
@@ -102,7 +102,7 @@ func TestTrustedRevokeAndPasswordChange(t *testing.T) {
 	// ganti sandi mencabut semua
 	e.now = e.now.Add(time.Minute)
 	ck, cs, tok = e.trustLogin(true)
-	if w := e.do("POST", "/api/auth/stepup", `{"code":"`+e.code(1)+`"}`, ck, cs, nil); w.Code != 200 {
+	if w := e.do("POST", "/api/auth/stepup", `{"password":"kata-sandi-panjang-123"}`, ck, cs, nil); w.Code != 200 {
 		t.Fatalf("stepup: %d %s", w.Code, w.Body)
 	}
 	if w := e.do("POST", "/api/me/password", `{"current":"kata-sandi-panjang-123","new":"sandi-baru-yang-panjang-456"}`, ck, cs, nil); w.Code != 200 {

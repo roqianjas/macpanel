@@ -398,8 +398,7 @@ func TestStepUp(t *testing.T) {
 	if m := e.do("GET", "/api/me", "", c, "", nil); !strings.Contains(m.Body.String(), `"stepup":false`) {
 		t.Fatal("stepup harus false di awal")
 	}
-	e.now = e.now.Add(31 * time.Second) // langkah TOTP baru (anti-replay)
-	if w := e.do("POST", "/api/auth/stepup", `{"code":"`+e.code(0)+`"}`, c, cs, nil); w.Code != 200 {
+	if w := e.do("POST", "/api/auth/stepup", `{"password":"kata-sandi-panjang-123"}`, c, cs, nil); w.Code != 200 {
 		t.Fatalf("stepup: %d %s", w.Code, w.Body)
 	}
 	if m := e.do("GET", "/api/me", "", c, "", nil); !strings.Contains(m.Body.String(), `"stepup":true`) {

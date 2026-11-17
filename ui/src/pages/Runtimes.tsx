@@ -212,7 +212,7 @@ export default function Runtimes() {
           title={`Hapus PHP ${rmPhp}`}
           word={rmPhp}
           verb="Hapus PHP"
-          body={<p>Situs yang memakai versi ini akan berhenti bekerja sampai dipindah ke versi lain. Meminta kode TOTP ulang.</p>}
+          body={<p>Situs yang memakai versi ini akan berhenti bekerja sampai dipindah ke versi lain. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             const r = await post<{ job: number }>(`/api/php/${rmPhp}/remove`, { confirm: rmPhp });
             trackJob(r.job, `Hapus PHP ${rmPhp}`, php.reload);
@@ -225,7 +225,7 @@ export default function Runtimes() {
           title={`Hapus ${rmRt.tool} ${rmRt.version}`}
           word={`${rmRt.tool}@${rmRt.version}`}
           verb="Hapus versi"
-          body={<p>Proyek yang bergantung pada versi ini perlu dipindah. Meminta kode TOTP ulang.</p>}
+          body={<p>Proyek yang bergantung pada versi ini perlu dipindah. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post(`/api/runtime/${rmRt.tool}/${rmRt.version}/remove`, { confirm: `${rmRt.tool}@${rmRt.version}` });
             rt.reload();

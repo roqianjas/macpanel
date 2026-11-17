@@ -38,7 +38,7 @@ export default function Databases() {
     <>
       <PageHead
         title="Database"
-        desc="Satu database dan satu pengguna per proyek. Kata sandi dibuat acak; melihatnya lewat tombol Akses butuh kode TOTP ulang dan dicatat."
+        desc="Satu database dan satu pengguna per proyek. Kata sandi dibuat acak; melihatnya lewat tombol Akses butuh kata sandi ulang dan dicatat."
         action={
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
             <Plus size={18} aria-hidden="true" />
@@ -116,7 +116,7 @@ export default function Databases() {
           title={`Hapus database ${dropping.name}`}
           word={dropping.name}
           verb="Hapus database"
-          body={<p>Dump otomatis dibuat ke ~/MacPanel/backup/db sebelum dihapus. Database dan penggunanya hilang dari server. Meminta kode TOTP ulang.</p>}
+          body={<p>Dump otomatis dibuat ke ~/MacPanel/backup/db sebelum dihapus. Database dan penggunanya hilang dari server. Meminta kata sandi ulang.</p>}
           onConfirm={async () => {
             await post(`/api/db/${dropping.engine}/${dropping.name}/drop`, { confirm: dropping.name });
             setNote({ tone: "ok", text: `${dropping.name} dihapus; dump terakhir tersimpan di ~/MacPanel/backup/db.` });
@@ -202,7 +202,7 @@ function RestoreDialog({ engine, name, onClose, onStarted }: { engine: Engine; n
   return (
     <Modal title={`Pulihkan ${name}`} onClose={onClose}>
       <div className="stack">
-        <p className="small">Pemulihan hanya berjalan ke database yang <strong>kosong</strong> dan tidak pernah menimpa data. Bila database ini sudah berisi, hapus isinya dulu atau pulihkan ke database baru dengan nama yang sama setelah dihapus. Meminta kode TOTP ulang.</p>
+        <p className="small">Pemulihan hanya berjalan ke database yang <strong>kosong</strong> dan tidak pernah menimpa data. Bila database ini sudah berisi, hapus isinya dulu atau pulihkan ke database baru dengan nama yang sama setelah dihapus. Meminta kata sandi ulang.</p>
         <State loading={loading && !data} error={error} empty={!!data && dumps.length === 0} emptyText={`Belum ada dump untuk ${name}. Buat dulu lewat tombol Dump.`} onRetry={reload}>
           <Field label="Pilih dump">
             {(id) => (

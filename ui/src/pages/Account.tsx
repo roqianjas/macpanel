@@ -30,7 +30,7 @@ export default function Account() {
     <Devices />
     <Card title="Ganti kata sandi">
       <form onSubmit={submit} className="stack" autoComplete="off">
-        <p className="small muted">Meminta kode TOTP ulang. Semua sesi lain dikeluarkan setelah berhasil. Kode TOTP dan recovery code tidak berubah; untuk mengganti perangkat autentikator, buat ulang akun dari terminal (<span className="mono">panel user</span>).</p>
+        <p className="small muted">Meminta kata sandi ulang. Semua sesi lain dikeluarkan setelah berhasil. Kode TOTP dan recovery code tidak berubah; untuk mengganti perangkat autentikator, buat ulang akun dari terminal (<span className="mono">panel user</span>).</p>
         <div className="grid2">
           <Field label="Kata sandi saat ini">{(id) => <input id={id} type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" required />}</Field>
           <span />
@@ -66,7 +66,7 @@ function Devices() {
     <Card title="Perangkat tepercaya" action={list.length > 0 ? <button className="btn" onClick={() => revoke({ all: true })}>Cabut semua</button> : undefined}>
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         <div className="stack">
-          <p className="small muted">Perangkat yang dicentang saat login hanya perlu kata sandi selama {q.data?.days ?? 30} hari. Aksi berbahaya (hapus, lihat kredensial, kloning) tetap meminta kode 2FA. Mengganti kata sandi mencabut semuanya.</p>
+          <p className="small muted">Perangkat yang dicentang saat login hanya perlu kata sandi selama {q.data?.days ?? 30} hari. Aksi berbahaya (hapus, lihat kredensial, kloning) tetap meminta kata sandi ulang. Mengganti kata sandi mencabut semuanya.</p>
           {err && <Alert tone="bad">{err}</Alert>}
           {list.length === 0 ? (
             <p className="small muted">Belum ada perangkat tepercaya. Centang "Percayai perangkat ini" saat login berikutnya.</p>

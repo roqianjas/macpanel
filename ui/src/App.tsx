@@ -126,7 +126,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
 }
 
 function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
-  const [code, setCode] = useState("");
+  const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async (e: React.FormEvent) => {
@@ -134,25 +134,25 @@ function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
     setBusy(true);
     setErr("");
     try {
-      await post("/api/auth/stepup", { code: code.trim() });
+      await post("/api/auth/stepup", { password: pw });
       resolve(true);
     } catch (x) {
       setErr(errText(x));
-      setCode("");
+      setPw("");
       setBusy(false);
     }
   };
   return (
     <Modal title="Verifikasi ulang" onClose={() => resolve(false)}>
       <form onSubmit={submit} className="stack">
-        <p className="small">Aksi ini penting. Masukkan kode TOTP yang baru (tunggu kode berikutnya bila baru dipakai untuk masuk). Berlaku 5 menit.</p>
-        <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} data-autofocus className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" spellCheck={false} required />}</Field>
+        <p className="small">Aksi ini penting. Masukkan kata sandi Anda. Setelah benar, aksi penting lain tidak bertanya lagi selama 15 menit.</p>
+        <Field label="Kata sandi">{(id) => <input id={id} data-autofocus type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" maxLength={256} required />}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={() => resolve(false)}>
             Batal
           </button>
-          <button className="btn btn-primary" disabled={busy || code.trim().length < 6}>
+          <button className="btn btn-primary" disabled={busy || !pw}>
             {busy ? "Memeriksa…" : "Verifikasi"}
           </button>
         </div>
