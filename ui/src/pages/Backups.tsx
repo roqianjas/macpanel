@@ -3,7 +3,8 @@ import { DatabaseBackup } from "lucide-react";
 import { errText, fmtTime, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { fmtBytes } from "../lib";
-import { Alert, Card, Field, Modal, PageHead, State, useLoad } from "../ui";
+import { Alert, Card, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
+import { CleanupCard, ExtrasCard } from "./BackupCleanup";
 
 interface Row {
   name: string;
@@ -16,6 +17,8 @@ export default function Backups() {
   const q = useLoad(() => get<{ backups: Row[]; offsite: boolean }>("/api/backups"));
   const [busy, setBusy] = useState(false);
   const [browse, setBrowse] = useState<string | null>(null);
+  const [sel, setSel] = useState<string[]>([]);
+  const [delAsk, setDelAsk] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const run = async () => {
     setBusy(true);
@@ -37,7 +40,7 @@ export default function Backups() {
     <>
       <PageHead
         title="Backup"
-        desc="Berjalan otomatis tiap hari (jam dan jumlah simpanan diatur di kartu Jadwal di bawah). Isi: dump semua database, folder ~/Developer (tanpa node_modules dan .env), dotfile, dan database panel."
+        desc="Berjalan otomatis tiap hari (jam, jumlah simpanan, dan batas umur diatur di kartu Jadwal di bawah). Isi: dump semua database, folder ~/Developer (tanpa node_modules dan .env), dotfile, dan database panel."
         action={
           <button className="btn btn-primary" disabled={busy} onClick={run}>
             <DatabaseBackup size={18} aria-hidden="true" />
@@ -52,12 +55,13 @@ export default function Backups() {
       )}
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <Schedule />
-      <Card title="Backup terakhir (14)">
+      <Card title="Daftar backup" action={sel.length > 0 ? <button className="btn btn-danger-ghost" onClick={() => setDelAsk(true)}>Hapus {sel.length} terpilih</button> : undefined}>
         <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && rows.length === 0} emptyText="Belum ada backup. Jalankan yang pertama." onRetry={q.reload}>
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
                 <tr>
+                  <th scope="col"><span className="sr">Pilih</span></th>
                   <th scope="col">Waktu</th>
                   <th scope="col">Ukuran</th>
                   <th scope="col">Isi</th>
@@ -65,8 +69,11 @@ export default function Backups() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {rows.map((r, i) => (
                   <tr key={r.name}>
+                    <td>
+                      <input type="checkbox" className="rowcheck" disabled={i === 0} checked={sel.includes(r.name)} onChange={(e) => setSel((p) => (e.target.checked ? [...p, r.name] : p.filter((x) => x !== r.name)))} aria-label={i === 0 ? `Backup ${r.name} (terbaru, tidak bisa dihapus)` : `Pilih backup ${r.name}`} title={i === 0 ? "Backup terbaru tidak bisa dihapus" : undefined} />
+                    </td>
                     <td className="nowrap">{fmtTime(r.at)}</td>
                     <td className="nowrap">{fmtBytes(r.size)}</td>
                     <td className="mono small cell-trunc" title={r.files.join(", ")}>
@@ -86,31 +93,53 @@ export default function Backups() {
           </div>
         </State>
       </Card>
+      <CleanupCard onChanged={() => { setSel([]); q.reload(); }} />
+      <ExtrasCard />
+      {delAsk && (
+        <ConfirmDialog
+          title={`Hapus ${sel.length} backup`}
+          word="hapus"
+          verb={`Hapus ${sel.length} backup`}
+          body={<p>Backup terpilih dihapus permanen dari disk ini. Meminta kode TOTP ulang.</p>}
+          onConfirm={async () => {
+            await post("/api/backups/delete", { names: sel });
+            setSel([]);
+            q.reload();
+          }}
+          onClose={() => setDelAsk(false)}
+        />
+      )}
       {browse && <Browse name={browse} onClose={() => setBrowse(null)} />}
       <Card title="Memulihkan">
-        <p className="small">Database proyek: halaman Database, tombol Dump dan Pulihkan (hanya ke database kosong). Berkas dan konfigurasi: ekstrak dari berkas di <span className="mono">~/Backups/staging/&lt;waktu&gt;/</span> lewat terminal; panel sengaja tidak menimpa berkas.</p>
+        <p className="small">Database proyek: halaman Database, tombol Dump dan Pulihkan (hanya ke database kosong). Berkas dan konfigurasi: tombol Jelajahi di daftar backup mengekstrak ke <span className="mono">~/Backups/restore/</span>; panel sengaja tidak menimpa berkas asli, salin manual bila perlu.</p>
       </Card>
     </>
   );
 }
 
 function Schedule() {
-  const q = useLoad(() => get<{ time: string; keep: number }>("/api/backups/config"));
+  const q = useLoad(() => get<{ time: string; keep: number; days: number; extra_days: number }>("/api/backups/config"));
   const [time, setTime] = useState("");
   const [keep, setKeep] = useState("");
+  const [days, setDays] = useState("");
+  const [extra, setExtra] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const t = time || q.data?.time || "02:30";
   const k = keep || String(q.data?.keep ?? 7);
+  const dy = days || String(q.data?.days ?? 0);
+  const ex = extra || String(q.data?.extra_days ?? 0);
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
     try {
-      await post("/api/backups/config", { time: t, keep: Number(k) });
+      await post("/api/backups/config", { time: t, keep: Number(k), days: Number(dy), extra_days: Number(ex) });
       setMsg({ tone: "ok", text: "Jadwal diperbarui di launchd." });
       setTime("");
       setKeep("");
+      setDays("");
+      setExtra("");
       q.reload();
     } catch (x) {
       setMsg({ tone: "bad", text: errText(x) });
@@ -125,6 +154,8 @@ function Schedule() {
           <div className="grid2">
             <Field label="Jam backup harian" hint="Zona waktu Mac mini">{(id, dd) => <input id={id} aria-describedby={dd} type="time" value={t} onChange={(e) => setTime(e.target.value)} required />}</Field>
             <Field label="Simpan backup terakhir" hint="1-60. Yang lebih lama dihapus otomatis.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={60} value={k} onChange={(e) => setKeep(e.target.value)} required />}</Field>
+            <Field label="Hapus otomatis backup lebih tua dari (hari)" hint="0 = hanya pakai jumlah simpanan. Backup terbaru selalu aman.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} value={dy} onChange={(e) => setDays(e.target.value)} required />}</Field>
+            <Field label="Hapus otomatis dump DB dan hasil ekstrak lebih tua dari (hari)" hint="0 = jangan dibersihkan otomatis">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} value={ex} onChange={(e) => setExtra(e.target.value)} required />}</Field>
           </div>
           {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
           <div>

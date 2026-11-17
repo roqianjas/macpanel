@@ -98,7 +98,7 @@ func TestBackupConfigAndExtractGuards(t *testing.T) {
 	if o.calls() != before {
 		t.Fatalf("lab terpanggil oleh input buruk: %s", o.calls())
 	}
-	if c, _ := o.post("/api/backups/config", `{"time":"03:45","keep":5}`); c != 200 || !strings.Contains(o.calls(), "CALL:[backup][config][set][--time][03:45][--keep][5]") {
+	if c, _ := o.post("/api/backups/config", `{"time":"03:45","keep":5}`); c != 200 || !strings.Contains(o.calls(), "CALL:[backup][config][set][--time][03:45][--keep][5][--days][0][--extra-days][0]") {
 		t.Fatalf("config: %s", o.calls())
 	}
 	if w := o.do("GET", "/api/backups/ls?name=20261117-023004&part=developer&prefix=Developer/proj", "", o.cookie, "", nil); w.Code != 200 {

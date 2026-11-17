@@ -101,8 +101,10 @@ func bkPart(p string) bool { return p == "developer" || p == "dotfiles" }
 func hBackupCfgGet(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 	res := a.runLab([]string{"backup", "config", "get"}, "")
 	var c struct {
-		Time string `json:"time"`
-		Keep int    `json:"keep"`
+		Time      string `json:"time"`
+		Keep      int    `json:"keep"`
+		Days      int    `json:"days"`
+		ExtraDays int    `json:"extra_days"`
 	}
 	if res.Code != 0 || !parseLabJSON(res.Out, &c) {
 		jerr(w, 502, "gagal membaca jadwal backup")
@@ -113,20 +115,22 @@ func hBackupCfgGet(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 
 func hBackupCfgSet(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	var in struct {
-		Time string
-		Keep int
+		Time      string
+		Keep      int
+		Days      int
+		ExtraDays int `json:"extra_days"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	if !bkTimeRE.MatchString(in.Time) || in.Keep < 1 || in.Keep > 60 {
+	if !bkTimeRE.MatchString(in.Time) || in.Keep < 1 || in.Keep > 60 || in.Days < 0 || in.Days > 3650 || in.ExtraDays < 0 || in.ExtraDays > 3650 {
 		jerr(w, 400, "jam HH:MM dan simpan 1-60 backup")
 		return
 	}
 	if !a.requireStepUp(w, ss) {
 		return
 	}
-	a.record(w, ss, a.clientIP(r), "backup_config", in.Time+" keep "+strconv.Itoa(in.Keep), a.mutate([]string{"backup", "config", "set", "--time", in.Time, "--keep", strconv.Itoa(in.Keep)}, ""))
+	a.record(w, ss, a.clientIP(r), "backup_config", in.Time+" keep "+strconv.Itoa(in.Keep), a.mutate([]string{"backup", "config", "set", "--time", in.Time, "--keep", strconv.Itoa(in.Keep), "--days", strconv.Itoa(in.Days), "--extra-days", strconv.Itoa(in.ExtraDays)}, ""))
 }
 
 func hBackupLs(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {

@@ -339,3 +339,6 @@ textarea.mono { width: 100%; }
 .kpis dt { font-size: var(--t-xs); color: var(--muted); }
 .kpis dd { margin: 0; font-weight: 700; font-size: var(--t-l, 1.125rem); }
 @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); } }
+
+.tbl input.rowcheck, .rowcheck { width: 22px; min-width: 0; height: 22px; padding: 0; }
+.tbl td:has(> .rowcheck), .tbl th:has(> .sr) { width: 1%; min-width: 44px; padding-right: 0; white-space: nowrap; }

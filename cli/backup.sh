@@ -44,7 +44,7 @@ fi
 echo "OK: $OUT"; du -sh "$OUT"
 
 # Retensi lokal
-ls -1dt "$HOME"/Backups/staging/*/ | tail -n +$((KEEP+1)) | xargs -I{} rm -rf {}
+"$HOME/Developer/_ops/scripts/lab" backup prune --auto || echo "peringatan: pembersihan otomatis gagal"
 
 # DEST (isi nanti, jangan simpan kredensial di skrip):
 #   disk eksternal : rsync -a "$OUT/" /Volumes/<NAMA>/macmini-backup/$TS/
