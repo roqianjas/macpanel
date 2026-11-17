@@ -45,6 +45,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
   const [name, setName] = useState("");
   const [pw, setPw] = useState("");
   const [code, setCode] = useState("");
+  const [trust, setTrust] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -53,9 +54,13 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
     setBusy(true);
     setErr("");
     try {
-      const r = await post<{ csrf: string }>("/api/auth/login", { name, password: pw });
+      const r = await post<{ csrf: string; trusted?: boolean }>("/api/auth/login", { name, password: pw });
       setCsrf(r.csrf);
       setPw("");
+      if (r.trusted) {
+        onDone(name.toLowerCase());
+        return;
+      }
       setStep("totp");
     } catch (x) {
       setErr(errText(x));
@@ -68,7 +73,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
     setBusy(true);
     setErr("");
     try {
-      const r = await post<{ csrf: string }>("/api/auth/totp", { code: code.trim() });
+      const r = await post<{ csrf: string }>("/api/auth/totp", { code: code.trim(), trust });
       setCsrf(r.csrf);
       onDone(name.toLowerCase());
     } catch (x) {
@@ -100,6 +105,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
           <form onSubmit={submitCode} className="stack">
             <p className="muted small">Masukkan kode 6 digit dari Google Authenticator (atau aplikasi TOTP Anda). Satu kode recovery juga diterima.</p>
             <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} autoFocus autoComplete="one-time-code" className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} required spellCheck={false} />}</Field>
+            <label className="check"><input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />Percayai perangkat ini selama 30 hari (berikutnya cukup kata sandi). Jangan dicentang di komputer umum.</label>
             {err && <Alert>{err}</Alert>}
             <div className="row-end">
               <button type="button" className="btn" onClick={() => { setStep("pwd"); setErr(""); }}>

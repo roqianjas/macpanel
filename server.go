@@ -137,6 +137,8 @@ func routes() []Route {
 		{"POST", "/api/redis/get", Full, hRedisGet},
 		{"POST", "/api/redis/del", Full, hRedisDel},
 		{"POST", "/api/me/password", Full, hMyPassword},
+		{"GET", "/api/me/devices", Full, hDevices},
+		{"POST", "/api/me/devices/revoke", Full, hDeviceRevoke},
 		{"GET", "/api/sys/procs", Full, hSysProcs},
 		{"POST", "/api/sys/kill", Full, hSysKill},
 		{"GET", "/api/sys/disk", Full, hSysDisk},
@@ -367,6 +369,17 @@ func hLogin(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 		jerr(w, 401, "login gagal")
 		return
 	}
+	if c, err := r.Cookie(trustCookie); err == nil {
+		if nt, ok := a.st.UseTrusted(c.Value, u.ID, a.now()); ok {
+			tok, full := a.st.NewSession(u.ID, "full", a.now())
+			a.setCookie(w, tok, int(absTTL.Seconds()))
+			a.setTrust(w, nt, int(trustTTL.Seconds()))
+			a.st.ClearAttempts("u:" + name)
+			a.st.Audit(name, "login_trusted", "", ip, a.now())
+			jsonOut(w, 200, map[string]any{"ok": true, "trusted": true, "csrf": full.CSRF})
+			return
+		}
+	}
 	tok, ss := a.st.NewSession(u.ID, "pwd", a.now())
 	a.setCookie(w, tok, int(pwdTTL.Seconds()))
 	a.st.Audit(name, "login_pwd_ok", "", ip, a.now())
@@ -392,7 +405,10 @@ func (a *App) verifyCode(ss *Session, code, ip string) bool {
 }
 
 func hTOTP(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
-	var in struct{ Code string }
+	var in struct {
+		Code  string
+		Trust bool
+	}
 	if !decode(w, r, &in) {
 		return
 	}
@@ -413,6 +429,10 @@ func hTOTP(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	a.st.ClearAttempts("u:" + ss.User)
 	a.setCookie(w, tok, int(absTTL.Seconds()))
 	a.st.Audit(ss.User, "login_ok", "", ip, a.now())
+	if in.Trust {
+		a.setTrust(w, a.st.AddTrusted(ss.UserID, deviceLabel(r.UserAgent()), a.now()), int(trustTTL.Seconds()))
+		a.st.Audit(ss.User, "trust_add", "", ip, a.now())
+	}
 	jsonOut(w, 200, map[string]any{"ok": true, "csrf": full.CSRF})
 }
 

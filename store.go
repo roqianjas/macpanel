@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS conf_versions(id INTEGER PRIMARY KEY, site TEXT NOT N
 CREATE INDEX IF NOT EXISTS cv_site ON conf_versions(site, id);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, usr TEXT NOT NULL, action TEXT NOT NULL,
   detail TEXT NOT NULL, ip TEXT NOT NULL, prev TEXT NOT NULL, hash TEXT NOT NULL);
-` + hooksSchema
+` + hooksSchema + trustSchema
 
 const (
 	idleTTL   = 30 * time.Minute
@@ -385,6 +385,9 @@ func (s *Store) SetPassword(uid int64, hash, keepSession string) error {
 		return err
 	}
 	if _, err := tx.Exec("DELETE FROM sessions WHERE user_id=? AND id<>?", uid, keepSession); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM trusted WHERE user_id=?", uid); err != nil {
 		return err
 	}
 	return tx.Commit()
