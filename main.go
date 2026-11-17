@@ -143,6 +143,19 @@ func main() {
 		}
 		st.Audit("cli", "user_role", pos[0]+" -> "+pos[1], "local", time.Now())
 		fmt.Println("Peran", pos[0], "sekarang", pos[1], "(sesi aktifnya dicabut)")
+	case cmd == "user" && sub == "rename":
+		if len(pos) != 2 || !nameRE.MatchString(pos[0]) || !nameRE.MatchString(pos[1]) {
+			fatal("pakai: panel user rename <nama-lama> <nama-baru> (huruf kecil/angka/_-, 3-32 karakter)")
+		}
+		st, err := openStore(*dbPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		if !st.RenameUser(pos[0], pos[1]) {
+			fatal("gagal: user lama tidak ada atau nama baru sudah dipakai")
+		}
+		st.Audit("cli", "user_rename", pos[0]+" -> "+pos[1], "local", time.Now())
+		fmt.Println("User", pos[0], "sekarang", pos[1], "(sesi aktifnya dicabut; kata sandi, 2FA, dan perangkat tepercaya tetap)")
 	case cmd == "user" && sub == "remove":
 		if len(pos) != 1 || !nameRE.MatchString(pos[0]) {
 			fatal("pakai: panel user remove <nama>")

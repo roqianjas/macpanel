@@ -172,3 +172,27 @@ func TestTrustedCookieAttrsAndOtherUser(t *testing.T) {
 		t.Fatal("user lain bisa mencabut perangkat orang lain")
 	}
 }
+
+func TestRenameUser(t *testing.T) {
+	e := newEnv(t)
+	_, _, tok := e.trustLogin(true)
+	enc, _ := seal(testKey, newTOTPSecret())
+	e.app.st.CreateUser("ani", hashPassword("sandi-ani-panjang-789"), enc, nil)
+	if e.app.st.RenameUser("roki", "ani") || e.app.st.RenameUser("tidakada", "baru") {
+		t.Fatal("rename ke nama terpakai / user tak ada harus gagal")
+	}
+	if !e.app.st.RenameUser("roki", "rokianjas") {
+		t.Fatal("rename gagal")
+	}
+	if e.app.st.GetUser("roki") != nil || e.app.st.GetUser("rokianjas") == nil {
+		t.Fatal("nama tidak berubah")
+	}
+	e.now = e.now.Add(time.Minute)
+	w := e.do("POST", "/api/auth/login", `{"name":"rokianjas","password":"kata-sandi-panjang-123"}`, "", "", map[string]string{"Cookie": trustCookie + "=" + tok})
+	if !strings.Contains(w.Body.String(), `"trusted":true`) {
+		t.Fatalf("perangkat tepercaya harus tetap berlaku: %s", w.Body)
+	}
+	if w := e.do("POST", "/api/auth/login", loginBody, "", "", nil); w.Code != 401 {
+		t.Fatalf("nama lama harus ditolak: %d", w.Code)
+	}
+}

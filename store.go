@@ -392,3 +392,23 @@ func (s *Store) SetPassword(uid int64, hash, keepSession string) error {
 	}
 	return tx.Commit()
 }
+
+// RenameUser mengganti nama login. Kata sandi, 2FA, recovery code, dan perangkat tepercaya tetap; sesi aktif dicabut.
+func (s *Store) RenameUser(oldName, newName string) bool {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return false
+	}
+	defer tx.Rollback()
+	var uid int64
+	if tx.QueryRow("SELECT id FROM users WHERE name=?", oldName).Scan(&uid) != nil {
+		return false
+	}
+	if _, err := tx.Exec("UPDATE users SET name=? WHERE id=?", newName, uid); err != nil {
+		return false
+	}
+	if _, err := tx.Exec("DELETE FROM sessions WHERE user_id=?", uid); err != nil {
+		return false
+	}
+	return tx.Commit() == nil
+}
