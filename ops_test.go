@@ -36,6 +36,7 @@ func newOpsEnv(t *testing.T, fakeBody string) *opsEnv {
 	bin := filepath.Join(home, "lab")
 	os.WriteFile(bin, []byte(script), 0o755)
 	e.app.labBin, e.app.home, e.app.sitesDir = bin, home, filepath.Join(home, "sites")
+	e.app.root, e.app.wwwroot = home, filepath.Join(home, "Developer")
 	e.app.timeout = 5 * time.Second
 	e.app.probeAddr = "" // tes tidak boleh menyentuh jaringan
 	os.WriteFile(filepath.Join(home, "sites/demo.conf"), []byte("server {\n    root "+home+"/Developer/proj/public;\n    fastcgi_pass unix:/opt/homebrew/var/run/php-fpm-dev-8.4.sock;\n}"), 0o644)

@@ -16,7 +16,7 @@ import (
 
 const maxUpload = 256 << 20
 
-// hDBUpload menyimpan dump unggahan ke ~/Backups/db sebagai <db>-<engine>-<waktu>.sql.gz (gzip bila belum).
+// hDBUpload menyimpan dump unggahan ke ~/MacPanel/backup/db sebagai <db>-<engine>-<waktu>.sql.gz (gzip bila belum).
 // Isi tidak dipercaya: `lab db restore` memindai dan menjalankannya sebagai user proyek, hanya ke database kosong.
 func hDBUpload(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	engine, name, ok := dbParams(w, r)

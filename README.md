@@ -33,18 +33,18 @@ browser -> nginx (TLS, private-network only) -> panel (Go, 127.0.0.1:9100)
 Requirements: macOS (Apple Silicon), [Homebrew](https://brew.sh), and a private network such as [Tailscale](https://tailscale.com).
 
 ```sh
-git clone https://github.com/roqianjas/macpanel ~/Developer/_ops/web/panel
-cd ~/Developer/_ops/web/panel
+git clone https://github.com/roqianjas/macpanel ~/MacPanel/server/panel
+cd ~/MacPanel/server/panel
 ./install.sh --dry-run     # show the plan, change nothing
 ./install.sh               # asks for confirmation (use --yes to skip)
 ```
-The installer installs missing Homebrew packages (nginx, mkcert, dnsmasq, go, node, pnpm, sqlite), lays out `~/Developer/_ops`, builds the UI and the Go binary, creates the Keychain key and the `panel` LaunchAgent (127.0.0.1:9100), and adds `https://panel.lab` to nginx. It never uses `sudo` or asks for passwords. At the end it prints the few steps you do yourself: create the admin (`panel user add <name>`, you enter the password and scan the TOTP key), and DNS for `*.lab` (needs `sudo`).
+The installer installs missing Homebrew packages (nginx, mkcert, dnsmasq, go, node, pnpm, sqlite), lays out `~/MacPanel/server`, builds the UI and the Go binary, creates the Keychain key and the `panel` LaunchAgent (127.0.0.1:9100), and adds `https://panel.lab` to nginx. It never uses `sudo` or asks for passwords. At the end it prints the few steps you do yourself: create the admin (`panel user add <name>`, you enter the password and scan the TOTP key), and DNS for `*.lab` (needs `sudo`).
 Options: `--no-brew`, `--no-system` (skip anything outside your home folder and the build), `--tld NAME`. It will not overwrite a customised nginx.conf (prints one `include` line to add instead).
 
 Tested: a clean copy of this repo installed into an empty HOME (`--no-brew --no-system`): UI built from scratch, Go binary built, layout correct, re-run is a no-op. Not tested: the system steps on a fresh Mac (mkcert, LaunchAgent, nginx link), since the author's machine already has them.
 
 ## Known gaps
-- The `~/Developer/_ops` layout is fixed (the installer creates it).
+- The `~/MacPanel/server` layout is fixed (the installer creates it).
 - macOS Homebrew PHP compiles bundled extensions statically, so only PECL extensions can be toggled.
 - No file manager, web terminal, Docker manager or firewall/`sudo` actions by design.
 - Backups are local; no offsite upload.

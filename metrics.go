@@ -331,7 +331,7 @@ type BackupInfo struct {
 }
 
 func (a *App) backupInfo() *BackupInfo {
-	dirs, _ := os.ReadDir(a.home + "/Backups/staging")
+	dirs, _ := os.ReadDir(a.root + "/backup/staging")
 	names := []string{}
 	for _, d := range dirs {
 		if d.IsDir() {
@@ -343,7 +343,7 @@ func (a *App) backupInfo() *BackupInfo {
 	}
 	sort.Strings(names)
 	last := names[len(names)-1]
-	st, err := os.Stat(a.home + "/Backups/staging/" + last)
+	st, err := os.Stat(a.root + "/backup/staging/" + last)
 	if err != nil {
 		return nil
 	}

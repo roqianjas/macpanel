@@ -33,7 +33,9 @@ type App struct {
 	dummy       string
 	now         func() time.Time
 	labBin      string // biner lab (path tetap)
-	home        string // HOME user; batas ~/Developer dihitung dari sini
+	home        string
+	root        string // MACPANEL_HOME (bawaan ~/MacPanel)
+	wwwroot     string // batas folder situs: <root>/wwwroot // HOME user; batas ~/MacPanel/wwwroot dihitung dari sini
 	sitesDir    string // folder konfigurasi situs nginx (hanya dibaca panel)
 	tld         string
 	nginxDir    string // folder config nginx (snippets)
@@ -71,9 +73,13 @@ const (
 
 func newApp(st *Store, key []byte, cfg Config) *App {
 	home, _ := os.UserHomeDir()
+	root := os.Getenv("MACPANEL_HOME")
+	if root == "" {
+		root = filepath.Join(home, "MacPanel")
+	}
 	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now,
-		labBin: "/opt/homebrew/bin/lab", home: home, sitesDir: filepath.Join(home, "Developer/_ops/web/nginx/sites"), tld: "lab", probeAddr: "127.0.0.1:443", timeout: 120 * time.Second, longTimeout: 30 * time.Minute,
-		nginxDir: filepath.Join(home, "Developer/_ops/web/nginx"), certDir: "/opt/homebrew/etc/nginx/certs", logDir: "/opt/homebrew/var/log/nginx/sites", errLog: "/opt/homebrew/var/log/nginx/error.log"}
+		labBin: "/opt/homebrew/bin/lab", home: home, root: root, wwwroot: filepath.Join(root, "wwwroot"), sitesDir: filepath.Join(root, "server/nginx/sites"), tld: "lab", probeAddr: "127.0.0.1:443", timeout: 120 * time.Second, longTimeout: 30 * time.Minute,
+		nginxDir: filepath.Join(root, "server/nginx"), certDir: "/opt/homebrew/etc/nginx/certs", logDir: "/opt/homebrew/var/log/nginx/sites", errLog: "/opt/homebrew/var/log/nginx/error.log"}
 }
 
 // routes adalah SATU-SATUNYA daftar rute. Tes memastikan semua yang bukan Public menolak permintaan tanpa sesi.

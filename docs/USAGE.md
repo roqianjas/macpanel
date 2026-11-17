@@ -1,6 +1,6 @@
 # Panel
 
-Panel web untuk mengelola environment lokal seperti aaPanel/cPanel: situs, database, versi PHP dan runtime, worker, cron, pembaruan. Alamat: **https://panel.lab** (hanya dari tailnet). Kode: `~/Developer/_ops/web/panel` (Go + SQLite, UI React). Desain, model ancaman, dan status per fase: `web/panel/docs/DESIGN.md`.
+Panel web untuk mengelola environment lokal seperti aaPanel/cPanel: situs, database, versi PHP dan runtime, worker, cron, pembaruan. Alamat: **https://panel.lab** (hanya dari tailnet). Kode: `~/MacPanel/server/panel` (Go + SQLite, UI React). Desain, model ancaman, dan status per fase: `web/panel/docs/DESIGN.md`.
 
 ## Status (2026-11-16)
 | Fase | Isi | Status |
@@ -40,7 +40,7 @@ Halaman Aplikasi memeriksa tiap layanan langsung ke port atau socketnya, bukan d
 - Perintah di baliknya: `lab service list|start|stop|restart|logs`, `lab app list|install|remove` (lihat docs/06).
 
 ## Database: dump dan pulihkan
-Tombol **Dump** membuat `~/Backups/db/<nama>-<engine>-<waktu>.sql.gz`. Tombol **Pulihkan** menampilkan dump milik database itu (30 terbaru) dan menjalankan `lab db restore` sebagai job asinkron dengan TOTP ulang. Pemulihan hanya ke database yang **kosong**; database yang berisi ditolak dengan pesan jelas. Database sistem (`dev`, `postgres`, ...) tidak bisa di-dump atau dipulihkan dari panel.
+Tombol **Dump** membuat `~/MacPanel/backup/db/<nama>-<engine>-<waktu>.sql.gz`. Tombol **Pulihkan** menampilkan dump milik database itu (30 terbaru) dan menjalankan `lab db restore` sebagai job asinkron dengan TOTP ulang. Pemulihan hanya ke database yang **kosong**; database yang berisi ditolak dengan pesan jelas. Database sistem (`dev`, `postgres`, ...) tidak bisa di-dump atau dipulihkan dari panel.
 
 ## PHP: ekstensi, pengaturan, Composer
 Halaman PHP dan runtime, tombol **Kelola** per versi:
@@ -67,8 +67,8 @@ Tombol Jeda mengganti nama `<situs>.conf` menjadi `<situs>.conf.disabled` (nginx
 - **Website per situs:** tab Domain (hingga 10 domain tambahan `nama.lab`, sertifikat mkcert dibuat ulang memuat semua nama), Akses (password dasar htpasswd apr1 hingga 20 pengguna, batas IP yang hanya boleh mempersempit tailnet, aturan allow/deny wajib diakhiri `deny all`), `.env` (baca butuh step-up, admin saja, cadangan 3 terakhir, izin 0600), Trafik (dari log akses nginx, bukan analitik pengunjung), Kloning (salin proyek + database terpisah dengan `.env` baru), dan Pasang cepat Laravel/WordPress (rollback otomatis bila gagal).
 - **Database:** Pengaturan server MySQL (`max_connections`, buffer pool, slow log) dan Redis (`maxmemory`, policy, AOF, save) lewat berkas milik panel (`my.cnf.d/20-macpanel.cnf`, `redis.d/macpanel.conf`), restart otomatis dan dikembalikan bila server tidak naik. Tombol Akses per database: lihat kredensial dan ganti kata sandi (step-up, audit tanpa isi). Penelusur Redis (cari, lihat, hapus kunci; admin saja).
 - **PHP:** pool FPM (`pm`, `pm.max_children`, dst.) di tab Pengaturan dengan validasi konsistensi mode dynamic.
-- **Backup:** jadwal harian dan retensi bisa diatur (launchd + `backup.conf`), jelajahi arsip dan ekstrak berkas ke `~/Backups/restore/` (berkas asli tidak pernah ditimpa).
-- **Pembersihan backup:** retensi otomatis berdasarkan jumlah (`KEEP`) dan umur (`DAYS`) di `~/.config/macminiops/backup.conf`; backup harian memanggil `lab backup prune --auto` setelah selesai. Backup terbaru TIDAK PERNAH dihapus (aturan di CLI). Di halaman Backup: hapus per pilihan, pratinjau lalu bersihkan (melebihi jumlah/umur), dan bersihkan dump DB (`~/Backups/db`) serta hasil ekstrak (`~/Backups/restore`) per umur, otomatis bila `EXTRA_DAYS` > 0. Hanya berkas bernama pola dump/ekstrak yang dihapus; symlink dan berkas lain dilewati. `~/Backups/retired` hanya ditampilkan ukurannya (hapus manual).
+- **Backup:** jadwal harian dan retensi bisa diatur (launchd + `backup.conf`), jelajahi arsip dan ekstrak berkas ke `~/MacPanel/backup/restore/` (berkas asli tidak pernah ditimpa).
+- **Pembersihan backup:** retensi otomatis berdasarkan jumlah (`KEEP`) dan umur (`DAYS`) di `~/.config/macminiops/backup.conf`; backup harian memanggil `lab backup prune --auto` setelah selesai. Backup terbaru TIDAK PERNAH dihapus (aturan di CLI). Di halaman Backup: hapus per pilihan, pratinjau lalu bersihkan (melebihi jumlah/umur), dan bersihkan dump DB (`~/MacPanel/backup/db`) serta hasil ekstrak (`~/MacPanel/backup/restore`) per umur, otomatis bila `EXTRA_DAYS` > 0. Hanya berkas bernama pola dump/ekstrak yang dihapus; symlink dan berkas lain dilewati. `~/MacPanel/backup/retired` hanya ditampilkan ukurannya (hapus manual).
 - **Webhook deploy (GitHub):** tab Deploy per situs. Penerima berjalan di listener terpisah `127.0.0.1:9101` (`--hook-addr`) yang hanya melayani `POST /hook/{situs}`; panel (9100) tidak ikut terbuka. Keamanan: HMAC-SHA256 (`X-Hub-Signature-256`), secret 64 hex disimpan terenkripsi dan tampil sekali, hanya branch terpilih, langkah deploy dari konfigurasi (bukan payload), tolak replay (`X-GitHub-Delivery`), jeda 15 dtk, satu deploy sekaligus per situs, kunci IP setelah tanda tangan salah berulang, semua penolakan 404 seragam. Agar GitHub menjangkaunya, ekspos HANYA port 9101 (Tailscale Funnel atau Cloudflare Tunnel); itu keputusan pemilik dan tidak dilakukan otomatis. Teruji nyata dengan repo git: push sah men-deploy (v1 -> v2), tanpa/salah tanda tangan 404, branch lain diabaikan, replay ditolak, LAN ke 9101 tertutup; mutasi 21/21.
 - **DNS (baca saja):** tab DNS di Sistem: dnsmasq menjawab, wildcard vs IP Tailscale, `/etc/resolver`, resolusi tiap situs. Tidak ada tulis (butuh sudo).
 - **Installer:** `install.sh` (lihat README repo).
@@ -86,8 +86,8 @@ Tombol Jeda mengganti nama `<situs>.conf` menjadi `<situs>.conf.disabled` (nginx
 - Nginx: `web/nginx/sites/panel.conf`, `tailnet_only`, proxy ke 9100.
 - Mulai ulang: `launchctl kickstart -k gui/$(id -u)/com.macminiops.panel`.
 - Setelah mengubah kode:
-  - UI: `cd ~/Developer/_ops/web/panel/ui && mise exec -- pnpm run build` (cukup muat ulang browser, tanpa restart).
-  - Server: `cd ~/Developer/_ops/web/panel && mise exec -- go build -o panel . && launchctl kickstart -k gui/$(id -u)/com.macminiops.panel`.
+  - UI: `cd ~/MacPanel/server/panel/ui && mise exec -- pnpm run build` (cukup muat ulang browser, tanpa restart).
+  - Server: `cd ~/MacPanel/server/panel && mise exec -- go build -o panel . && launchctl kickstart -k gui/$(id -u)/com.macminiops.panel`.
 - Tes: `mise exec -- go test ./... -race` (sekitar 100 detik; tes yang menyentuh mesin asli diaktifkan dengan `PANEL_REAL=1|2|3`).
 - CLI: `panel init-key | user add <nama> | user remove <nama> | user list | audit verify | serve`. Lewat SSH, Keychain login terkunci: jalankan dulu `security unlock-keychain ~/Library/Keychains/login.keychain-db`.
 - Jangan tempel setup key atau recovery code ke chat. Bila bocor: `panel user remove <nama>` lalu buat ulang (pernah terjadi sekali; sudah dirotasi).
@@ -96,12 +96,12 @@ Tombol Jeda mengganti nama `<situs>.conf` menjadi `<situs>.conf.disabled` (nginx
 FileVault berhenti di layar unlock, jadi LaunchAgent (termasuk panel, worker, cron) baru jalan **setelah Anda login** di Mac mini. Panel membaca kunci enkripsi dari Keychain login; bila Keychain belum terbuka, panel menolak start dan launchd mencoba lagi tiap 30 detik (perilaku aman, bukan galat). Reboot terencana: `sudo fdesetup authrestart` (dijalankan Anda sendiri). **Belum diuji**: perilaku nyata setelah reboot penuh.
 
 ## Backup dan restore
-- `backup.sh` (02:30) menyalin DB panel `~/.config/macminiops/panel/panel.db` sebagai satu snapshot (`sqlite3 .backup`, `integrity_check` ok) ke `~/Backups/staging/<waktu>/panel.db`, masuk checksum.
+- `backup.sh` (02:30) menyalin DB panel `~/.config/macminiops/panel/panel.db` sebagai satu snapshot (`sqlite3 .backup`, `integrity_check` ok) ke `~/MacPanel/backup/staging/<waktu>/panel.db`, masuk checksum.
 - Kunci enkripsi TOTP ada di Keychain dan **sengaja tidak ikut backup**. Akibatnya, pada Mac baru snapshot tidak bisa membuka secret TOTP lama: buat ulang pengguna (`panel init-key`, `panel user add`) dan daftarkan ulang ke aplikasi autentikator.
 - Backup masih lokal (disk yang sama), belum offsite. Restore snapshot diuji: terbuka dan datanya terbaca (1 user, 4 baris audit).
 
 ## Keamanan singkat
-Panel hanya memanggil `lab` (argv list, tanpa shell, env bersih, timeout), semua keputusan akses di server, aksi merusak butuh TOTP ulang dan ketik nama, situs dan database sistem tidak bisa diubah/dihapus dari panel, perintah worker/cron dibatasi (program dan flag yang diizinkan, path di bawah `~/Developer`), editor config memakai allowlist direktif dan wajib mempertahankan pembatas tailnet. Cookie `__Host-` HttpOnly/Secure/SameSite=Strict, CSP ketat, UI disajikan dari daftar berkas yang dikenal (tanpa listing folder).
+Panel hanya memanggil `lab` (argv list, tanpa shell, env bersih, timeout), semua keputusan akses di server, aksi merusak butuh TOTP ulang dan ketik nama, situs dan database sistem tidak bisa diubah/dihapus dari panel, perintah worker/cron dibatasi (program dan flag yang diizinkan, path di bawah `~/MacPanel/wwwroot`), editor config memakai allowlist direktif dan wajib mempertahankan pembatas tailnet. Cookie `__Host-` HttpOnly/Secure/SameSite=Strict, CSP ketat, UI disajikan dari daftar berkas yang dikenal (tanpa listing folder).
 
 Terverifikasi dari luar (2026-11-16): akses lewat IP LAN 403, port 9100 tertutup dari LAN, API tanpa sesi 401, `/.env`, `/panel.db`, traversal, dan listing folder tidak bocor.
 
@@ -116,7 +116,7 @@ Belum teruji atau diketahui:
 - Perilaku setelah reboot penuh (Keychain di bawah launchd).
 - `lab update apply` pada paket nyata lewat panel (saat diuji belum ada paket yang perlu di-upgrade). Jadwal cron `--at` sudah teruji: dijadwalkan 21:33, jalan 21:33:05, exit 0.
 - `govulncheck`: dipindai 2026-11-16 (v1.9.0, basis data 11 Nov): tidak ada kerentanan. Percobaan ulang kadang timeout jaringan.
-- Pemindaian parser nginx terhadap tafsir nginx pada kasus langka; `root` situs bisa menyajikan folder lain di bawah `~/Developer` oleh pemilik sesi penuh + TOTP.
+- Pemindaian parser nginx terhadap tafsir nginx pada kasus langka; `root` situs bisa menyajikan folder lain di bawah `~/MacPanel/wwwroot` oleh pemilik sesi penuh + TOTP.
 - Tampilan di Safari/Firefox dan pembaca layar; hanya Chromium yang diuji.
 
 ## Kenapa `home.lab` belum diganti

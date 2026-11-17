@@ -15,7 +15,8 @@ import argparse, json, os, re, socket, subprocess, sys, time
 from pathlib import Path
 
 HOME = Path.home()
-OPS = HOME / "Developer/_ops"
+ROOT = Path(os.environ.get("MACPANEL_HOME") or (HOME / "MacPanel"))
+OPS = ROOT / "server"
 BREW = "/opt/homebrew/bin/brew"
 MISE = "/opt/homebrew/bin/mise"
 ENV = dict(os.environ, PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_CURL_RETRIES="5")
@@ -44,7 +45,7 @@ def php_bin(v): return f"/opt/homebrew/opt/{formula(v)}"
 
 # ---------- site ----------
 NAME_RE = r"[a-z0-9]([a-z0-9-]*[a-z0-9])?"
-SITES_DIR = OPS / "web/nginx/sites"
+SITES_DIR = OPS / "nginx/sites"
 PROTECTED = {"home", "nginx", "db", "kuma", "stats", "hello", "panel"}
 
 
@@ -79,7 +80,7 @@ def site(a):
 
 
 # ---------- nginx ----------
-NGINX_CONF = OPS / "web/nginx/nginx.conf"
+NGINX_CONF = OPS / "nginx/nginx.conf"
 CERTS = Path("/opt/homebrew/etc/nginx/certs")
 
 
@@ -99,9 +100,9 @@ def nginx(a):
 
 def cert(name, aliases=()):
     if not re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?", name): die("nama situs tidak valid")
-    tld = (OPS / "web/tld").read_text().strip()
+    tld = (OPS / "tld").read_text().strip()
     host = f"{name}.{tld}"
-    if not (OPS / f"web/nginx/sites/{name}.conf").exists(): die("situs tidak ada")
+    if not (OPS / f"nginx/sites/{name}.conf").exists(): die("situs tidak ada")
     pem, key = CERTS / f"{host}.pem", CERTS / f"{host}-key.pem"
     names = [host]
     for al in aliases:
@@ -164,7 +165,7 @@ def php(a):
         if not Path(f"/opt/homebrew/var/run/php-fpm-dev-{v}.sock").exists(): die("socket FPM tidak muncul")
         print(f"OK: PHP {v} terpasang, FPM socket aktif. Pakai: lab site add <nama> <folder> --php {v}")
     elif a.act == "remove":
-        used = [p.name for p in (OPS / "web/nginx/sites").glob("*.conf") if f"php-fpm-dev-{v}.sock" in p.read_text()]
+        used = [p.name for p in (OPS / "nginx/sites").glob("*.conf") if f"php-fpm-dev-{v}.sock" in p.read_text()]
         if used: die(f"masih dipakai situs: {', '.join(used)}")
         sh([BREW, "services", "stop", f]); sh([BREW, "uninstall", f], check=True); print(f"OK: PHP {v} dihapus")
 
@@ -224,7 +225,7 @@ def apply(a):
     print(f"rencana: backup -> {'unpin -> ' if pinned else ''}upgrade {t} {cur} -> {new}{' -> pin' if pinned else ''}{' -> restart service' if svc else ''}")
     if a.dry_run: return
     if stream(["/bin/bash", str(OPS / "scripts/backup.sh")]) != 0: die("backup gagal, update dibatalkan")
-    log = HOME / "Backups/update-log.txt"; log.parent.mkdir(exist_ok=True)
+    log = ROOT / "backup/update-log.txt"; log.parent.mkdir(exist_ok=True)
     with open(log, "a") as fh: fh.write(f"{time.strftime('%F %T')} {t} {cur} -> {new}\n")
     if pinned: sh([BREW, "unpin", t], check=True)
     try:
@@ -234,7 +235,7 @@ def apply(a):
     if rc: die("brew upgrade gagal (pin dikembalikan). Versi lama masih di Cellar bila tersisa: brew info " + t)
     if svc:
         sh([BREW, "services", "restart", t]); time.sleep(5)
-        if not services_of(t): die(f"{t} tidak berjalan setelah update! Cek log. Backup ada di ~/Backups/staging")
+        if not services_of(t): die(f"{t} tidak berjalan setelah update! Cek log. Backup ada di ~/MacPanel/backup/staging")
     now = sh([BREW, "list", "--versions", t]).stdout.strip()
     print(f"OK: {now}" + (" | service jalan" if svc else ""))
 

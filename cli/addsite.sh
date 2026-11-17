@@ -1,14 +1,15 @@
 #!/bin/bash
-# Tambah/hapus website dev di nginx. Domain <nama>.<TLD> (TLD dari ~/Developer/_ops/web/tld).
+MP="${MACPANEL_HOME:-$HOME/MacPanel}"
+# Tambah/hapus website dev di nginx. Domain <nama>.<TLD> (TLD dari ~/MacPanel/server/tld).
 #   addsite.sh api 3000                  -> https://api.lab     -> reverse proxy 127.0.0.1:3000 (websocket OK)
-#   addsite.sh landing ~/Developer/x/y   -> https://landing.lab -> file statis dari direktori
-#   addsite.sh app ~/Developer/x/y/public --php 8.4  -> situs PHP/Laravel (FPM versi 8.3|8.4|8.5, front controller index.php)
+#   addsite.sh landing ~/MacPanel/wwwroot/x/y   -> https://landing.lab -> file statis dari direktori
+#   addsite.sh app ~/MacPanel/wwwroot/x/y/public --php 8.4  -> situs PHP/Laravel (FPM versi 8.3|8.4|8.5, front controller index.php)
 #   addsite.sh --remove <nama>           -> hapus site + sertifikatnya
 #   addsite.sh --list                    -> daftar site
 # Sertifikat per site dibuat mkcert. Config diuji (nginx -t); gagal = otomatis dibatalkan.
 set -euo pipefail
 export PATH=/opt/homebrew/bin:$PATH
-W="$HOME/Developer/_ops/web"; N="$W/nginx"; C=/opt/homebrew/etc/nginx/certs
+W="$MP/server"; N="$W/nginx"; C=/opt/homebrew/etc/nginx/certs
 TLD=$(tr -d '[:space:]' < "$W/tld")
 
 reload() {

@@ -18,7 +18,8 @@ UID = os.getuid()
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,39}$")
 BASE_PATH = [str(HOME / ".local/share/mise/shims"), "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]
 PHP = {"8.3": "/opt/homebrew/opt/php@8.3/bin", "8.4": "/opt/homebrew/opt/php@8.4/bin", "8.5": "/opt/homebrew/opt/php/bin"}
-DEV_ROOT = HOME / "Developer"
+ROOT = Path(os.environ.get("MACPANEL_HOME") or (HOME / "MacPanel"))
+DEV_ROOT = ROOT / "wwwroot"
 
 
 def die(m):
@@ -37,7 +38,7 @@ def build(kind, n, a, idx=None):
     if not NAME_RE.match(n): die("nama: huruf kecil/angka/-, diawali huruf, maks 40")
     d = Path(a.dir).expanduser().resolve()
     if not d.is_dir(): die(f"folder tidak ada: {d}")
-    if DEV_ROOT not in d.parents and d != DEV_ROOT: die("folder harus di bawah ~/Developer")
+    if DEV_ROOT not in d.parents and d != DEV_ROOT: die("folder harus di bawah ~/MacPanel/wwwroot")
     argv = shlex.split(a.cmd)
     if not argv: die("--cmd kosong")
     path = ([PHP[a.php]] if a.php else []) + BASE_PATH

@@ -3,7 +3,7 @@
 
   lab db list
   lab db create <nama> [--engine mysql|pgsql] [--env <file .env proyek>]
-  lab db dump <nama> [--engine ...]            -> ~/Backups/db/<nama>-<waktu>.sql.gz
+  lab db dump <nama> [--engine ...]            -> ~/MacPanel/backup/db/<nama>-<waktu>.sql.gz
   lab db drop <nama> [--engine ...]            -> minta ketik ulang nama
   lab db restore <nama> [--engine ...] [--file <dump.sql.gz>]  -> ke database yang sudah ada DAN kosong; tanpa --file = dump terbaru
 Aturan: satu database + satu user per proyek (nama sama), password acak tidak pernah dicetak,
@@ -13,9 +13,10 @@ import argparse, gzip, json, os, re, secrets, shutil, subprocess, sys, time
 from pathlib import Path
 
 HOME = Path.home()
+ROOT = Path(os.environ.get("MACPANEL_HOME") or (HOME / "MacPanel"))
 CRED = HOME / ".config/macminiops"
 PROJ = CRED / "projects"
-BK = HOME / "Backups/db"
+BK = ROOT / "backup/db"
 MY = "/opt/homebrew/opt/mysql@8.4/bin/"
 PG = "/opt/homebrew/opt/postgresql@17/bin/"
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
@@ -218,7 +219,7 @@ def cmd_restore(a):
         f = (BK / f.name) if f.parent in (Path("."), BK) else f
         try: f = f.resolve(strict=True)
         except OSError: die("berkas dump tidak ada")
-        if f.parent != BK.resolve(): die("dump harus ada di ~/Backups/db")
+        if f.parent != BK.resolve(): die("dump harus ada di ~/MacPanel/backup/db")
         if not re.fullmatch(re.escape(n) + "-" + eng + r"-\d{8}-\d{6}\.sql\.gz", f.name): die(f"nama berkas harus {n}-{eng}-<tanggal>-<jam>.sql.gz (dump milik database ini)")
     else:
         fs = dump_files(n, eng)

@@ -15,7 +15,7 @@ type DumpFile struct {
 	Size int64  `json:"size"`
 }
 
-func (a *App) dumpDir() string { return filepath.Join(a.home, "Backups", "db") }
+func (a *App) dumpDir() string { return filepath.Join(a.root, "backup", "db") }
 
 func dumpRE(engine, name string) *regexp.Regexp {
 	return regexp.MustCompile(`^` + regexp.QuoteMeta(name) + `-` + engine + `-\d{8}-\d{6}\.sql\.gz$`)

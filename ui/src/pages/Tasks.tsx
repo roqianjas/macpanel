@@ -170,8 +170,8 @@ function AddTask({ kind, onClose, onDone }: { kind: "worker" | "job"; onClose: (
           <Field label="Nama" hint="Huruf kecil, angka, tanda hubung.">
             {(id, d) => <input id={id} aria-describedby={d} data-autofocus className="mono" value={f.name} onChange={(e) => up("name", e.target.value.toLowerCase())} required pattern="[a-z][a-z0-9\-]{0,39}" />}
           </Field>
-          <Field label="Folder kerja" hint="Di bawah ~/Developer.">
-            {(id, d) => <input id={id} aria-describedby={d} className="mono" value={f.dir} onChange={(e) => up("dir", e.target.value)} required placeholder="~/Developer/org/proyek" />}
+          <Field label="Folder kerja" hint="Di bawah ~/MacPanel/wwwroot.">
+            {(id, d) => <input id={id} aria-describedby={d} className="mono" value={f.dir} onChange={(e) => up("dir", e.target.value)} required placeholder="~/MacPanel/wwwroot/org/proyek" />}
           </Field>
         </div>
         <Field label="Perintah" hint="Program yang diizinkan: php, node, python3, npm run, pnpm run, composer run-script. Tanpa kutip, pipa, atau $; kode sebaris seperti php -r ditolak.">

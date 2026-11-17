@@ -346,7 +346,7 @@ func (a *App) envPath(name string) (string, error) {
 		dir = filepath.Dir(root)
 	}
 	if dir, err = a.underDev(dir); err != nil {
-		return "", errors.New("folder proyek harus di bawah ~/Developer")
+		return "", errors.New("folder proyek harus di bawah ~/MacPanel/wwwroot")
 	}
 	return filepath.Join(dir, ".env"), nil
 }

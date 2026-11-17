@@ -18,13 +18,14 @@ import argparse, secrets, json, os, re, shutil, socket, subprocess, sys, time
 from pathlib import Path
 
 HOME = Path.home()
-OPS = HOME / "Developer/_ops"
+ROOT = Path(os.environ.get("MACPANEL_HOME") or (HOME / "MacPanel"))
+OPS = ROOT / "server"
 BREW = "/opt/homebrew/bin/brew"
 MISE = "/opt/homebrew/bin/mise"
 COMPOSER = "/opt/homebrew/bin/composer"
 ENV = dict(os.environ, PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_CURL_RETRIES="5")
 PHPS = ["8.2", "8.3", "8.4", "8.5"]
-SITES = OPS / "web/nginx/sites"
+SITES = OPS / "nginx/sites"
 NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$")
 PROTECTED = {"home", "nginx", "db", "kuma", "stats", "hello", "panel"}
 
@@ -311,14 +312,14 @@ def site_conf(name):
 
 
 def project(name):
-    """Folder proyek dari `root` nginx (satu tingkat di atas public/), harus di bawah ~/Developer. Versi PHP dari socket FPM."""
+    """Folder proyek dari `root` nginx (satu tingkat di atas public/), harus di bawah ~/MacPanel/wwwroot. Versi PHP dari socket FPM."""
     t = site_conf(name)
     m = re.search(r"^\s*root\s+([^;\s]+);", t, re.M)
     if not m: die("situs ini tidak punya root (bukan situs PHP/statis)")
     root = Path(m.group(1)).resolve()
     d = root.parent if root.name == "public" else root
-    base = (HOME / "Developer").resolve()
-    if base not in d.parents: die("folder proyek harus di bawah ~/Developer")
+    base = (ROOT / "wwwroot").resolve()
+    if base not in d.parents: die("folder proyek harus di bawah ~/MacPanel/wwwroot")
     if not d.is_dir(): die("folder proyek tidak ada")
     v = re.search(r"php-fpm-dev-(8\.\d)\.sock", t)
     return d, (v.group(1) if v else None)
@@ -399,13 +400,13 @@ def deploy(a):
 
 
 # ---------- backup ----------
-STAGING = HOME / "Backups/staging"
+STAGING = ROOT / "backup/staging"
 
 
 BK_LABEL = "com.macminiops.backup"
 BK_PLIST = HOME / "Library/LaunchAgents" / f"{BK_LABEL}.plist"
 BK_CONF = HOME / ".config/macminiops/backup.conf"
-RESTORE_DIR = HOME / "Backups/restore"
+RESTORE_DIR = ROOT / "backup/restore"
 BK_NAME = re.compile(r"^\d{8}-\d{6}$")
 PARTS = {"developer": "developer.tar.gz", "dotfiles": "dotfiles.tar.gz"}
 PATH_OK = re.compile(r"^[A-Za-z0-9._@+ /-]{1,300}$")
@@ -419,9 +420,9 @@ def bk_archive(name, part):
     return f
 
 
-BK_DB = HOME / "Backups/db"
-BK_RESTORE = HOME / "Backups/restore"
-BK_RETIRED = HOME / "Backups/retired"
+BK_DB = ROOT / "backup/db"
+BK_RESTORE = ROOT / "backup/restore"
+BK_RETIRED = ROOT / "backup/retired"
 DUMP_RE = re.compile(r"^[a-z0-9-]+-(mysql|pgsql)-\d{8}-\d{6}\.sql\.gz$")
 EXTRACT_RE = re.compile(r"^\d{8}-\d{6}-(developer|dotfiles)-\d{6}$")
 
@@ -778,10 +779,10 @@ def du_kb(path, timeout=40):
 
 def sys_disk():
     items = []
-    base = HOME / "Developer"
+    base = ROOT / "wwwroot"
     for p in sorted(base.iterdir()) if base.exists() else []:
-        if p.is_dir() and not p.is_symlink(): items.append((f"Developer/{p.name}", p))
-    for lab, p in (("Backups", HOME / "Backups"), ("Homebrew (Cellar)", Path("/opt/homebrew/Cellar")), ("mise (runtime)", HOME / ".local/share/mise")):
+        if p.is_dir() and not p.is_symlink(): items.append((f"wwwroot/{p.name}", p))
+    for lab, p in (("backup", ROOT / "backup"), ("Homebrew (Cellar)", Path("/opt/homebrew/Cellar")), ("mise (runtime)", HOME / ".local/share/mise")):
         if p.exists(): items.append((lab, p))
     rows = [dict(name=n, kb=du_kb(p)) for n, p in items[:60]]
     rows = sorted([r for r in rows if r["kb"] is not None], key=lambda r: -r["kb"])[:30]
@@ -852,7 +853,7 @@ def sys_stats(name):
 
 def sys_dns():
     """Baca saja: konfigurasi dnsmasq, resolver macOS, dan hasil resolusi nyata tiap situs. Tidak mengubah apa pun."""
-    tld = (OPS / "web/tld").read_text().strip() if (OPS / "web/tld").exists() else "lab"
+    tld = (OPS / "tld").read_text().strip() if (OPS / "tld").exists() else "lab"
     conf = Path("/opt/homebrew/etc/dnsmasq.conf"); lines = []
     if conf.exists():
         lines = [l.strip() for l in conf.read_text(errors="replace").splitlines() if l.strip() and not l.strip().startswith("#")]
@@ -868,7 +869,7 @@ def sys_dns():
                 cand = ts.stdout.split()[0] if ts.stdout.split() else ""
                 if ts.returncode == 0 and re.fullmatch(r"100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}", cand): tsip = cand; break
             except (OSError, subprocess.TimeoutExpired): pass
-    names = [p.name[:-5] for p in sorted((OPS / "web/nginx/sites").glob("*.conf"))][:60]
+    names = [p.name[:-5] for p in sorted((OPS / "nginx/sites").glob("*.conf"))][:60]
     rows = []
     for n in names:
         r = sh(["/usr/bin/dig", "+short", "+time=2", "+tries=1", "@127.0.0.1", f"{n}.{tld}"])
@@ -948,7 +949,7 @@ def redis_cmd(a):
 
 
 # ---------- penginstal satu klik + kloning situs ----------
-APPS_DIR = HOME / "Developer/apps"
+APPS_DIR = ROOT / "wwwroot"
 LABBIN = str(OPS / "scripts/lab")
 NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$")
 
@@ -963,7 +964,7 @@ def need(r, what):
     return r.stdout
 
 
-def site_exists(n): return (OPS / "web/nginx/sites" / f"{n}.conf").exists() or (OPS / "web/nginx/sites" / f"{n}.conf.disabled").exists()
+def site_exists(n): return (OPS / "nginx/sites" / f"{n}.conf").exists() or (OPS / "nginx/sites" / f"{n}.conf.disabled").exists()
 
 
 def set_env_kv(text, kv):

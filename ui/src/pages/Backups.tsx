@@ -40,7 +40,7 @@ export default function Backups() {
     <>
       <PageHead
         title="Backup"
-        desc="Berjalan otomatis tiap hari (jam, jumlah simpanan, dan batas umur diatur di kartu Jadwal di bawah). Isi: dump semua database, folder ~/Developer (tanpa node_modules dan .env), dotfile, dan database panel."
+        desc="Berjalan otomatis tiap hari (jam, jumlah simpanan, dan batas umur diatur di kartu Jadwal di bawah). Isi: dump semua database, folder ~/MacPanel/wwwroot (tanpa node_modules dan .env), dotfile, dan database panel."
         action={
           <button className="btn btn-primary" disabled={busy} onClick={run}>
             <DatabaseBackup size={18} aria-hidden="true" />
@@ -111,7 +111,7 @@ export default function Backups() {
       )}
       {browse && <Browse name={browse} onClose={() => setBrowse(null)} />}
       <Card title="Memulihkan">
-        <p className="small">Database proyek: halaman Database, tombol Dump dan Pulihkan (hanya ke database kosong). Berkas dan konfigurasi: tombol Jelajahi di daftar backup mengekstrak ke <span className="mono">~/Backups/restore/</span>; panel sengaja tidak menimpa berkas asli, salin manual bila perlu.</p>
+        <p className="small">Database proyek: halaman Database, tombol Dump dan Pulihkan (hanya ke database kosong). Berkas dan konfigurasi: tombol Jelajahi di daftar backup mengekstrak ke <span className="mono">~/MacPanel/backup/restore/</span>; panel sengaja tidak menimpa berkas asli, salin manual bila perlu.</p>
       </Card>
     </>
   );
@@ -218,7 +218,7 @@ function Browse({ name, onClose }: { name: string; onClose: () => void }) {
             })}
           </ul>
         </State>
-        <p className="small muted">Ekstrak menyalin ke <span className="mono">~/Backups/restore/&lt;waktu&gt;/</span>. Berkas asli tidak pernah ditimpa; salin manual bila perlu. Meminta kode TOTP ulang.</p>
+        <p className="small muted">Ekstrak menyalin ke <span className="mono">~/MacPanel/backup/restore/&lt;waktu&gt;/</span>. Berkas asli tidak pernah ditimpa; salin manual bila perlu. Meminta kode TOTP ulang.</p>
       </div>
     </Modal>
   );

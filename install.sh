@@ -1,4 +1,5 @@
 #!/bin/bash
+MP="${MACPANEL_HOME:-$HOME/MacPanel}"
 # MacPanel installer (macOS, Apple Silicon). Idempotent: aman dijalankan ulang.
 #   ./install.sh             -> tampilkan rencana lalu minta konfirmasi
 #   ./install.sh --yes       -> jalankan tanpa bertanya
@@ -20,7 +21,7 @@ while [ $# -gt 0 ]; do case "$1" in
 say() { printf '\n==> %s\n' "$*"; }
 run() { if [ "$DRY" = 1 ]; then echo "  [dry-run] $*"; else "$@"; fi; }
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OPS="$HOME/Developer/_ops"; PANEL="$OPS/web/panel"; WEB="$OPS/web"; BREWP=/opt/homebrew
+OPS="$MP/server"; PANEL="$OPS/panel"; WEB="$OPS"; BREWP=/opt/homebrew
 LOGS="$HOME/Library/Logs"; AGENT="$HOME/Library/LaunchAgents/com.macminiops.panel.plist"
 NEXT=()
 
@@ -53,13 +54,13 @@ if [ "$BREW" = 1 ] && [ ${#MISSING[@]} -gt 0 ]; then
 fi
 
 say "Tata letak folder"
-mkdir -p "$OPS/scripts" "$WEB/nginx/sites" "$WEB/nginx/snippets" "$LOGS" "$HOME/Backups" "$HOME/.config/macminiops/projects"
+mkdir -p "$MP/wwwroot" "$MP/docs" "$OPS/scripts" "$WEB/nginx/sites" "$WEB/nginx/snippets" "$LOGS" "$MP/backup" "$HOME/.config/macminiops/projects"
 chmod 700 "$HOME/.config/macminiops" "$HOME/.config/macminiops/projects"
 if [ "$SRC" != "$PANEL" ]; then
   if [ -e "$PANEL" ] && [ ! -L "$PANEL" ]; then echo "$PANEL sudah ada dan bukan symlink; pindahkan dulu atau jalankan installer dari sana."; exit 1; fi
   ln -sfn "$SRC" "$PANEL"; echo "  $PANEL -> $SRC"
 fi
-for f in lab lab-svc lab-sys lab-dev addsite.sh backup.sh logrotate.sh; do ln -sfn "../web/panel/cli/$f" "$OPS/scripts/$f"; done
+for f in lab lab-svc lab-sys lab-dev addsite.sh backup.sh logrotate.sh; do ln -sfn "../panel/cli/$f" "$OPS/scripts/$f"; done
 chmod +x "$SRC"/cli/*
 echo "$TLD" > "$WEB/tld"
 for f in "$SRC"/nginx/snippets/*; do sed "s#__HOME__#$HOME#g" "$f" > "$WEB/nginx/snippets/$(basename "$f")"; done

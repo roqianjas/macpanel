@@ -215,8 +215,8 @@ function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: stri
             </select>
           )}
         </Field>
-        <Field label={mode === "proxy" ? "Port aplikasi" : "Folder"} hint={mode === "proxy" ? "1024 sampai 65535. Aplikasi harus mendengarkan di 127.0.0.1." : "Path absolut atau diawali ~/ dan harus di bawah ~/Developer."}>
-          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={target} onChange={(e) => setTarget(e.target.value)} required placeholder={mode === "proxy" ? "3000" : "~/Developer/org/proyek/public"} />}
+        <Field label={mode === "proxy" ? "Port aplikasi" : "Folder"} hint={mode === "proxy" ? "1024 sampai 65535. Aplikasi harus mendengarkan di 127.0.0.1." : "Path absolut atau diawali ~/ dan harus di bawah ~/MacPanel/wwwroot."}>
+          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={target} onChange={(e) => setTarget(e.target.value)} required placeholder={mode === "proxy" ? "3000" : "~/MacPanel/wwwroot/org/proyek/public"} />}
         </Field>
         {mode === "php" && (
           <Field label="Versi PHP">

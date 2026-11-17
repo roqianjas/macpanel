@@ -26,7 +26,7 @@ export default function Databases() {
     setNote(null);
     try {
       await post(`/api/db/${engine}/${name}/dump`, {});
-      setNote({ tone: "ok", text: `Dump ${name} dibuat di ~/Backups/db di Mac mini. Salinan ini masih di disk yang sama, bukan backup offsite.` });
+      setNote({ tone: "ok", text: `Dump ${name} dibuat di ~/MacPanel/backup/db di Mac mini. Salinan ini masih di disk yang sama, bukan backup offsite.` });
     } catch (x) {
       setNote({ tone: "bad", text: errText(x) });
     } finally {
@@ -116,10 +116,10 @@ export default function Databases() {
           title={`Hapus database ${dropping.name}`}
           word={dropping.name}
           verb="Hapus database"
-          body={<p>Dump otomatis dibuat ke ~/Backups/db sebelum dihapus. Database dan penggunanya hilang dari server. Meminta kode TOTP ulang.</p>}
+          body={<p>Dump otomatis dibuat ke ~/MacPanel/backup/db sebelum dihapus. Database dan penggunanya hilang dari server. Meminta kode TOTP ulang.</p>}
           onConfirm={async () => {
             await post(`/api/db/${dropping.engine}/${dropping.name}/drop`, { confirm: dropping.name });
-            setNote({ tone: "ok", text: `${dropping.name} dihapus; dump terakhir tersimpan di ~/Backups/db.` });
+            setNote({ tone: "ok", text: `${dropping.name} dihapus; dump terakhir tersimpan di ~/MacPanel/backup/db.` });
             reload();
           }}
           onClose={() => setDropping(null)}
@@ -163,8 +163,8 @@ function AddDB({ onClose, onDone }: { onClose: () => void; onDone: () => void })
             </select>
           )}
         </Field>
-        <Field label="Tulis ke berkas .env proyek (opsional)" hint="Path berkas .env di bawah ~/Developer. Kunci DB_* ditulis di sana, bukan ditampilkan.">
-          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={env} onChange={(e) => setEnv(e.target.value)} placeholder="~/Developer/org/proyek/.env" />}
+        <Field label="Tulis ke berkas .env proyek (opsional)" hint="Path berkas .env di bawah ~/MacPanel/wwwroot. Kunci DB_* ditulis di sana, bukan ditampilkan.">
+          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={env} onChange={(e) => setEnv(e.target.value)} placeholder="~/MacPanel/wwwroot/org/proyek/.env" />}
         </Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">

@@ -318,7 +318,7 @@ var cmdBannedFlags = map[string]bool{
 }
 
 // validCmd memeriksa perintah worker/cron. Worker menjalankan kode proyek seperti Supervisor; yang dicegah adalah
-// kode sembarang lewat flag (-r, -e, -c), program asing, jalur di luar ~/Developer, dan port debug.
+// kode sembarang lewat flag (-r, -e, -c), program asing, jalur di luar ~/MacPanel/wwwroot, dan port debug.
 func (a *App) validCmd(cmd string) error {
 	if !cmdCharsRE.MatchString(cmd) {
 		return errors.New("perintah hanya boleh huruf, angka, dan _ . / : = @ % + , ~ - (tanpa kutip, $, ;, |, &)")

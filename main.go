@@ -72,7 +72,7 @@ func main() {
 	svc := fs.String("key-service", "panel-totp-key", "nama item Keychain")
 	addr := fs.String("addr", "127.0.0.1:9100", "alamat listen (harus loopback)")
 	origin := fs.String("origin", "https://panel.lab", "origin yang diizinkan")
-	uiDir := fs.String("ui", filepath.Join(userHome(), "Developer/_ops/web/panel/ui/dist"), "folder hasil build UI")
+	uiDir := fs.String("ui", filepath.Join(rootDir(), "server/panel/ui/dist"), "folder hasil build UI")
 	stdin := fs.Bool("password-stdin", false, "baca password dari stdin (otomasi/tes)")
 	role := fs.String("role", "admin", "peran user: admin atau viewer (hanya-baca)")
 	hookAddr := fs.String("hook-addr", "", "alamat listen penerima webhook (loopback), kosong = nonaktif")
@@ -235,4 +235,11 @@ func readPassword(fromStdin bool) string {
 func userHome() string {
 	h, _ := os.UserHomeDir()
 	return h
+}
+
+func rootDir() string {
+	if r := os.Getenv("MACPANEL_HOME"); r != "" {
+		return r
+	}
+	return filepath.Join(userHome(), "MacPanel")
 }
