@@ -7,6 +7,8 @@ export PATH=/opt/homebrew/bin:$PATH
 TS=$(date +%Y%m%d-%H%M%S)
 OUT="$HOME/Backups/staging/$TS"
 KEEP=7
+CONF="$HOME/.config/macminiops/backup.conf"
+if [ -f "$CONF" ]; then K=$(sed -n 's/^KEEP=\([0-9]\{1,3\}\)$/\1/p' "$CONF" | head -1); [ -n "$K" ] && [ "$K" -ge 1 ] && KEEP=$K; fi
 mkdir -p "$OUT"; chmod 700 "$HOME/Backups" "$HOME/Backups/staging" "$OUT"
 
 echo "[1/5] PostgreSQL dump"

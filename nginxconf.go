@@ -180,6 +180,7 @@ var allowedDirs = map[string]bool{
 	"fastcgi_pass": true, "fastcgi_param": true, "fastcgi_split_path_info": true, "fastcgi_read_timeout": true,
 	"fastcgi_send_timeout": true, "fastcgi_buffers": true, "fastcgi_buffer_size": true, "fastcgi_busy_buffers_size": true,
 	"fastcgi_intercept_errors": true, "sendfile": true, "keepalive_timeout": true,
+	"allow": true, "deny": true, "auth_basic": true, "auth_basic_user_file": true,
 }
 
 var serverOnly = map[string]bool{"listen": true, "server_name": true, "http2": true, "ssl_certificate": true, "ssl_certificate_key": true}
@@ -227,6 +228,16 @@ func (p *policy) server(s *Dir) error {
 }
 
 func (p *policy) block(ds []*Dir, inServer bool) error {
+	// Blok yang punya allow/deny harus berakhir dengan 'deny all'; kalau tidak, blok location bisa membuka akses di luar tailnet.
+	var lastACL *Dir
+	for _, d := range ds {
+		if d.Name == "allow" || d.Name == "deny" {
+			lastACL = d
+		}
+	}
+	if lastACL != nil && !(lastACL.Name == "deny" && len(lastACL.Args) == 1 && lastACL.Args[0] == "all") {
+		return bad(lastACL, "daftar allow/deny harus diakhiri 'deny all'")
+	}
 	for _, d := range ds {
 		if !allowedDirs[d.Name] {
 			return fmt.Errorf("baris %d: direktif '%s' tidak diizinkan", d.Line, d.Name)
@@ -268,8 +279,32 @@ func (p *policy) one(d *Dir) error {
 			return bad(d, "hanya 80, [::]:80, 443 ssl, [::]:443 ssl")
 		}
 	case "server_name":
-		if len(d.Args) != 1 || d.Args[0] != p.host {
-			return bad(d, "harus tepat "+p.host)
+		if len(d.Args) < 1 || len(d.Args) > 11 || d.Args[0] != p.host {
+			return bad(d, "nama pertama harus tepat "+p.host+" (maks 10 domain tambahan)")
+		}
+		for _, al := range d.Args[1:] {
+			if !a.aliasOK(al) {
+				return bad(d, "domain tambahan harus berbentuk nama."+a.tld)
+			}
+			if al == p.host || a.aliasConflict(p.name, al) {
+				return bad(d, "domain "+al+" sudah dipakai situs lain")
+			}
+		}
+	case "allow":
+		if len(d.Args) != 1 || !inTailnet(d.Args[0]) {
+			return bad(d, "hanya IP/CIDR di dalam tailnet atau loopback (aturan hanya boleh mempersempit)")
+		}
+	case "deny":
+		if len(d.Args) != 1 || d.Args[0] != "all" {
+			return bad(d, "hanya 'deny all'")
+		}
+	case "auth_basic":
+		if len(d.Args) != 1 || strings.ContainsAny(d.Args[0], "$") || len(d.Args[0]) > 60 {
+			return bad(d, "satu string tanpa variabel, atau off")
+		}
+	case "auth_basic_user_file":
+		if len(d.Args) != 1 || d.Args[0] != a.authFile(p.name) {
+			return bad(d, "harus berkas htpasswd milik situs ini")
 		}
 	case "include":
 		ok := len(d.Args) == 1 && (d.Args[0] == a.nginxDir+"/snippets/tailnet_only.conf" || d.Args[0] == a.nginxDir+"/snippets/proxy.conf" || d.Args[0] == "/opt/homebrew/etc/nginx/fastcgi_params")

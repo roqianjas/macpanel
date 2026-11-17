@@ -33,6 +33,9 @@ type Model struct {
 	ReadTimeout int       `json:"read_timeout_s"`
 	ForceHTTPS  bool      `json:"force_https"`
 	Gzip        bool      `json:"gzip"`
+	Aliases     []string  `json:"aliases,omitempty"`
+	Auth        bool      `json:"auth,omitempty"`
+	AllowIPs    []string  `json:"allow_ips,omitempty"`
 }
 
 const modelHeader = "# panel-model: "
@@ -77,6 +80,9 @@ func (a *App) validateModel(m *Model) error {
 	if m.MaxBody < 1 || m.MaxBody > 1024 || m.ReadTimeout < 10 || m.ReadTimeout > 600 {
 		return errors.New("max_body_mb 1-1024, read_timeout_s 10-600")
 	}
+	if err := a.validateExtras(m); err != nil {
+		return err
+	}
 	if len(m.Rewrites) > 50 {
 		return errors.New("maksimal 50 aturan rewrite")
 	}
@@ -117,6 +123,21 @@ func (a *App) generate(name string, m Model) (string, error) {
 		return "", err
 	}
 	host := name + "." + a.tld
+	if m.Auth && len(a.authUsers(name)) == 0 {
+		return "", errors.New("tambahkan minimal satu pengguna sebelum mengaktifkan password dasar")
+	}
+	names := host
+	if len(m.Aliases) > 0 {
+		names += " " + strings.Join(m.Aliases, " ")
+	}
+	acl := ""
+	if len(m.AllowIPs) > 0 {
+		acl = "    allow 127.0.0.1;\n    allow ::1;\n"
+		for _, ip := range m.AllowIPs {
+			acl += "    allow " + ip + ";\n"
+		}
+		acl += "    deny all;\n"
+	}
 	mj, _ := json.Marshal(m)
 	var body strings.Builder
 	fmt.Fprintf(&body, "    client_max_body_size %dm;\n", m.MaxBody)
@@ -124,6 +145,9 @@ func (a *App) generate(name string, m Model) (string, error) {
 		body.WriteString("    gzip on;\n    gzip_vary on;\n    gzip_min_length 1024;\n    gzip_types text/css application/javascript application/json image/svg+xml text/plain;\n")
 	}
 	fmt.Fprintf(&body, "    access_log %s/%s.log;\n", a.logDir, name)
+	if m.Auth {
+		fmt.Fprintf(&body, "    auth_basic \"Restricted\";\n    auth_basic_user_file %s;\n", a.authFile(name))
+	}
 	for _, r := range m.Rewrites {
 		if r.Flag != "" {
 			fmt.Fprintf(&body, "    rewrite %s %s %s;\n", r.From, r.To, r.Flag)
@@ -159,13 +183,13 @@ func (a *App) generate(name string, m Model) (string, error) {
 	}
 	var b strings.Builder
 	b.WriteString(modelHeader + string(mj) + "\n")
-	fmt.Fprintf(&b, "server {\n    listen 80; listen [::]:80;\n    server_name %s;\n    include %s/snippets/tailnet_only.conf;\n", host, a.nginxDir)
+	fmt.Fprintf(&b, "server {\n    listen 80; listen [::]:80;\n    server_name %s;\n%s    include %s/snippets/tailnet_only.conf;\n", names, acl, a.nginxDir)
 	if m.ForceHTTPS {
 		b.WriteString("    return 301 https://$host$request_uri;\n}\n")
 	} else {
 		b.WriteString(body.String() + "}\n")
 	}
-	fmt.Fprintf(&b, "server {\n    listen 443 ssl; listen [::]:443 ssl;\n    http2 on;\n    server_name %s;\n    include %s/snippets/tailnet_only.conf;\n    ssl_certificate     %s/%s.pem;\n    ssl_certificate_key %s/%s-key.pem;\n", host, a.nginxDir, a.certDir, host, a.certDir, host)
+	fmt.Fprintf(&b, "server {\n    listen 443 ssl; listen [::]:443 ssl;\n    http2 on;\n    server_name %s;\n%s    include %s/snippets/tailnet_only.conf;\n    ssl_certificate     %s/%s.pem;\n    ssl_certificate_key %s/%s-key.pem;\n", names, acl, a.nginxDir, a.certDir, host, a.certDir, host)
 	b.WriteString(body.String() + "}\n")
 	return b.String(), nil
 }
@@ -357,6 +381,18 @@ func hSettingsSet(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		jerr(w, 400, err.Error())
 		return
 	}
+	for _, al := range m.Aliases {
+		if a.aliasConflict(name, al) {
+			jerr(w, 409, "domain "+al+" sudah dipakai situs lain")
+			return
+		}
+	}
+	if len(m.Aliases) > 0 { // sertifikat harus memuat semua nama sebelum nginx dimuat ulang
+		if res := a.mutate(append([]string{"site", "cert", name}, m.Aliases...), ""); res.Code != 0 {
+			jerr(w, 500, "gagal membuat sertifikat untuk domain tambahan: "+scrub(res.Out))
+			return
+		}
+	}
 	if err := a.checkConf(name, content); err != nil { // sabuk pengaman: hasil template harus lolos kebijakan yang sama
 		jerr(w, 500, "template menghasilkan config yang ditolak kebijakan: "+err.Error())
 		return
@@ -460,7 +496,11 @@ func hSSLRenew(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	if !a.requireStepUp(w, ss) {
 		return
 	}
-	a.record(w, ss, a.clientIP(r), "ssl_renew", name, a.mutate([]string{"site", "cert", name}, ""))
+	args := []string{"site", "cert", name}
+	if st, err := a.readSite(name); err == nil && st.Model != nil {
+		args = append(args, st.Model.Aliases...)
+	}
+	a.record(w, ss, a.clientIP(r), "ssl_renew", name, a.mutate(args, ""))
 }
 
 var logN = regexp.MustCompile(`^[0-9]{1,3}$`)

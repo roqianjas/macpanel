@@ -402,7 +402,86 @@ def deploy(a):
 STAGING = HOME / "Backups/staging"
 
 
+BK_LABEL = "com.macminiops.backup"
+BK_PLIST = HOME / "Library/LaunchAgents" / f"{BK_LABEL}.plist"
+BK_CONF = HOME / ".config/macminiops/backup.conf"
+RESTORE_DIR = HOME / "Backups/restore"
+BK_NAME = re.compile(r"^\d{8}-\d{6}$")
+PARTS = {"developer": "developer.tar.gz", "dotfiles": "dotfiles.tar.gz"}
+PATH_OK = re.compile(r"^[A-Za-z0-9._@+ /-]{1,300}$")
+
+
+def bk_archive(name, part):
+    if not BK_NAME.match(name or ""): die("nama backup tidak valid")
+    if part not in PARTS: die(f"bagian: {', '.join(PARTS)}")
+    f = STAGING / name / PARTS[part]
+    if not f.is_file(): die("arsip tidak ada")
+    return f
+
+
+def bk_config(a):
+    import plistlib
+    if a.cact == "get":
+        t, keep = "02:30", 7
+        try:
+            pl = plistlib.loads(BK_PLIST.read_bytes()); c = pl["StartCalendarInterval"]; t = f"{c['Hour']:02d}:{c['Minute']:02d}"
+        except (OSError, KeyError, ValueError): pass
+        if BK_CONF.exists():
+            m = re.search(r"^KEEP=(\d{1,3})$", BK_CONF.read_text(), re.M)
+            if m: keep = int(m.group(1))
+        print(json.dumps(dict(time=t, keep=keep))); return
+    tm = re.fullmatch(r"([01]\d|2[0-3]):([0-5]\d)", a.time or "")
+    if not tm: die("jam format HH:MM (00:00-23:59)")
+    if not (1 <= a.keep <= 60): die("simpan 1-60 backup")
+    BK_CONF.parent.mkdir(parents=True, exist_ok=True)
+    BK_CONF.write_text(f"KEEP={a.keep}\n"); os.chmod(BK_CONF, 0o600)
+    pl = plistlib.loads(BK_PLIST.read_bytes())
+    shutil.copy2(BK_PLIST, f"{BK_PLIST}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+    pl["StartCalendarInterval"] = {"Hour": int(tm.group(1)), "Minute": int(tm.group(2))}
+    BK_PLIST.write_bytes(plistlib.dumps(pl))
+    uid = os.getuid()
+    sh(["/bin/launchctl", "bootout", f"gui/{uid}/{BK_LABEL}"])
+    r = sh(["/bin/launchctl", "bootstrap", f"gui/{uid}", str(BK_PLIST)])
+    if r.returncode: die("launchctl gagal: " + (r.stderr or r.stdout).strip()[-200:])
+    print(f"OK: backup harian pukul {a.time}, simpan {a.keep} terakhir")
+
+
+def bk_ls(a):
+    f = bk_archive(a.name, a.part)
+    pre = (a.prefix or "").strip("/")
+    if pre and (not PATH_OK.match(pre) or ".." in pre.split("/")): die("path tidak valid")
+    r = subprocess.run(["/usr/bin/tar", "-tzf", str(f)], capture_output=True, text=True)
+    if r.returncode: die("arsip tidak terbaca")
+    seen = {}
+    for l in r.stdout.splitlines():
+        l = l.strip("/")
+        if pre and not (l == pre or l.startswith(pre + "/")): continue
+        rest = l[len(pre):].lstrip("/") if pre else l
+        if not rest: continue
+        head, _, tail = rest.partition("/")
+        if any(x in head for x in ("node_modules", ".git")) and tail: seen.setdefault(head, True)
+        seen[head] = seen.get(head, False) or bool(tail)
+    ents = sorted(seen.items(), key=lambda kv: (not kv[1], kv[0].lower()))[:500]
+    print(json.dumps(dict(prefix=pre, entries=[dict(name=n, dir=d) for n, d in ents])))
+
+
+def bk_extract(a):
+    f = bk_archive(a.name, a.part)
+    p = (a.path or "").strip("/")
+    if not p or not PATH_OK.match(p) or ".." in p.split("/") or p.startswith("-"): die("path tidak valid")
+    RESTORE_DIR.mkdir(parents=True, exist_ok=True); os.chmod(RESTORE_DIR, 0o700)
+    dest = RESTORE_DIR / f"{a.name}-{a.part}-{time.strftime('%H%M%S')}"
+    dest.mkdir(mode=0o700)
+    r = subprocess.run(["/usr/bin/tar", "-xzf", str(f), "-C", str(dest), "--", p], capture_output=True, text=True)
+    if r.returncode: shutil.rmtree(dest, ignore_errors=True); die("ekstrak gagal: " + (r.stderr or "").strip()[-200:])
+    n = sum(1 for _ in dest.rglob("*"))
+    print(f"OK: {n} entri diekstrak ke {dest} (berkas asli tidak disentuh; salin manual bila perlu)")
+
+
 def backup(a):
+    if a.act == "config": return bk_config(a)
+    if a.act == "ls": return bk_ls(a)
+    if a.act == "extract": return bk_extract(a)
     if a.act == "run": sys.exit(stream([str(OPS / "scripts/backup.sh")]))
     rows = []
     for d in sorted(STAGING.glob("20*"), reverse=True)[:14] if STAGING.exists() else []:
@@ -529,6 +608,9 @@ def main():
     for x in ("get", "slow"): q = dc.add_parser(x); q.add_argument("engine", choices=["mysql", "redis"])
     q = dc.add_parser("set"); q.add_argument("engine", choices=["mysql", "redis"]); q.add_argument("pairs", nargs="+")
     b = top.add_parser("backup").add_subparsers(dest="act", required=True); b.add_parser("list"); b.add_parser("run")
+    q = b.add_parser("config"); q.add_argument("cact", choices=["get", "set"]); q.add_argument("--time"); q.add_argument("--keep", type=int, default=7)
+    q = b.add_parser("ls"); q.add_argument("name"); q.add_argument("part"); q.add_argument("prefix", nargs="?", default="")
+    q = b.add_parser("extract"); q.add_argument("name"); q.add_argument("part"); q.add_argument("path")
     a = ap.parse_args()
     if a.mod == "ext": ext_list(a.php) if a.act == "list" else ext_act(a)
     elif a.mod == "ini": ini_get(a.php) if a.act == "get" else ini_set(a)

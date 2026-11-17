@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Archive, ArchiveRestore, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, KeyRound, Plus, Trash2 } from "lucide-react";
 import { errText, fmtTime, get, post, upload } from "../api";
 import { trackJob } from "../jobs";
 import DbConfig from "./DbConfig";
+import DbAccess from "./DbAccess";
 import { fmtBytes } from "../lib";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 
@@ -15,6 +16,7 @@ export default function Databases() {
   const [adding, setAdding] = useState(false);
   const [dropping, setDropping] = useState<{ engine: Engine; name: string } | null>(null);
   const [restoring, setRestoring] = useState<{ engine: Engine; name: string } | null>(null);
+  const [access, setAccess] = useState<{ engine: Engine; name: string } | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState("");
 
@@ -65,6 +67,11 @@ export default function Databases() {
                         {busy === `${en}/${n}` ? "Membuat dump…" : "Dump"}
                         <span className="sr"> {n}</span>
                       </button>
+                      <button className="btn" onClick={() => setAccess({ engine: en, name: n })}>
+                        <KeyRound size={18} aria-hidden="true" />
+                        Akses
+                        <span className="sr"> {n}</span>
+                      </button>
                       <button className="btn" onClick={() => setRestoring({ engine: en, name: n })}>
                         <ArchiveRestore size={18} aria-hidden="true" />
                         Pulihkan
@@ -86,6 +93,7 @@ export default function Databases() {
         <p className="small muted">Untuk melihat isi tabel pakai Adminer di db.lab atau DBeaver lewat tailnet. Kata sandi proyek ada di berkas ~/.config/macminiops/projects di Mac mini.</p>
       </State>
       <DbConfig />
+      {access && <DbAccess engine={access.engine} name={access.name} onClose={() => setAccess(null)} />}
       {restoring && (
         <RestoreDialog
           engine={restoring.engine}

@@ -31,6 +31,9 @@ interface Model {
   read_timeout_s: number;
   force_https: boolean;
   gzip: boolean;
+  aliases?: string[];
+  auth?: boolean;
+  allow_ips?: string[];
 }
 
 const MODE_LABEL: Record<string, string> = { php: "PHP", proxy: "Proxy", statis: "Statis", kustom: "Kustom" };
@@ -242,6 +245,9 @@ function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: stri
 
 const TABS = [
   { id: "umum", label: "Umum" },
+  { id: "domain", label: "Domain" },
+  { id: "akses", label: "Akses" },
+  { id: "env", label: ".env" },
   { id: "deploy", label: "Deploy" },
   { id: "rewrite", label: "Rewrite" },
   { id: "ssl", label: "SSL" },
@@ -274,15 +280,20 @@ function SiteDetail({ name }: { name: string }) {
       {!missing && <Tabs tabs={system ? TABS.filter((t) => t.id !== "deploy") : TABS} value={tab} onChange={setTab} label="Bagian situs" />}
       {!missing && (
         <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
-          {tab === "umum" || tab === "rewrite" ? (
+          {tab === "umum" || tab === "rewrite" || tab === "domain" || tab === "akses" ? (
             <State loading={settings.loading && !settings.data} error={settings.error} onRetry={settings.reload}>
               {settings.data &&
                 (settings.data.model ? (
-                  <SettingsForm key={tab} name={name} kind={settings.data.kind} initial={settings.data.model} system={system} section={tab} onSaved={settings.reload} />
+                  <>
+                    <SettingsForm key={tab} name={name} kind={settings.data.kind} initial={settings.data.model} system={system} section={tab} onSaved={settings.reload} />
+                    {tab === "akses" && !system && <AuthUsers name={name} enabled={!!settings.data.model.auth} />}
+                  </>
                 ) : (
                   <Card><p>Situs ini memakai config kustom yang tidak bisa diubah lewat formulir. Gunakan tab <strong>Config nginx</strong>.</p></Card>
                 ))}
             </State>
+          ) : tab === "env" ? (
+            <EnvEditor name={name} />
           ) : tab === "deploy" ? (
             <Deploy name={name} />
           ) : tab === "ssl" ? (
@@ -365,7 +376,33 @@ function SettingsForm({ name, kind, initial, system, section, onSaved }: { name:
         </label>
       )}
       <fieldset className="fs" disabled={system || busy}>
-        {section === "umum" ? (
+        {section === "domain" ? (
+          <Card title="Domain tambahan">
+            <p className="small muted">
+              Satu situs bisa dijangkau lewat beberapa nama, mis. <span className="mono">www.lab</span>. Satu nama per baris, berbentuk <span className="mono">nama.lab</span> (maks 10). Sertifikat HTTPS dibuat ulang otomatis agar memuat semua nama. Nama situs inti dan nama yang sudah dipakai situs lain ditolak.
+            </p>
+            <Field label="Domain tambahan" hint={`Nama utama tetap ${name}.lab`}>
+              {(id, dd) => (
+                <textarea id={id} aria-describedby={dd} className="mono" rows={4} value={(m.aliases ?? []).join("\n")} onChange={(e) => set("aliases", e.target.value.split("\n").map((x) => x.trim().toLowerCase()).filter(Boolean))} spellCheck={false} />
+              )}
+            </Field>
+          </Card>
+        ) : section === "akses" ? (
+          <Card title="Pembatasan akses">
+            <p className="small muted">Akses ke semua situs sudah dibatasi ke jaringan tailnet. Di sini Anda bisa mempersempitnya lagi. Aturan hanya boleh berisi alamat di dalam tailnet atau loopback; alamat publik ditolak.</p>
+            <Field label="Hanya izinkan IP berikut (opsional)" hint="Satu IP atau CIDR per baris, mis. 100.110.21.93 atau 100.64.0.0/16. Kosong = semua perangkat tailnet.">
+              {(id, dd) => (
+                <textarea id={id} aria-describedby={dd} className="mono" rows={3} value={(m.allow_ips ?? []).join("\n")} onChange={(e) => set("allow_ips", e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))} spellCheck={false} />
+              )}
+            </Field>
+            <div className="checks">
+              <label className="check">
+                <input type="checkbox" checked={!!m.auth} onChange={(e) => set("auth", e.target.checked)} />
+                Wajib password dasar (HTTP Basic Auth). Tambahkan pengguna di bawah sebelum mengaktifkan.
+              </label>
+            </div>
+          </Card>
+        ) : section === "umum" ? (
           <Card title="Pengaturan umum">
             <div className="grid2">
               <Field label="Jenis situs">
@@ -608,3 +645,125 @@ function Logs({ name }: { name: string }) {
   );
 }
 
+
+function AuthUsers({ name, enabled }: { name: string; enabled: boolean }) {
+  const q = useLoad(() => get<{ users: string[] }>(`/api/sites/${name}/auth`), [name]);
+  const [user, setUser] = useState("");
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [rm, setRm] = useState<string | null>(null);
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    try {
+      await post(`/api/sites/${name}/auth/users`, { user, password: pw });
+      setUser("");
+      setPw("");
+      q.reload();
+    } catch (x) {
+      setErr(errText(x));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Pengguna password dasar">
+      <p className="small muted">{enabled ? "Password dasar aktif untuk situs ini." : "Password dasar belum aktif; aktifkan di kartu di atas setelah menambah pengguna."} Kata sandi disimpan sebagai hash dan tidak bisa dilihat lagi. Menambah dengan nama yang sudah ada mengganti kata sandinya.</p>
+      <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && q.data.users.length === 0} emptyText="Belum ada pengguna." onRetry={q.reload}>
+        <ul className="list">
+          {q.data?.users.map((u) => (
+            <li key={u} className="list-row">
+              <span className="mono">{u}</span>
+              <button className="btn btn-danger-ghost" onClick={() => setRm(u)}>
+                <Trash2 size={18} aria-hidden="true" />
+                Hapus<span className="sr"> {u}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </State>
+      <form onSubmit={add} className="stack">
+        <div className="grid2">
+          <Field label="Nama pengguna">{(id) => <input id={id} className="mono" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="off" required pattern="[A-Za-z0-9._\-]{1,32}" />}</Field>
+          <Field label="Kata sandi" hint="8-128 karakter">{(id, dd) => <input id={id} aria-describedby={dd} type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required />}</Field>
+        </div>
+        {err && <Alert>{err}</Alert>}
+        <div>
+          <button className="btn" disabled={busy || !user || pw.length < 8}>{busy ? "Menyimpan…" : "Tambah atau ganti"}</button>
+        </div>
+      </form>
+      {rm && (
+        <ConfirmDialog
+          title={`Hapus pengguna ${rm}`}
+          word={rm}
+          verb="Hapus pengguna"
+          body={<p>Pengguna ini tidak bisa masuk lagi. Meminta kode TOTP ulang.</p>}
+          onConfirm={async () => {
+            await post(`/api/sites/${name}/auth/users/${rm}/remove`, {});
+            q.reload();
+          }}
+          onClose={() => setRm(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
+function EnvEditor({ name }: { name: string }) {
+  const [state, setState] = useState<"closed" | "loading" | "open">("closed");
+  const [content, setContent] = useState("");
+  const [path, setPath] = useState("");
+  const [exists, setExists] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const open = async () => {
+    setState("loading");
+    setMsg(null);
+    try {
+      const r = await get<{ content: string; exists: boolean; path: string }>(`/api/sites/${name}/env`);
+      setContent(r.content);
+      setExists(r.exists);
+      setPath(r.path);
+      setState("open");
+    } catch (x) {
+      setMsg({ tone: "bad", text: errText(x) });
+      setState("closed");
+    }
+  };
+  const save = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await post(`/api/sites/${name}/env`, { content });
+      setExists(true);
+      setMsg({ tone: "ok", text: "Tersimpan. Cadangan sebelumnya disimpan sebagai .env.bak.<waktu> (3 terakhir). Aplikasi yang menyimpan config di cache (mis. php artisan config:cache) perlu di-refresh di tab Deploy." });
+    } catch (x) {
+      setMsg({ tone: "bad", text: errText(x) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Berkas .env proyek">
+      <p className="small muted">Berisi rahasia (kata sandi database, kunci aplikasi). Membukanya meminta kode TOTP ulang dan dicatat di audit; isinya tidak pernah dicatat. Akun hanya-baca tidak bisa membukanya. Berkas disimpan dengan izin 0600.</p>
+      {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
+      {state !== "open" ? (
+        <div>
+          <button className="btn" onClick={open} disabled={state === "loading"}>{state === "loading" ? "Membuka…" : "Buka .env"}</button>
+        </div>
+      ) : (
+        <div className="stack">
+          <p className="small mono">{path}{exists ? "" : " (belum ada, akan dibuat)"}</p>
+          <label className="sr" htmlFor="env-text">Isi .env</label>
+          <textarea id="env-text" className="mono env-text" rows={16} value={content} onChange={(e) => setContent(e.target.value)} spellCheck={false} autoComplete="off" />
+          <div className="row-end">
+            <button className="btn" onClick={() => { setState("closed"); setContent(""); }}>Tutup</button>
+            <button className="btn btn-primary" onClick={save} disabled={busy || content.length > 65536}>{busy ? "Menyimpan…" : "Simpan"}</button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}

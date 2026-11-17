@@ -9,7 +9,7 @@
 Aturan: satu database + satu user per proyek (nama sama), password acak tidak pernah dicetak,
 disimpan di ~/.config/macminiops/projects/<nama>.<engine>.env (0600). Tanpa shell, argumen berupa list.
 """
-import argparse, gzip, os, re, secrets, shutil, subprocess, sys, time
+import argparse, gzip, json, os, re, secrets, shutil, subprocess, sys, time
 from pathlib import Path
 
 HOME = Path.home()
@@ -246,13 +246,42 @@ def cmd_restore(a):
     print(f"OK: {f.name} dipulihkan ke '{n}' ({table_count(eng, n)} tabel)")
 
 
+def cmd_users(a):
+    n, eng = a.name, a.engine; check_name(n)
+    if not exists(eng, n): die("database tidak ada")
+    if eng == "mysql": r = my_run(f"SELECT user,host FROM mysql.user WHERE user='{n}'", ["-N", "-B"])
+    else: r = pg_run(f"SELECT rolname FROM pg_roles WHERE rolname='{n}'", ["-At"])
+    if r.returncode: die("gagal membaca user: " + r.stderr.strip()[:200])
+    rows = [ln.split("\t") for ln in r.stdout.splitlines() if ln.strip()]
+    cf = PROJ / f"{n}.{eng}.env"
+    print(json.dumps(dict(users=[dict(user=x[0], host=(x[1] if len(x) > 1 else "")) for x in rows], cred=cf.exists(), rotated=int(cf.stat().st_mtime) if cf.exists() else 0)))
+
+
+def cmd_passwd(a):
+    n, eng = a.name, a.engine; check_name(n)
+    if not exists(eng, n): die("database tidak ada")
+    kv = project_cred(n, eng)
+    pw = secrets.token_urlsafe(24).replace("-", "x").replace("_", "y")
+    if eng == "mysql": r = my_run(f"ALTER USER '{n}'@'127.0.0.1' IDENTIFIED BY '{pw}'; ALTER USER '{n}'@'localhost' IDENTIFIED BY '{pw}'; FLUSH PRIVILEGES;")
+    else: r = pg_run(f"ALTER ROLE \"{n}\" PASSWORD '{pw}';")
+    if r.returncode: die("ganti kata sandi gagal: " + r.stderr.strip()[:200])
+    kv["DB_PASSWORD"] = pw
+    write_env_file(PROJ / f"{n}.{eng}.env", kv)
+    print(f"OK: kata sandi user '{n}' ({eng}) diganti dan disimpan di {PROJ}/{n}.{eng}.env. Perbarui .env aplikasi yang memakainya.")
+
+
+def cmd_creds(a):
+    n, eng = a.name, a.engine; check_name(n)
+    print(json.dumps({k: v for k, v in project_cred(n, eng).items() if k.startswith("DB_")}))
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] in ("worker", "job", "site", "php", "runtime", "update", "nginx", "service", "app", "ext", "ini", "composer", "deploy", "backup", "dbcfg"):
         os.execv(sys.executable, [sys.executable, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lab-svc" if sys.argv[1] in ("worker", "job") else "lab-dev" if sys.argv[1] in ("ext", "ini", "composer", "deploy", "backup", "dbcfg") else "lab-sys"), *sys.argv[1:]])
     ap = argparse.ArgumentParser(prog="lab"); sp = ap.add_subparsers(dest="mod", required=True)
     db = sp.add_parser("db").add_subparsers(dest="act", required=True)
     db.add_parser("list").set_defaults(f=cmd_list)
-    for nm, fn in (("create", cmd_create), ("dump", cmd_dump), ("drop", cmd_drop), ("restore", cmd_restore)):
+    for nm, fn in (("create", cmd_create), ("dump", cmd_dump), ("drop", cmd_drop), ("restore", cmd_restore), ("users", cmd_users), ("passwd", cmd_passwd), ("creds", cmd_creds)):
         p = db.add_parser(nm); p.add_argument("name"); p.add_argument("--engine", choices=["mysql", "pgsql"], default="mysql"); p.set_defaults(f=fn)
         if nm == "create": p.add_argument("--env")
         if nm == "restore": p.add_argument("--file")

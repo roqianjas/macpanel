@@ -73,7 +73,7 @@ def site(a):
         if re.fullmatch(NAME_RE, a.name or ""): (SITES_DIR / f"{a.name}.conf.disabled").unlink(missing_ok=True)
         sys.exit(stream([s, "--remove", a.name]))
     if a.act in ("enable", "disable"): site_toggle(a.name, a.act == "enable"); return
-    if a.act == "cert": cert(a.name); return
+    if a.act == "cert": cert(a.name, a.aliases); return
     cmd = [s, a.name, a.target] + (["--php", a.php] if a.php else [])
     sys.exit(stream(cmd))
 
@@ -97,19 +97,24 @@ def nginx(a):
     print("OK: nginx -t lolos, reload berhasil")
 
 
-def cert(name):
+def cert(name, aliases=()):
     if not re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?", name): die("nama situs tidak valid")
     tld = (OPS / "web/tld").read_text().strip()
     host = f"{name}.{tld}"
     if not (OPS / f"web/nginx/sites/{name}.conf").exists(): die("situs tidak ada")
     pem, key = CERTS / f"{host}.pem", CERTS / f"{host}-key.pem"
-    r = sh(["/opt/homebrew/bin/mkcert", "-cert-file", str(pem), "-key-file", str(key), host])
+    names = [host]
+    for al in aliases:
+        l, _, t = al.partition(".")
+        if t != tld or not re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?", l): die(f"domain tambahan tidak valid: {al!r}")
+        names.append(al)
+    r = sh(["/opt/homebrew/bin/mkcert", "-cert-file", str(pem), "-key-file", str(key), *names])
     if r.returncode: die("mkcert gagal: " + (r.stderr or r.stdout)[-200:])
     os.chmod(key, 0o600)
     t = nginx_test()
     if t.returncode: die("nginx -t gagal setelah sertifikat baru: " + (t.stdout + t.stderr)[-200:])
     sh(["/opt/homebrew/bin/nginx", "-s", "reload"])
-    print(f"OK: sertifikat {host} diperbarui, nginx reload")
+    print(f"OK: sertifikat {', '.join(names)} diperbarui, nginx reload")
 
 
 # ---------- php ----------
@@ -376,7 +381,7 @@ def main():
     ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
     s = top.add_parser("site").add_subparsers(dest="act", required=True)
     s.add_parser("list"); p = s.add_parser("add"); p.add_argument("name"); p.add_argument("target"); p.add_argument("--php", choices=PHPS)
-    s.add_parser("remove").add_argument("name"); s.add_parser("cert").add_argument("name")
+    s.add_parser("remove").add_argument("name"); q = s.add_parser("cert"); q.add_argument("name"); q.add_argument("aliases", nargs="*")
     for x in ("enable", "disable"): s.add_parser(x).add_argument("name")
     sv = top.add_parser("service").add_subparsers(dest="act", required=True); q = sv.add_parser("list"); q.add_argument("--json", action="store_true")
     for x in ("start", "stop", "restart"): sv.add_parser(x).add_argument("id")
