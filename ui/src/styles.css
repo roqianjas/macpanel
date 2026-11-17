@@ -105,7 +105,7 @@ select { padding-right: 8px; }
 .seg button { border: 0; background: none; padding: 6px 12px; font-size: var(--t-s); font-weight: 600; color: var(--muted); min-height: 34px; }
 .seg button:hover { background: var(--raised); color: var(--text); }
 .seg button.on { background: var(--tint); color: var(--on-tint); }
-.tabs { display: flex; gap: var(--s1); overflow-x: auto; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; gap: var(--s1); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--line); }
 .tab { min-height: 42px; padding: 0 var(--s3); background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); font-size: var(--t-s); font-weight: 600; white-space: nowrap; margin-bottom: -1px; }
 .tab:hover { color: var(--text); }
 .tab.on { color: var(--on-tint); border-bottom-color: var(--primary); }
@@ -273,3 +273,11 @@ select { padding-right: 8px; }
 @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } .line, .spark-line { stroke-dasharray: none; } }
+
+/* ---- P6: kelola PHP, deploy, formulir berkolom ---- */
+.grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s4); }
+.builtin { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: var(--s3); }
+.builtin summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; }
+.chips-wrap { overflow-wrap: anywhere; line-height: 1.7; margin: var(--s2) 0 0; }
+.check { display: inline-flex; align-items: center; gap: var(--s3); min-height: var(--tap); cursor: pointer; }
+.check input { width: 20px; height: 20px; flex: none; }

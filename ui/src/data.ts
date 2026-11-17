@@ -72,3 +72,12 @@ export const useServices = () => usePoll(() => get<{ services: ServiceInfo[] }>(
 
 export const stateText: Record<ServiceInfo["state"], string> = { running: "Berjalan", stopped: "Berhenti", not_installed: "Belum terpasang", error: "Galat" };
 export const stateTone = (s: ServiceInfo["state"]) => (s === "running" ? "ok" : s === "error" ? "bad" : s === "stopped" ? "warn" : "mute") as "ok" | "bad" | "warn" | "mute";
+
+export interface AlertItem {
+  id: string;
+  level: "bad" | "warn";
+  title: string;
+  detail: string;
+  link: string;
+}
+export const useAlerts = () => usePoll(() => get<{ alerts: AlertItem[]; at: number }>("/api/alerts"), 60000);

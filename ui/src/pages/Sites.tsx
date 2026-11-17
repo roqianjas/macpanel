@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { errText, fmtTime, get, post } from "../api";
+import Deploy from "./Deploy";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, Tabs, useLoad, type Tone } from "../ui";
 
 interface Site {
@@ -160,6 +161,7 @@ function SiteList() {
 
 function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: string) => void }) {
   const [name, setName] = useState("");
+  const [dbEngine, setDbEngine] = useState("");
   const [mode, setMode] = useState("php");
   const [target, setTarget] = useState("");
   const [php, setPhp] = useState("8.4");
@@ -173,6 +175,15 @@ function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: stri
       const body: Record<string, string> = { name, target };
       if (mode === "php") body.php = php;
       await post("/api/sites", body);
+      if (dbEngine) {
+        try {
+          await post("/api/db", { name: name.replace(/-/g, "_"), engine: dbEngine });
+        } catch (x) {
+          setErr(`Situs dibuat, tetapi database gagal dibuat: ${errText(x)}`);
+          setBusy(false);
+          return;
+        }
+      }
       onDone(name);
     } catch (x) {
       setErr(errText(x));
@@ -206,6 +217,17 @@ function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: stri
             )}
           </Field>
         )}
+        {mode !== "statis" && (
+          <Field label="Database (opsional)" hint={dbEngine ? `Membuat database dan user "${name.replace(/-/g, "_") || "nama"}" dengan kata sandi acak. Kredensial disimpan di ~/.config/macminiops/projects/ (tidak ditampilkan di sini).` : "Buat database kosong untuk proyek ini sekaligus."}>
+            {(id, dd) => (
+              <select id={id} aria-describedby={dd} value={dbEngine} onChange={(e) => setDbEngine(e.target.value)}>
+                <option value="">Tanpa database</option>
+                <option value="mysql">MySQL</option>
+                <option value="pgsql">PostgreSQL</option>
+              </select>
+            )}
+          </Field>
+        )}
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>Batal</button>
@@ -220,6 +242,7 @@ function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: stri
 
 const TABS = [
   { id: "umum", label: "Umum" },
+  { id: "deploy", label: "Deploy" },
   { id: "rewrite", label: "Rewrite" },
   { id: "ssl", label: "SSL" },
   { id: "config", label: "Config nginx" },
@@ -248,7 +271,7 @@ function SiteDetail({ name }: { name: string }) {
           </>
         }
       />
-      {!missing && <Tabs tabs={TABS} value={tab} onChange={setTab} label="Bagian situs" />}
+      {!missing && <Tabs tabs={system ? TABS.filter((t) => t.id !== "deploy") : TABS} value={tab} onChange={setTab} label="Bagian situs" />}
       {!missing && (
         <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
           {tab === "umum" || tab === "rewrite" ? (
@@ -260,6 +283,8 @@ function SiteDetail({ name }: { name: string }) {
                   <Card><p>Situs ini memakai config kustom yang tidak bisa diubah lewat formulir. Gunakan tab <strong>Config nginx</strong>.</p></Card>
                 ))}
             </State>
+          ) : tab === "deploy" ? (
+            <Deploy name={name} />
           ) : tab === "ssl" ? (
             <Ssl name={name} />
           ) : tab === "config" ? (

@@ -49,6 +49,7 @@ type Session struct {
 	LastSeen int64
 	Expires  int64
 	StepUp   int64
+	Role     string
 }
 
 type User struct {
@@ -83,6 +84,7 @@ func openStore(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, err
 	}
+	db.Exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'") // migrasi; gagal bila kolom sudah ada (aman diabaikan)
 	return &Store{db}, nil
 }
 
@@ -117,6 +119,46 @@ func (s *Store) GetUser(name string) *User {
 	}
 	u.Disabled = dis == 1
 	return u
+}
+
+type UserRow struct {
+	Name     string `json:"name"`
+	Role     string `json:"role"`
+	Disabled bool   `json:"disabled"`
+	Created  int64  `json:"created"`
+}
+
+func (s *Store) UserRows() []UserRow {
+	rows, err := s.db.Query("SELECT name,role,disabled,created FROM users ORDER BY name")
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	out := []UserRow{}
+	for rows.Next() {
+		var u UserRow
+		var dis int
+		rows.Scan(&u.Name, &u.Role, &dis, &u.Created)
+		u.Disabled = dis == 1
+		out = append(out, u)
+	}
+	return out
+}
+
+// SetRole mengubah peran user dan mencabut sesinya agar peran baru langsung berlaku. Hanya "admin" atau "viewer".
+func (s *Store) SetRole(name, role string) bool {
+	if role != "admin" && role != "viewer" {
+		return false
+	}
+	r, err := s.db.Exec("UPDATE users SET role=? WHERE name=?", role, name)
+	if err != nil {
+		return false
+	}
+	if n, _ := r.RowsAffected(); n != 1 {
+		return false
+	}
+	s.db.Exec("DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE name=?)", name)
+	return true
 }
 
 func (s *Store) ListUsers() []string {
@@ -173,8 +215,8 @@ func (s *Store) GetSession(tok string, now time.Time) *Session {
 	}
 	id := sha256hex(tok)
 	ss := &Session{ID: id}
-	err := s.db.QueryRow(`SELECT s.user_id,u.name,s.stage,s.csrf,s.last_seen,s.expires,s.stepup FROM sessions s JOIN users u ON u.id=s.user_id
-	  WHERE s.id=? AND u.disabled=0`, id).Scan(&ss.UserID, &ss.User, &ss.Stage, &ss.CSRF, &ss.LastSeen, &ss.Expires, &ss.StepUp)
+	err := s.db.QueryRow(`SELECT s.user_id,u.name,s.stage,s.csrf,s.last_seen,s.expires,s.stepup,u.role FROM sessions s JOIN users u ON u.id=s.user_id
+	  WHERE s.id=? AND u.disabled=0`, id).Scan(&ss.UserID, &ss.User, &ss.Stage, &ss.CSRF, &ss.LastSeen, &ss.Expires, &ss.StepUp, &ss.Role)
 	if err != nil {
 		return nil
 	}

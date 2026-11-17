@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Boxes, Database, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Sun, Timer, X, type LucideIcon } from "lucide-react";
-import { UNAUTH, api, errText, get, post, setCsrf, setStepUpHandler } from "./api";
+import { Activity, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
+import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
 import { dismissJob, useTrackedJobs } from "./jobs";
 import Overview from "./pages/Overview";
@@ -12,6 +13,7 @@ import Runtimes from "./pages/Runtimes";
 import Tasks from "./pages/Tasks";
 import Updates from "./pages/Updates";
 import ActivityPage from "./pages/Activity";
+import Backups from "./pages/Backups";
 
 type Pref = "system" | "light" | "dark";
 
@@ -183,7 +185,7 @@ interface NavItem {
 const GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
   { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
-  { label: "Sistem", items: [{ id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }] },
+  { label: "Sistem", items: [{ id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }] },
 ];
 const ALL = GROUPS.flatMap((g) => g.items);
 
@@ -192,8 +194,11 @@ function parseHash(): { page: string; sub: string } {
   return { page: ALL.some((n) => n.id === page) ? page : "ringkasan", sub: decodeURIComponent(sub) };
 }
 
-function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
+function Shell({ user, role, onLogout }: { user: string; role: string; onLogout: () => void }) {
   const theme = useTheme();
+  const alerts = useAlerts();
+  const nAlerts = alerts.data?.alerts.length ?? 0;
+  const nBad = alerts.data?.alerts.filter((a) => a.level === "bad").length ?? 0;
   const [route, setRoute] = useState(parseHash());
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("panel-collapsed") === "1");
   const [sheet, setSheet] = useState(false);
@@ -219,6 +224,7 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
       case "database": return <Databases />;
       case "runtime": return <Runtimes />;
       case "tugas": return <Tasks />;
+      case "backup": return <Backups />;
       case "pembaruan": return <Updates />;
       case "aktivitas": return <ActivityPage />;
       default: return <Overview />;
@@ -270,9 +276,15 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
             <Menu size={20} aria-hidden="true" />
           </button>
           <span className="top-info">
-            Masuk sebagai <strong className="mono">{user}</strong>
+            Masuk sebagai <strong className="mono">{user}</strong> {role === "viewer" && <Chip tone="info">Hanya-baca</Chip>}
           </span>
           <div className="top-actions">
+            {nAlerts > 0 && (
+              <a className={`btn ${nBad ? "btn-danger-ghost" : ""}`} href="#/ringkasan" aria-label={`${nAlerts} peringatan${nBad ? `, ${nBad} penting` : ""}. Buka Ringkasan`}>
+                <Bell size={18} aria-hidden="true" />
+                <span className="btn-text">{nAlerts} peringatan</span>
+              </a>
+            )}
             <button className="btn" onClick={theme.next} aria-label={`Tema: ${themeLabel}. Klik untuk mengganti`}>
               <ThemeIcon size={18} aria-hidden="true" />
               <span className="btn-text">{themeLabel}</span>
@@ -295,13 +307,14 @@ function Shell({ user, onLogout }: { user: string; onLogout: () => void }) {
 
 export default function App() {
   const [user, setUser] = useState<string | null | undefined>(undefined);
+  const [role, setRoleState] = useState("admin");
   const [stepUp, setStepUp] = useState<null | ((ok: boolean) => void)>(null);
   useEffect(() => {
     setStepUpHandler(() => new Promise<boolean>((resolve) => setStepUp(() => (ok: boolean) => { setStepUp(null); resolve(ok); })));
     const un = () => setUser(null);
     addEventListener(UNAUTH, un);
-    get<{ user: string; csrf: string }>("/api/me")
-      .then((r) => { setCsrf(r.csrf); setUser(r.user); })
+    get<{ user: string; csrf: string; role?: string }>("/api/me")
+      .then((r) => { setCsrf(r.csrf); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); setUser(r.user); })
       .catch(() => setUser(null));
     return () => removeEventListener(UNAUTH, un);
   }, []);
@@ -317,7 +330,7 @@ export default function App() {
     );
   return (
     <>
-      {user ? <Shell user={user} onLogout={logout} /> : <Login onDone={setUser} />}
+      {user ? <Shell user={user} role={role} onLogout={logout} /> : <Login onDone={(u) => { get<{ role?: string }>("/api/me").then((r) => { setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); }).catch(() => {}); setUser(u); }} />}
       {stepUp && <StepUpDialog resolve={stepUp} />}
     </>
   );

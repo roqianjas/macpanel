@@ -74,6 +74,7 @@ func main() {
 	origin := fs.String("origin", "https://panel.lab", "origin yang diizinkan")
 	uiDir := fs.String("ui", filepath.Join(userHome(), "Developer/_ops/web/panel/ui/dist"), "folder hasil build UI")
 	stdin := fs.Bool("password-stdin", false, "baca password dari stdin (otomasi/tes)")
+	role := fs.String("role", "admin", "peran user: admin atau viewer (hanya-baca)")
 	cmd, rest := os.Args[1], os.Args[2:]
 	sub := ""
 	if (cmd == "user" || cmd == "audit") && len(rest) > 0 {
@@ -117,7 +118,22 @@ func main() {
 		if err != nil {
 			fatal(err.Error())
 		}
-		fmt.Println(strings.Join(st.ListUsers(), "\n"))
+		for _, u := range st.UserRows() {
+			fmt.Printf("%-20s %s\n", u.Name, u.Role)
+		}
+	case cmd == "user" && sub == "role":
+		if len(pos) != 2 || !nameRE.MatchString(pos[0]) {
+			fatal("pakai: panel user role <nama> admin|viewer")
+		}
+		st, err := openStore(*dbPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		if !st.SetRole(pos[0], pos[1]) {
+			fatal("user tidak ada atau peran tidak valid (admin|viewer)")
+		}
+		st.Audit("cli", "user_role", pos[0]+" -> "+pos[1], "local", time.Now())
+		fmt.Println("Peran", pos[0], "sekarang", pos[1], "(sesi aktifnya dicabut)")
 	case cmd == "user" && sub == "remove":
 		if len(pos) != 1 || !nameRE.MatchString(pos[0]) {
 			fatal("pakai: panel user remove <nama>")
@@ -140,6 +156,9 @@ func main() {
 		if err != nil {
 			fatal(err.Error())
 		}
+		if *role != "admin" && *role != "viewer" {
+			fatal("peran harus admin atau viewer")
+		}
 		pw := readPassword(*stdin)
 		if len(pw) < 12 || strings.EqualFold(pw, name) {
 			fatal("password minimal 12 karakter dan tidak boleh sama dengan nama")
@@ -158,7 +177,10 @@ func main() {
 		if err := st.CreateUser(name, hashPassword(pw), enc, hs); err != nil {
 			fatal("gagal membuat user: " + err.Error())
 		}
-		st.Audit("cli", "user_add", name, "local", time.Now())
+		if *role != "admin" && !st.SetRole(name, *role) {
+			fatal("peran harus admin atau viewer")
+		}
+		st.Audit("cli", "user_add", name+" ("+*role+")", "local", time.Now())
 		fmt.Println("User dibuat:", name)
 		fmt.Println("Setup key TOTP (masukkan ke Google Authenticator/Authy > 'Enter a setup key', jenis time-based):")
 		fmt.Println("  ", b32.EncodeToString(secret))

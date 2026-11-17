@@ -176,3 +176,26 @@ func TestProbeOnlyLoopbackAddr(t *testing.T) {
 		t.Fatalf("alamat pemeriksaan harus loopback: %s", a.probeAddr)
 	}
 }
+
+// Regresi: id katalog PHP-FPM memuat titik ("php-8.2"); dulu ditolak 400 sehingga mulai ulang dan log FPM tak pernah jalan.
+func TestServiceIDsWithVersionDot(t *testing.T) {
+	o := newAppsEnv(t)
+	for _, id := range []string{"php-8.2", "php-8.4", "php-8.5"} {
+		if w := o.do("GET", "/api/services/"+id+"/logs", "", o.cookie, "", nil); w.Code != 200 {
+			t.Errorf("log %s -> %d %s", id, w.Code, w.Body.String())
+		}
+	}
+	o.stepup()
+	if c, b := o.post("/api/services/php-8.4/restart", `{}`); c != 200 || !strings.Contains(o.calls(), "CALL:[service][restart][php-8.4]") {
+		t.Fatalf("restart php-8.4: %d %s %s", c, b, o.calls())
+	}
+	before := o.calls()
+	for _, id := range []string{"php-8..4", "php-.8", "php-8.", "php-8.123", "php-8.x", ".8", "php-8.4.1", "php-8.4;id", "php%2F8.4"} {
+		if c, _ := o.post("/api/services/"+id+"/restart", `{}`); c != 400 && c != 404 {
+			t.Errorf("id buruk %q harus ditolak: %d", id, c)
+		}
+	}
+	if o.calls() != before {
+		t.Fatalf("lab terpanggil oleh id buruk: %s", o.calls())
+	}
+}

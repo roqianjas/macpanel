@@ -50,6 +50,9 @@ type App struct {
 	sysMu       sync.Mutex
 	sysCache    *SystemInfo
 	sysAt       time.Time
+	alMu        sync.Mutex
+	alCache     []Alert
+	alAt        time.Time
 }
 
 type Route struct {
@@ -102,6 +105,19 @@ func routes() []Route {
 		{"GET", "/api/jobs/{id}", Full, hJob},
 		{"GET", "/api/db/{engine}/{name}/dumps", Full, hDBDumps},
 		{"POST", "/api/db/{engine}/{name}/restore", Full, hDBRestore},
+		{"GET", "/api/php/{version}/ext", Full, hExtList},
+		{"POST", "/api/php/{version}/ext/{name}/{action}", Full, hExtAction},
+		{"GET", "/api/php/{version}/ini", Full, hIniGet},
+		{"POST", "/api/php/{version}/ini", Full, hIniSet},
+		{"GET", "/api/composer", Full, hComposer},
+		{"POST", "/api/composer/{action}", Full, hComposerAct},
+		{"GET", "/api/sites/{name}/deploy", Full, hDeployInfo},
+		{"POST", "/api/sites/{name}/deploy", Full, hDeployRun},
+		{"GET", "/api/backups", Full, hBackups},
+		{"GET", "/api/alerts", Full, hAlerts},
+		{"GET", "/api/users", Full, hUsers},
+		{"POST", "/api/db/{engine}/{name}/upload", Full, hDBUpload},
+		{"POST", "/api/backups/run", Full, hBackupRun},
 		{"GET", "/api/services", Full, hServicesList},
 		{"POST", "/api/services/{id}/{action}", Full, hServiceAction},
 		{"GET", "/api/services/{id}/logs", Full, hServiceLogs},
@@ -237,6 +253,10 @@ func (a *App) wrap(rt Route) http.HandlerFunc {
 			}
 		}
 		if r.Method != "GET" && r.Method != "HEAD" {
+			if ss != nil && ss.Stage == "full" && ss.Role == "viewer" && r.URL.Path != "/api/auth/logout" {
+				jerr(w, 403, "akun ini hanya-baca")
+				return
+			}
 			if !a.originOK(r) {
 				jerr(w, 403, "forbidden")
 				return
@@ -390,7 +410,7 @@ func (a *App) requireStepUp(w http.ResponseWriter, ss *Session) bool {
 }
 
 func hMe(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
-	jsonOut(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.now().Unix()})
+	jsonOut(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.now().Unix(), "role": ss.Role})
 }
 
 func hAudit(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {

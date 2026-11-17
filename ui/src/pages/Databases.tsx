@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Archive, ArchiveRestore, Plus, Trash2 } from "lucide-react";
-import { errText, fmtTime, get, post } from "../api";
+import { errText, fmtTime, get, post, upload } from "../api";
 import { trackJob } from "../jobs";
 import { fmtBytes } from "../lib";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
@@ -171,6 +171,7 @@ function AddDB({ onClose, onDone }: { onClose: () => void; onDone: () => void })
 function RestoreDialog({ engine, name, onClose, onStarted }: { engine: Engine; name: string; onClose: () => void; onStarted: (job: number, file: string) => void }) {
   const { data, error, loading, reload } = useLoad(() => get<{ dumps: { file: string; at: number; size: number }[] }>(`/api/db/${engine}/${name}/dumps`));
   const [file, setFile] = useState("");
+  const [up, setUp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const dumps = data?.dumps ?? [];
@@ -203,10 +204,38 @@ function RestoreDialog({ engine, name, onClose, onStarted }: { engine: Engine; n
             )}
           </Field>
         </State>
+        <Field label="Atau unggah dump baru" hint="Berkas .sql atau .sql.gz, maksimal 256 MB. Isinya diperiksa saat dipulihkan: perintah klien (shell, baca/tulis berkas) ditolak, dan dijalankan sebagai user proyek.">
+          {(id, dd) => (
+            <input
+              id={id}
+              aria-describedby={dd}
+              type="file"
+              accept=".sql,.gz,application/gzip,application/sql,text/plain"
+              disabled={up || busy}
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                setUp(true);
+                setErr("");
+                try {
+                  const r = await upload<{ file: string }>(`/api/db/${engine}/${name}/upload`, f);
+                  setFile(r.file);
+                  await reload();
+                } catch (x) {
+                  setErr(errText(x));
+                } finally {
+                  setUp(false);
+                  e.target.value = "";
+                }
+              }}
+            />
+          )}
+        </Field>
+        {up && <p className="small muted" role="status">Mengunggah…</p>}
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button className="btn" onClick={onClose}>Batal</button>
-          <button className="btn btn-primary" disabled={busy || !pick} onClick={go}>{busy ? "Memulai…" : "Pulihkan"}</button>
+          <button className="btn btn-primary" disabled={busy || up || !pick} onClick={go}>{busy ? "Memulai…" : "Pulihkan"}</button>
         </div>
       </div>
     </Modal>

@@ -1,7 +1,7 @@
 import { Activity, Boxes, Cpu, Database, Download, Globe, HardDrive, MemoryStick, Network, Server, Timer } from "lucide-react";
 import { get } from "../api";
 import { CountUp, LineChart, RangePicker, Ring, Sparkline, toneOf } from "../charts";
-import { stateText, stateTone, useMetrics, useServices, useSystem } from "../data";
+import { stateText, stateTone, useAlerts, useMetrics, useServices, useSystem } from "../data";
 import { fmtAgo, fmtBytes, fmtRate, fmtUptime, type RangeKey } from "../lib";
 import { Card, Chip, Mark, State, usePoll } from "../ui";
 import { useState } from "react";
@@ -37,6 +37,7 @@ export default function Overview() {
   const met = useMetrics(range);
   const spark = useMetrics("1h");
   const counts = usePoll(loadCounts, 60000);
+  const alerts = useAlerts();
 
   const services = svc.data?.services ?? [];
   const core = services.filter((s) => s.installed && !s.optional);
@@ -92,6 +93,26 @@ export default function Overview() {
   return (
     <>
       {hero}
+      {alerts.data && alerts.data.alerts.length > 0 && (
+        <Card title={`Peringatan (${alerts.data.alerts.length})`}>
+          <ul className="list">
+            {alerts.data.alerts.map((a) => (
+              <li key={a.id} className="list-row">
+                <div>
+                  <p>
+                    <Chip tone={a.level === "bad" ? "bad" : "warn"}>{a.level === "bad" ? "Penting" : "Perhatian"}</Chip> <strong>{a.title}</strong>
+                  </p>
+                  <p className="small muted">{a.detail}</p>
+                </div>
+                <a className="btn btn-sm" href={a.link}>
+                  Lihat<span className="sr"> {a.title}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="small muted">Peringatan hanya tampil di panel ini; tidak ada pesan keluar (email atau chat).</p>
+        </Card>
+      )}
       <ul className="tiles" aria-label="Akses cepat">
         {tiles.map((t) => (
           <li key={t.href}>

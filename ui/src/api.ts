@@ -9,6 +9,11 @@ export class ApiError extends Error {
 }
 
 export const UNAUTH = "panel:unauth";
+let role = "admin";
+export const setRole = (r: string) => {
+  role = r || "admin";
+};
+export const getRole = () => role;
 let csrf = "";
 export const setCsrf = (t: string) => {
   csrf = t;
@@ -42,6 +47,28 @@ export async function api<T = any>(method: string, path: string, body?: unknown)
     if (await stepUp()) ({ res, data } = await send(method, path, body));
   }
   if (res.status === 401 && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event(UNAUTH));
+  if (!res.ok) throw new ApiError(res.status, data?.error || `HTTP ${res.status}`, data);
+  return data as T;
+}
+
+/** Unggah berkas mentah (dump SQL). Tanpa JSON; ulang sekali bila server minta TOTP ulang. */
+export async function upload<T = any>(path: string, file: File): Promise<T> {
+  const once = async () => {
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-CSRF-Token": csrf }, credentials: "same-origin", body: file });
+    const text = await res.text();
+    let data: any = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = { error: text.slice(0, 200) };
+    }
+    return { res, data };
+  };
+  let { res, data } = await once();
+  if (res.status === 403 && typeof data?.error === "string" && data.error.includes("TOTP ulang") && stepUp) {
+    if (await stepUp()) ({ res, data } = await once());
+  }
+  if (res.status === 401) window.dispatchEvent(new Event(UNAUTH));
   if (!res.ok) throw new ApiError(res.status, data?.error || `HTTP ${res.status}`, data);
   return data as T;
 }

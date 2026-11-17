@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Download, Trash2 } from "lucide-react";
+import { Download, Settings2, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, useLoad } from "../ui";
+import PhpManage from "./PhpManage";
 
 interface PHP {
   version: string;
@@ -36,6 +37,8 @@ export default function Runtimes() {
   }, [fpmDown, php.reload]);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [rmPhp, setRmPhp] = useState<string | null>(null);
+  const [manage, setManage] = useState<string | null>(null);
+  const comp = useLoad(() => get<{ installed: boolean; version: string; php: string; outdated: boolean; latest: string }>("/api/composer"));
   const [rmRt, setRmRt] = useState<RT | null>(null);
   const [ver, setVer] = useState<Record<string, string>>({});
 
@@ -44,6 +47,15 @@ export default function Runtimes() {
     try {
       const r = await post<{ job: number }>(`/api/php/${v}/install`, {});
       trackJob(r.job, `Pasang PHP ${v}`, php.reload);
+    } catch (x) {
+      setNote({ tone: "bad", text: errText(x) });
+    }
+  };
+  const composerAct = async (a: "install" | "update") => {
+    setNote(null);
+    try {
+      const r = await post<{ job: number }>(`/api/composer/${a}`, {});
+      trackJob(r.job, a === "install" ? "Pasang Composer" : "Perbarui Composer", comp.reload);
     } catch (x) {
       setNote({ tone: "bad", text: errText(x) });
     }
@@ -89,6 +101,10 @@ export default function Runtimes() {
                   {p.installed ? (
                     <>
                       <Chip tone={p.fpm ? "ok" : "warn"}>{p.fpm ? "Terpasang" : "FPM mati"}</Chip>
+                      <button className="btn" onClick={() => setManage(p.version)}>
+                        <Settings2 size={18} aria-hidden="true" />
+                        Kelola<span className="sr"> PHP {p.version}</span>
+                      </button>
                       <button className="btn btn-danger-ghost" onClick={() => setRmPhp(p.version)}>
                         <Trash2 size={18} aria-hidden="true" />
                         Hapus
@@ -106,6 +122,33 @@ export default function Runtimes() {
               </li>
             ))}
           </ul>
+        </State>
+      </Card>
+      <Card title="Composer">
+        <State loading={comp.loading && !comp.data} error={comp.error} onRetry={comp.reload}>
+          <div className="list-row">
+            <div>
+              <p>
+                <strong>Composer</strong> {comp.data?.installed && <span className="mono muted">{comp.data.version}</span>}
+              </p>
+              <p className="small muted">
+                {!comp.data?.installed ? "Belum terpasang." : comp.data.outdated ? `Versi ${comp.data.latest} tersedia.` : "Versi terbaru."} Dipasang lewat Homebrew; perintah composer per proyek ada di tab Deploy tiap situs.
+              </p>
+            </div>
+            <div className="row">
+              {!comp.data?.installed ? (
+                <button className="btn" onClick={() => composerAct("install")}>
+                  <Download size={18} aria-hidden="true" />
+                  Pasang Composer
+                </button>
+              ) : (
+                <button className="btn" disabled={!comp.data.outdated} onClick={() => composerAct("update")}>
+                  <Download size={18} aria-hidden="true" />
+                  Perbarui Composer
+                </button>
+              )}
+            </div>
+          </div>
         </State>
       </Card>
       {TOOLS.map((t) => {
@@ -163,6 +206,7 @@ export default function Runtimes() {
           </Card>
         );
       })}
+      {manage && <PhpManage version={manage} onClose={() => { setManage(null); php.reload(); }} />}
       {rmPhp && (
         <ConfirmDialog
           title={`Hapus PHP ${rmPhp}`}
