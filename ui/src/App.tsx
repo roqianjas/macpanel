@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BookOpen, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { Activity, BookOpen, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
 import ErrorBoundary from "./ErrorBoundary";
+import { setDevicePref, usePanelName, useThemePref } from "./settings";
+import Settings from "./pages/Settings";
 import Docs from "./pages/Docs";
 import { dismissJob, useTrackedJobs } from "./jobs";
 import Overview from "./pages/Overview";
@@ -18,31 +20,15 @@ import ActivityPage from "./pages/Activity";
 import Backups from "./pages/Backups";
 import System from "./pages/System";
 
-type Pref = "system" | "light" | "dark";
-
-function applyTheme(p: Pref) {
-  const dark = p === "dark" || (p === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-  document.documentElement.setAttribute("data-pref", p);
-}
-
 function useTheme() {
-  const [pref, setPref] = useState<Pref>(() => (localStorage.getItem("panel-theme") as Pref) || "system");
-  useEffect(() => {
-    applyTheme(pref);
-    localStorage.setItem("panel-theme", pref);
-    if (pref !== "system") return;
-    const mq = matchMedia("(prefers-color-scheme: dark)");
-    const h = () => applyTheme("system");
-    mq.addEventListener("change", h);
-    return () => mq.removeEventListener("change", h);
-  }, [pref]);
-  return { pref, next: () => setPref((p) => (p === "system" ? "light" : p === "light" ? "dark" : "system")) };
+  const pref = useThemePref();
+  return { pref, next: () => setDevicePref(pref === "system" ? "light" : pref === "light" ? "dark" : "system") };
 }
 
 // ---------- masuk ----------
 
 function Login({ onDone }: { onDone: (user: string) => void }) {
+  const panelName = usePanelName();
   const [step, setStep] = useState<"pwd" | "totp">("pwd");
   const [name, setName] = useState("");
   const [pw, setPw] = useState("");
@@ -56,10 +42,10 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
     setBusy(true);
     setErr("");
     try {
-      const r = await post<{ csrf: string; trusted?: boolean }>("/api/auth/login", { name, password: pw });
+      const r = await post<{ csrf: string; trusted?: boolean; no2fa?: boolean }>("/api/auth/login", { name, password: pw });
       setCsrf(r.csrf);
       setPw("");
-      if (r.trusted) {
+      if (r.trusted || r.no2fa) {
         onDone(name.toLowerCase());
         return;
       }
@@ -91,7 +77,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
           <span className="brand-ic">
             <KeyRound size={20} aria-hidden="true" />
           </span>
-          <span>Panel Mac mini</span>
+          <span>{panelName}</span>
         </div>
         <h1>{step === "pwd" ? "Masuk" : "Verifikasi dua langkah"}</h1>
         {step === "pwd" ? (
@@ -194,7 +180,7 @@ interface NavItem {
 const GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
   { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
-  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
+  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "pengaturan", label: "Pengaturan", icon: SettingsIcon }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
 ];
 const ALL = GROUPS.flatMap((g) => g.items);
 
@@ -204,6 +190,7 @@ function parseHash(): { page: string; sub: string } {
 }
 
 function Shell({ user, role, onLogout }: { user: string; role: string; onLogout: () => void }) {
+  const panelName = usePanelName();
   const theme = useTheme();
   const alerts = useAlerts();
   const nAlerts = alerts.data?.alerts.length ?? 0;
@@ -237,6 +224,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
       case "backup": return <Backups />;
       case "pembaruan": return <Updates />;
       case "aktivitas": return <ActivityPage />;
+      case "pengaturan": return <Settings />;
       case "dokumen": return <Docs sub={route.sub} />;
       default: return <Overview />;
     }
@@ -253,7 +241,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
             <span className="brand-ic">
               <KeyRound size={18} aria-hidden="true" />
             </span>
-            <span className="brand-text">Panel Mac mini</span>
+            <span className="brand-text">{panelName}</span>
           </span>
           <button className="btn btn-ghost btn-icon sheet-close" onClick={() => setSheet(false)} aria-label="Tutup menu">
             <X size={18} aria-hidden="true" />

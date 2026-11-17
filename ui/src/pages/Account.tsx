@@ -30,7 +30,7 @@ export default function Account() {
     <Devices />
     <Card title="Ganti kata sandi">
       <form onSubmit={submit} className="stack" autoComplete="off">
-        <p className="small muted">Meminta kata sandi ulang. Semua sesi lain dikeluarkan setelah berhasil. Kode TOTP dan recovery code tidak berubah; untuk mengganti perangkat autentikator, buat ulang akun dari terminal (<span className="mono">panel user</span>).</p>
+        <p className="small muted">Meminta kata sandi ulang. Semua sesi lain dikeluarkan setelah berhasil. Kode TOTP dan recovery code tidak berubah; untuk mengganti perangkat autentikator, matikan lalu nyalakan lagi 2FA di bawah.</p>
         <div className="grid2">
           <Field label="Kata sandi saat ini">{(id) => <input id={id} type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" required />}</Field>
           <span />

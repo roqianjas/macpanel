@@ -64,7 +64,7 @@ func fatal(m string) { fmt.Fprintln(os.Stderr, "panel:", m); os.Exit(1) }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("pakai: panel serve | init-key | user add <nama> [--password-stdin] | user remove <nama> | user list | audit verify")
+		fmt.Println("pakai: panel serve | init-key | user add|remove|list|role|rename|passwd|2fa | token create|list|revoke | settings get|set | audit verify")
 		os.Exit(2)
 	}
 	fs := flag.NewFlagSet("panel", flag.ExitOnError)
@@ -75,10 +75,13 @@ func main() {
 	uiDir := fs.String("ui", filepath.Join(rootDir(), "server/panel/ui/dist"), "folder hasil build UI")
 	stdin := fs.Bool("password-stdin", false, "baca password dari stdin (otomasi/tes)")
 	role := fs.String("role", "admin", "peran user: admin atau viewer (hanya-baca)")
+	tname := fs.String("name", "", "nama token (panel token create)")
+	scope := fs.String("scope", "", "tingkat token: read|operate|full")
+	days := fs.Int("days", 0, "masa berlaku token (hari, bawaan 90)")
 	hookAddr := fs.String("hook-addr", "", "alamat listen penerima webhook (loopback), kosong = nonaktif")
 	cmd, rest := os.Args[1], os.Args[2:]
 	sub := ""
-	if (cmd == "user" || cmd == "audit") && len(rest) > 0 {
+	if (cmd == "user" || cmd == "audit" || cmd == "token" || cmd == "settings") && len(rest) > 0 {
 		sub, rest = rest[0], rest[1:]
 	}
 	// argumen posisi (nama) boleh sebelum flag
@@ -221,6 +224,14 @@ func main() {
 			fatal(fmt.Sprintf("%v (baris valid sebelumnya: %d)", err, n))
 		}
 		fmt.Printf("OK: rantai audit utuh (%d baris)\n", n)
+	case cmd == "token" || cmd == "settings" || (cmd == "user" && (sub == "passwd" || sub == "2fa")):
+		st, err := openStore(*dbPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		if !cliAdmin(st, cmd, sub, pos, cliOpts{pwStdin: *stdin, svc: *svc, tname: *tname, scope: *scope, days: *days}) {
+			fatal("perintah tidak dikenal")
+		}
 	default:
 		fatal("perintah tidak dikenal")
 	}

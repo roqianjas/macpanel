@@ -16,7 +16,7 @@ import (
 
 func (o *opsEnv) upload(path string, body []byte) *httptest.ResponseRecorder {
 	r := httptest.NewRequest("POST", path, bytes.NewReader(body))
-	r.RemoteAddr = "100.106.252.64:5555"
+	r.RemoteAddr = "100.64.0.20:5555"
 	r.Header.Set("Cookie", cookieName+"="+o.cookie)
 	r.Header.Set("X-CSRF-Token", o.csrf)
 	r.Header.Set("Origin", "https://panel.lab")

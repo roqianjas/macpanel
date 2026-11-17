@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""panelctl: kendalikan MacPanel dari terminal atau agen AI lewat API (token).
+
+Konfigurasi (urutan prioritas):
+  --url / PANEL_URL        bawaan https://panel.lab
+  --token / PANEL_TOKEN    atau berkas ~/.config/macpanel/token (izin 0600)
+  PANEL_CA                 berkas CA (bawaan: CA mkcert lokal bila ditemukan)
+Keluaran selalu JSON (mudah dibaca agen). Kode keluar: 0 sukses, 1 ditolak/gagal, 2 salah pakai.
+Token dibuat di panel (Pengaturan > Token API) atau di Mac: panel token create <user> --name N --scope S.
+Tingkat token: read (GET saja), operate (ubah, tanpa aksi yang butuh verifikasi ulang), full (juga hapus/config/pasang;
+penghapusan wajib --confirm <nama>).
+"""
+import argparse, json, os, ssl, subprocess, sys, time, urllib.error, urllib.request
+from pathlib import Path
+
+
+def die(msg, code=1, extra=None):
+    out = {"error": msg}
+    if extra: out.update(extra)
+    print(json.dumps(out, ensure_ascii=False), file=sys.stderr)
+    sys.exit(code)
+
+
+def find_ca():
+    if os.environ.get("PANEL_CA"): return os.environ["PANEL_CA"]
+    cands = []
+    try:
+        root = subprocess.run(["mkcert", "-CAROOT"], capture_output=True, text=True, timeout=5).stdout.strip()
+        if root: cands.append(Path(root) / "rootCA.pem")
+    except Exception: pass
+    h = Path.home()
+    cands += [h / "Library/Application Support/mkcert/rootCA.pem", h / ".local/share/mkcert/rootCA.pem"]
+    for c in cands:
+        if c.exists(): return str(c)
+    return None
+
+
+def load_token(arg):
+    if arg: return arg
+    if os.environ.get("PANEL_TOKEN"): return os.environ["PANEL_TOKEN"].strip()
+    f = Path.home() / ".config/macpanel/token"
+    if f.exists():
+        if f.stat().st_mode & 0o077: die(f"izin {f} terlalu longgar; jalankan: chmod 600 {f}", 2)
+        return f.read_text().strip()
+    die("token tidak ada: set PANEL_TOKEN atau simpan di ~/.config/macpanel/token (chmod 600)", 2)
+
+
+class Client:
+    def __init__(self, url, token, ca):
+        self.url, self.token = url.rstrip("/"), token
+        self.ctx = ssl.create_default_context(cafile=ca) if ca else ssl.create_default_context()
+
+    def call(self, method, path, body=None):
+        if not path.startswith("/api/") and path != "/healthz": die("path harus diawali /api/", 2)
+        data = None if body is None else json.dumps(body).encode()
+        req = urllib.request.Request(self.url + path, data=data, method=method)
+        req.add_header("Authorization", "Bearer " + self.token)
+        req.add_header("Accept", "application/json")
+        if data is not None: req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req, context=self.ctx, timeout=180) as r:
+                return r.status, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
+        except (urllib.error.URLError, ssl.SSLError, OSError) as e:
+            die(f"tidak bisa menghubungi {self.url}: {getattr(e, 'reason', e)}", 1, {"hint": "pastikan Tailscale aktif, DNS .lab benar, dan PANEL_CA menunjuk CA mkcert"})
+
+    def run(self, method, path, body=None, wait=False):
+        code, text = self.call(method, path, body)
+        try: obj = json.loads(text) if text.strip() else {}
+        except ValueError: obj = {"raw": text[:2000]}
+        if wait and code == 202 and isinstance(obj, dict) and "job" in obj:
+            jid = obj["job"]
+            for _ in range(1800):
+                time.sleep(2)
+                c2, t2 = self.call("GET", f"/api/jobs/{jid}")
+                j = json.loads(t2) if c2 == 200 else {}
+                if j.get("status") != "berjalan":
+                    obj, code = j, (200 if j.get("status") == "ok" else 500)
+                    break
+        return code, obj
+
+
+def emit(code, obj):
+    print(json.dumps(obj, ensure_ascii=False, indent=2))
+    sys.exit(0 if 200 <= code < 300 else 1)
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="panelctl", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--url", default=os.environ.get("PANEL_URL", "https://panel.lab"))
+    ap.add_argument("--token")
+    ap.add_argument("--wait", action="store_true", help="tunggu aksi latar belakang (job) selesai")
+    sp = ap.add_subparsers(dest="cmd", required=True)
+    sp.add_parser("whoami", help="siapa saya, tingkat token")
+    r = sp.add_parser("routes", help="daftar rute yang tersedia lewat token"); r.add_argument("--filter")
+    g = sp.add_parser("get", help="GET /api/..."); g.add_argument("path")
+    p = sp.add_parser("post", help="POST /api/... [JSON]"); p.add_argument("path"); p.add_argument("json", nargs="?", default="{}", help="JSON, atau @berkas, atau - (stdin)")
+    j = sp.add_parser("job", help="status job"); j.add_argument("id", type=int)
+    sp.add_parser("sites", help="daftar situs")
+    a = sp.add_parser("site-add", help="tambah situs"); a.add_argument("name"); a.add_argument("target", help="folder di wwwroot atau port proxy"); a.add_argument("--php")
+    a = sp.add_parser("site-remove", help="hapus situs (butuh token full)"); a.add_argument("name"); a.add_argument("--confirm", required=True)
+    a = sp.add_parser("site-action", help="jeda (disable) atau aktifkan (enable) situs"); a.add_argument("name"); a.add_argument("action", choices=["disable", "enable"])
+    sp.add_parser("dbs", help="daftar database")
+    a = sp.add_parser("db-create", help="buat database"); a.add_argument("name"); a.add_argument("--engine", default="mariadb", choices=["mariadb", "mysql", "pgsql"]); a.add_argument("--env", help="berkas .env proyek yang diisi kunci DB_*")
+    a = sp.add_parser("db-dump", help="dump database"); a.add_argument("name"); a.add_argument("--engine", default="mariadb", choices=["mariadb", "mysql", "pgsql"])
+    a = sp.add_parser("db-drop", help="hapus database (butuh token full)"); a.add_argument("name"); a.add_argument("--engine", default="mariadb", choices=["mariadb", "mysql", "pgsql"]); a.add_argument("--confirm", required=True)
+    sp.add_parser("services", help="status layanan")
+    a = sp.add_parser("service", help="mulai/hentikan/restart layanan"); a.add_argument("id"); a.add_argument("action", choices=["start", "stop", "restart"])
+    sp.add_parser("backups", help="daftar backup")
+    sp.add_parser("backup-run", help="jalankan backup (butuh token full)")
+    sp.add_parser("alerts", help="peringatan aktif")
+    sp.add_parser("system", help="ringkasan sistem")
+    sp.add_parser("settings", help="nama dan tema panel")
+    a = sp.add_parser("set", help="ubah pengaturan panel"); a.add_argument("--name"); a.add_argument("--theme", choices=["system", "light", "dark"])
+    a = sp.add_parser("audit", help="100 aksi terakhir")
+    args = ap.parse_args()
+
+    c = Client(args.url, load_token(args.token), find_ca())
+    W = args.wait
+    cmd = args.cmd
+    if cmd == "whoami": emit(*c.run("GET", "/api/me"))
+    if cmd == "routes":
+        code, obj = c.run("GET", "/api/routes")
+        if args.filter and isinstance(obj, dict): obj["routes"] = [x for x in obj.get("routes", []) if args.filter in x["path"]]
+        emit(code, obj)
+    if cmd == "get": emit(*c.run("GET", args.path))
+    if cmd == "post":
+        raw = sys.stdin.read() if args.json == "-" else (Path(args.json[1:]).read_text() if args.json.startswith("@") else args.json)
+        try: body = json.loads(raw)
+        except ValueError: die("JSON tidak valid", 2)
+        emit(*c.run("POST", args.path, body, W))
+    if cmd == "job": emit(*c.run("GET", f"/api/jobs/{args.id}"))
+    if cmd == "sites": emit(*c.run("GET", "/api/sites"))
+    if cmd == "site-add":
+        body = {"name": args.name, "target": args.target}
+        if args.php: body["php"] = args.php
+        emit(*c.run("POST", "/api/sites", body, W))
+    if cmd == "site-remove": emit(*c.run("POST", f"/api/sites/{args.name}/remove", {"confirm": args.confirm}, W))
+    if cmd == "site-action": emit(*c.run("POST", f"/api/sites/{args.name}/{args.action}", {}, W))
+    if cmd == "dbs": emit(*c.run("GET", "/api/db"))
+    if cmd == "db-create":
+        body = {"name": args.name, "engine": args.engine}
+        if args.env: body["env"] = args.env
+        emit(*c.run("POST", "/api/db", body, W))
+    if cmd == "db-dump": emit(*c.run("POST", f"/api/db/{args.engine}/{args.name}/dump", {}, W))
+    if cmd == "db-drop": emit(*c.run("POST", f"/api/db/{args.engine}/{args.name}/drop", {"confirm": args.confirm}, W))
+    if cmd == "services": emit(*c.run("GET", "/api/services"))
+    if cmd == "service": emit(*c.run("POST", f"/api/services/{args.id}/{args.action}", {}, W))
+    if cmd == "backups": emit(*c.run("GET", "/api/backups"))
+    if cmd == "backup-run": emit(*c.run("POST", "/api/backups/run", {}, W))
+    if cmd == "alerts": emit(*c.run("GET", "/api/alerts"))
+    if cmd == "system": emit(*c.run("GET", "/api/system"))
+    if cmd == "settings": emit(*c.run("GET", "/api/settings"))
+    if cmd == "set":
+        body = {k: v for k, v in (("name", args.name), ("theme", args.theme)) if v}
+        if not body: die("beri --name dan/atau --theme", 2)
+        emit(*c.run("POST", "/api/settings", body))
+    if cmd == "audit": emit(*c.run("GET", "/api/audit"))
+
+
+if __name__ == "__main__":
+    main()

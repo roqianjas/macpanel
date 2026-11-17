@@ -2,7 +2,6 @@
 
 Panel user guide (also shown inside the panel under Dokumentasi, in Indonesian).
 
-
 ---
 
 # Pengenalan
@@ -27,7 +26,8 @@ MacPanel adalah panel web untuk mengelola Mac sebagai server pengembangan: websi
 | Sistem | Sistem | Keamanan, proses, disk, DNS, Docker (lihat saja) |
 | Sistem | Backup | Jadwal, daftar arsip, pemulihan, pembersihan |
 | Sistem | Pembaruan | Pembaruan paket Homebrew |
-| Sistem | Aktivitas | Riwayat aksi, perangkat tepercaya |
+| Sistem | Aktivitas | Riwayat aksi |
+| Sistem | Pengaturan | Nama dan tema panel, kata sandi, 2FA, perangkat tepercaya, token API |
 | Sistem | Dokumentasi | Halaman ini |
 
 ## Tata letak folder
@@ -244,16 +244,42 @@ Menu **Pembaruan** menampilkan paket Homebrew yang usang. Pembaruan berjalan di 
 
 # Akun dan keamanan
 
+## Pengaturan umum
+Menu **Pengaturan** (grup Sistem) memuat:
+- **Nama panel**: tampil di halaman masuk, menu samping, dan judul tab. Hanya admin yang dapat mengganti.
+- **Tema**: Ikuti sistem, Terang, atau Gelap untuk perangkat yang dipakai (disimpan di browser). Admin juga dapat menetapkan tema bawaan untuk perangkat yang belum memilih.
+- **Kata sandi**, **perangkat tepercaya**, **2FA**, dan **Token API** (lihat di bawah).
+
+Semuanya juga dapat dikendalikan dari Terminal mesin ini:
+```
+panel settings get
+panel settings set name "Nama Panel"
+panel settings set theme system|light|dark
+```
+
 ## Login
 - Kata sandi disimpan dengan argon2id. Percobaan salah berulang mengunci akun dan alamat IP sementara.
 - Kode TOTP (Google Authenticator atau sejenisnya) diminta saat login. Setiap kode hanya dapat dipakai sekali.
 - Saat pengaturan awal, kunci TOTP dan 10 recovery code ditampilkan **sekali**. Simpan di tempat aman (pengelola kata sandi). Satu recovery code hanya berlaku sekali.
 
+## Menyalakan dan mematikan 2FA
+Di **Pengaturan**, kartu *Verifikasi dua langkah*:
+- **Mematikan** membutuhkan kata sandi dan kode 6 digit (atau satu recovery code) saat ini. Semua sesi lain dikeluarkan dan semua perangkat tepercaya dicabut. Setelah itu akun masuk hanya dengan nama pengguna dan kata sandi.
+- **Menyalakan** meminta kata sandi ulang, membuat kunci TOTP baru, lalu meminta satu kode untuk memastikan aplikasi autentikator sudah benar. Setelah aktif, 10 recovery code baru tampil **sekali**; kode lama tidak berlaku.
+- Mematikan 2FA menurunkan keamanan. Disarankan hanya bila akses panel sudah dibatasi jaringan privat dan Anda menerima risikonya.
+
+Dari Terminal mesin ini:
+```
+panel user 2fa off <nama>
+panel user 2fa on <nama>       # menampilkan kunci TOTP dan recovery code sekali
+panel user passwd <nama>       # ganti kata sandi; semua sesi dicabut
+```
+
 ## Perangkat tepercaya
 Pada login lengkap, centang **Percayai perangkat ini**. Perangkat itu lalu cukup memakai nama pengguna dan kata sandi selama 30 hari.
 - Setiap akun memiliki maksimum 10 perangkat tepercaya.
 - Sesi baru dari perangkat tepercaya tetap meminta verifikasi ulang kata sandi untuk aksi berbahaya.
-- Cabut satu atau semua perangkat di **Aktivitas**. Mengganti kata sandi atau menghapus akun mencabut semuanya.
+- Cabut satu atau semua perangkat di **Pengaturan**. Mengganti kata sandi atau menghapus akun mencabut semuanya.
 - Risiko: orang yang memegang perangkat tepercaya sekaligus kata sandi dapat masuk tanpa kode 2FA sampai perangkat itu dicabut.
 
 ## Verifikasi ulang untuk aksi berbahaya
@@ -285,7 +311,7 @@ Menu **Aktivitas** mencatat setiap aksi: siapa, apa, kapan, dari IP mana. Catata
 
 ---
 
-# Perintah `lab`
+# Perintah lab
 
 `lab` adalah perintah di Terminal yang dipakai panel di belakang layar. Anda juga dapat memakainya langsung. Semua perintah menolak argumen yang tidak valid dan bersifat idempoten.
 
@@ -372,10 +398,77 @@ Pilih sistem yang tepat (MySQL untuk MariaDB dan MySQL, PostgreSQL untuk Postgre
 Cocokkan `DB_PORT` di `.env` dengan mesinnya: 3306 untuk MariaDB, 3307 untuk MySQL. Setelah mengubah `.env`, jalankan `php artisan config:clear`.
 
 ## Lupa kata sandi atau kehilangan perangkat 2FA
-Gunakan satu recovery code saat login. Bila tidak ada, buat ulang akun dari Terminal mesin ini (`panel user add`) atau minta administrator lain mengganti kata sandinya.
+Gunakan satu recovery code saat login. Bila tidak ada, di Terminal mesin ini jalankan `panel user 2fa off <nama>` lalu masuk dengan kata sandi dan nyalakan 2FA lagi di Pengaturan. Kata sandi dapat diganti dengan `panel user passwd <nama>`.
 
 ## Disk penuh
 Menu Sistem, tab Disk menunjukkan folder terbesar. Bersihkan backup lama dari halaman Backup, dan cache paket dengan `brew cleanup`.
 
 ## Mac tidak terjangkau setelah restart
 Setelah restart pada disk terenkripsi, layanan penuh hanya naik setelah seseorang masuk di layar. Hindari restart saat jauh dari mesin, kecuali Anda yakin sambungan jaringan privat naik sebelum login.
+
+## Agen atau skrip mendapat 401/403 dari API
+Periksa token di `panelctl whoami`. 401: token salah, kedaluwarsa, atau dicabut (buat baru di Pengaturan). 403 "butuh token tingkat 'full'": aksi tersebut membutuhkan token `full`. 403 "tidak tersedia lewat token API": rute itu sengaja tertutup untuk token.
+
+---
+
+# API dan agen AI
+
+Semua yang dapat dilakukan di panel juga tersedia lewat API, sehingga skrip atau agen AI dapat mengendalikan panel. Ada dua jalur: perintah `panelctl` dan HTTP langsung.
+
+## Token API
+Buat di **Pengaturan > Token API** (butuh kata sandi ulang), atau di Terminal mesin ini:
+```
+panel token create <pengguna> --name <nama> --scope read|operate|full [--days 90]
+panel token list
+panel token revoke <id>
+```
+Token tampil **sekali** dan hanya hash-nya yang disimpan. Berlaku 1 sampai 365 hari (bawaan 90), maksimal 10 aktif per akun, dapat dicabut kapan saja. Pemakaian terakhir (waktu dan IP) tercatat, dan setiap aksi ubah tercatat di Aktivitas sebagai `api_call` dengan nama token.
+
+| Tingkat | Boleh |
+|---|---|
+| `read` | Hanya membaca (GET) |
+| `operate` | Membaca, menambah, dan mengubah: situs, database, deploy, pengaturan. Tidak termasuk aksi yang butuh verifikasi ulang |
+| `full` | Semua di atas, plus aksi yang butuh verifikasi ulang: hapus, ubah config, pasang aplikasi, jalankan backup. Penghapusan wajib menyertakan `confirm` berisi nama target |
+
+Akun hanya-baca selalu mendapat tingkat `read`. **Tidak pernah tersedia lewat token**, apa pun tingkatnya: login dan 2FA, ganti kata sandi, perangkat tepercaya, manajemen token, kredensial database (`creds`), dan isi `.env` situs.
+
+Perlakukan token seperti kata sandi: jangan ditempel ke chat atau repo, simpan di pengelola rahasia, dan cabut bila bocor.
+
+## panelctl
+```
+panelctl whoami                     # siapa saya, tingkat token
+panelctl routes [--filter /api/db]  # daftar endpoint yang tersedia
+panelctl sites | dbs | services | backups | alerts | system | audit
+panelctl site-add <nama> <folder|port> [--php 8.4]
+panelctl site-action <nama> enable|disable
+panelctl site-remove <nama> --confirm <nama>        # token full
+panelctl db-create <nama> [--engine mariadb|mysql|pgsql] [--env <berkas .env>]
+panelctl db-dump <nama> [--engine ...]
+panelctl db-drop <nama> --confirm <nama> [--engine ...]   # token full
+panelctl service <id> start|stop|restart
+panelctl backup-run                                  # token full
+panelctl settings | set --name "..." --theme dark
+panelctl get /api/...       panelctl post /api/... '{"kunci":"nilai"}'
+panelctl --wait ...         # tunggu aksi latar belakang selesai
+```
+Keluaran selalu JSON; kode keluar 0 bila sukses, 1 bila ditolak atau gagal. Konfigurasi:
+- `PANEL_URL` (bawaan `https://panel.lab`)
+- `PANEL_TOKEN`, atau simpan token di `~/.config/macpanel/token` dengan izin 0600 (izin lebih longgar ditolak)
+- `PANEL_CA`: berkas CA lokal bila perangkat belum memercayainya (mkcert terdeteksi otomatis)
+
+Dari komputer lain, perintah ini hanya jalan bila perangkat itu ada di jaringan privat yang sama dan dapat me-resolve `panel.lab`.
+
+## HTTP langsung
+Kirim header `Authorization: Bearer <token>` ke `https://panel.lab/api/...`. Tidak perlu cookie atau CSRF. `GET /api/routes` mengembalikan daftar endpoint beserta tingkat minimum. Aksi latar belakang (pasang, backup, deploy) menjawab `202` dengan `job`; pantau di `GET /api/jobs/<id>`.
+
+Contoh:
+```
+curl --cacert rootCA.pem -H "Authorization: Bearer $PANEL_TOKEN" https://panel.lab/api/sites
+```
+
+## Respons galat
+| Kode | Arti |
+|---|---|
+| 401 | Token tidak valid, kedaluwarsa, atau dicabut |
+| 403 | Tingkat token kurang, atau rute memang tidak tersedia lewat token |
+| 429 | Terlalu banyak percobaan dari satu alamat; tunggu beberapa menit |

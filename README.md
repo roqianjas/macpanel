@@ -27,6 +27,7 @@ Captured from a throwaway demo instance (fake sites, empty database list, no rea
 - **Deploy:** per-site git pull, composer, npm/pnpm, artisan, FPM restart.
 - **Monitoring:** CPU, memory, disk, load, per-interface bandwidth with 7-day history; alerts for disk, memory, services, site errors, SSL expiry, stale backups.
 - **Security:** loopback bind, TOTP at login, password step-up for destructive actions, hash-chained audit log, admin/viewer roles, no web shell.
+- **Settings and automation:** panel name and theme, password change, 2FA on/off per account, trusted devices, and scoped API tokens (read / operate / full) with a `panelctl` CLI so scripts and AI agents can drive the panel. Credentials, `.env` contents and login/2FA never go through a token.
 - UI: React + Vite, light/dark, responsive, accessible (keyboard, 44px targets, reduced motion). Backend: one Go binary with SQLite.
 
 ## How it is built

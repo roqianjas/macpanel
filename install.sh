@@ -42,7 +42,7 @@ cat <<EOF
   Folder kerja : $OPS  (panel di $PANEL)
   Domain       : panel.$TLD  (hanya loopback + Tailscale; akses LAN ditolak 403)
   Paket brew   : ${MISSING[*]:-(semua sudah ada)}
-  Dibuat       : symlink CLI 'lab' ke $BREWP/bin/lab, nginx.conf + snippets, sertifikat mkcert, LaunchAgent panel (127.0.0.1:9100)
+  Dibuat       : symlink CLI 'lab' dan 'panelctl' ke $BREWP/bin, nginx.conf + snippets, sertifikat mkcert, LaunchAgent panel (127.0.0.1:9100)
   Tidak dilakukan: sudo, kata sandi, DNS (dicetak di akhir), pembuatan akun (Anda sendiri yang mengisinya)
 EOF
 [ "$DRY" = 1 ] && exit 0
@@ -60,7 +60,7 @@ if [ "$SRC" != "$PANEL" ]; then
   if [ -e "$PANEL" ] && [ ! -L "$PANEL" ]; then echo "$PANEL sudah ada dan bukan symlink; pindahkan dulu atau jalankan installer dari sana."; exit 1; fi
   ln -sfn "$SRC" "$PANEL"; echo "  $PANEL -> $SRC"
 fi
-for f in lab lab-svc lab-sys lab-dev addsite.sh backup.sh logrotate.sh; do ln -sfn "../panel/cli/$f" "$OPS/scripts/$f"; done
+for f in lab panelctl lab-svc lab-sys lab-dev addsite.sh backup.sh logrotate.sh; do ln -sfn "../panel/cli/$f" "$OPS/scripts/$f"; done
 chmod +x "$SRC"/cli/*
 echo "$TLD" > "$WEB/tld"
 for f in "$SRC"/nginx/snippets/*; do sed "s#__HOME__#$HOME#g" "$f" > "$WEB/nginx/snippets/$(basename "$f")"; done
@@ -78,6 +78,8 @@ if [ "$SYSTEM" = 1 ]; then
   say "Integrasi sistem"
   CLI="$BREWP/bin/lab"
   if [ -e "$CLI" ] && [ ! -L "$CLI" ]; then echo "  $CLI sudah ada dan bukan symlink; dilewati"; else ln -sfn "$OPS/scripts/lab" "$CLI"; echo "  $CLI -> $OPS/scripts/lab"; fi
+  PCTL="$BREWP/bin/panelctl"
+  if [ -e "$PCTL" ] && [ ! -L "$PCTL" ]; then echo "  $PCTL sudah ada dan bukan symlink; dilewati"; else ln -sfn "$OPS/scripts/panelctl" "$PCTL"; echo "  $PCTL -> $OPS/scripts/panelctl"; fi
   NGX="$BREWP/etc/nginx/nginx.conf"
   if [ -L "$NGX" ] && [ "$(readlink "$NGX")" = "$WEB/nginx/nginx.conf" ]; then echo "  nginx.conf sudah terhubung"
   elif [ ! -e "$NGX" ] || cmp -s "$NGX" "$BREWP/etc/nginx/nginx.conf.default" 2>/dev/null; then

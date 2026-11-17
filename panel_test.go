@@ -55,7 +55,7 @@ func newEnv(t *testing.T) *env {
 
 func (e *env) do(method, path, body, cookie, csrf string, hdr map[string]string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(method, path, strings.NewReader(body))
-	r.RemoteAddr = "100.106.252.64:5555"
+	r.RemoteAddr = "100.64.0.20:5555"
 	if cookie != "" {
 		r.Header.Set("Cookie", cookieName+"="+cookie)
 	}
@@ -164,7 +164,7 @@ func mustUserEnc(e *env) []byte { return e.app.st.GetUser("admin").TOTPEnc }
 
 func TestEveryRouteRequiresAuth(t *testing.T) {
 	e := newEnv(t)
-	public := map[string]bool{"GET /healthz": true, "POST /api/auth/login": true}
+	public := map[string]bool{"GET /healthz": true, "POST /api/auth/login": true, "GET /api/settings/public": true} // publik sadar: hanya nama panel dan tema bawaan (tampil di halaman masuk)
 	for _, rt := range routes() {
 		rt.Path = paramRE.ReplaceAllString(rt.Path, "x")
 		key := rt.Method + " " + rt.Path

@@ -1,5 +1,4 @@
 import { fmtTime, get } from "../api";
-import Account from "./Account";
 import { Card, Chip, PageHead, State, statusTone, useLoad } from "../ui";
 
 interface Row {
@@ -17,7 +16,6 @@ export default function Activity() {
   return (
     <>
       <PageHead title="Aktivitas" desc="Jejak audit berantai: setiap login, percobaan gagal, dan perubahan tercatat. Verifikasi integritas dengan: panel audit verify." />
-      <Account />
       <Card title="Audit (100 terakhir)">
         <State loading={audit.loading && !audit.data} error={audit.error} empty={!!audit.data && audit.data.rows.length === 0} emptyText="Belum ada catatan." onRetry={audit.reload}>
           <div className="tbl-wrap">

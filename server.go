@@ -91,6 +91,17 @@ func routes() []Route {
 		{"POST", "/api/auth/logout", Any, hLogout},
 		{"POST", "/api/auth/stepup", Full, hStepUp},
 		{"GET", "/api/me", Full, hMe},
+		{"GET", "/api/settings/public", Public, hPanelSettingsPublic},
+		{"GET", "/api/settings", Full, hPanelSettingsGet},
+		{"POST", "/api/settings", Full, hPanelSettingsSet},
+		{"GET", "/api/routes", Full, hRoutes},
+		{"GET", "/api/me/2fa", Full, hGet2FA},
+		{"POST", "/api/me/2fa/setup", Full, hSetup2FA},
+		{"POST", "/api/me/2fa/enable", Full, hEnable2FA},
+		{"POST", "/api/me/2fa/disable", Full, hDisable2FA},
+		{"GET", "/api/me/tokens", Full, hTokensList},
+		{"POST", "/api/me/tokens", Full, hTokenCreate},
+		{"POST", "/api/me/tokens/revoke", Full, hTokenRevoke},
 		{"GET", "/api/audit", Full, hAudit},
 		{"GET", "/api/sites", Full, hSitesRich},
 		{"POST", "/api/sites", Full, hSiteAdd},
@@ -294,10 +305,36 @@ func (a *App) wrap(rt Route) http.HandlerFunc {
 		var ss *Session
 		if rt.Level != Public {
 			ss = a.session(r)
+			if ss == nil && rt.Level == Full && strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+				var code int
+				if ss, code = a.bearer(r); ss == nil {
+					jerr(w, code, map[int]string{401: "token tidak valid", 429: "terlalu banyak percobaan"}[code])
+					return
+				}
+			}
 			if ss == nil || (rt.Level == Pwd && ss.Stage != "pwd") || (rt.Level == Full && ss.Stage != "full") {
 				jerr(w, 401, "unauthenticated")
 				return
 			}
+		}
+		if ss != nil && ss.Via == "token" {
+			if !tokenAllowed(r.Method, r.URL.Path) {
+				jerr(w, 403, "tidak tersedia lewat token API")
+				return
+			}
+			if r.Method != "GET" && r.Method != "HEAD" {
+				if ss.Scope == "read" {
+					jerr(w, 403, "token baca-saja")
+					return
+				}
+				if ss.Role == "viewer" {
+					jerr(w, 403, "akun ini hanya-baca")
+					return
+				}
+				a.st.Audit(ss.User, "api_call", ss.TokenName+" "+r.Method+" "+r.URL.Path, a.clientIP(r), a.now())
+			}
+			rt.H(a, w, r, ss)
+			return
 		}
 		if r.Method != "GET" && r.Method != "HEAD" {
 			if ss != nil && ss.Stage == "full" && ss.Role == "viewer" && r.URL.Path != "/api/auth/logout" {
@@ -368,6 +405,14 @@ func hLogin(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 		a.fail(name, ip)
 		a.st.Audit(name, "login_fail", "password", ip, a.now())
 		jerr(w, 401, "login gagal")
+		return
+	}
+	if !u.TOTPOn {
+		tok, full := a.st.NewSession(u.ID, "full", a.now())
+		a.setCookie(w, tok, int(absTTL.Seconds()))
+		a.st.ClearAttempts("u:" + name)
+		a.st.Audit(name, "login_ok_no2fa", "", ip, a.now())
+		jsonOut(w, 200, map[string]any{"ok": true, "no2fa": true, "csrf": full.CSRF})
 		return
 	}
 	if c, err := r.Cookie(trustCookie); err == nil {
@@ -468,6 +513,13 @@ func hStepUp(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 
 // requireStepUp dipakai aksi destruktif (fase berikutnya).
 func (a *App) requireStepUp(w http.ResponseWriter, ss *Session) bool {
+	if ss.Via == "token" {
+		if ss.Scope == "full" {
+			return true
+		}
+		jerr(w, 403, "aksi ini butuh token tingkat 'full'")
+		return false
+	}
 	if ss.StepUp > a.now().Unix() {
 		return true
 	}
@@ -476,7 +528,7 @@ func (a *App) requireStepUp(w http.ResponseWriter, ss *Session) bool {
 }
 
 func hMe(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
-	jsonOut(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.now().Unix(), "role": ss.Role})
+	jsonOut(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.now().Unix(), "role": ss.Role, "via": ss.Via, "scope": ss.Scope})
 }
 
 func hAudit(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {

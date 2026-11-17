@@ -15,3 +15,9 @@ MacPanel can run privileged-looking actions on your Mac (restart services, edit 
 
 ## Reporting
 Open a private security advisory on GitHub (Security tab) rather than a public issue.
+
+## API tokens (agents and automation)
+- `Authorization: Bearer mpt_...`, three scopes: `read` (GET only), `operate` (writes without re-verification), `full` (also step-up actions; deletions still require the typed target name). Viewer accounts are capped at `read`.
+- Only the SHA-256 of a token is stored; shown once at creation; 1-365 days; max 10 per account; revocable; last use (time, IP) recorded; every write is audited as `api_call` with the token name. Failed attempts per IP are rate-limited.
+- Never reachable with a token: `/api/auth/*`, `/api/me/*` (password, 2FA, devices, tokens), `*/creds`, `*/env`. Creating a token needs the password (step-up) from a human session.
+- 2FA can be switched off per account (password + current code; revokes other sessions and trusted devices). Treat that as a deliberate reduction in security.

@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS conf_versions(id INTEGER PRIMARY KEY, site TEXT NOT N
 CREATE INDEX IF NOT EXISTS cv_site ON conf_versions(site, id);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, usr TEXT NOT NULL, action TEXT NOT NULL,
   detail TEXT NOT NULL, ip TEXT NOT NULL, prev TEXT NOT NULL, hash TEXT NOT NULL);
-` + hooksSchema + trustSchema
+` + hooksSchema + trustSchema + settingsSchema
 
 const (
 	idleTTL   = 30 * time.Minute
@@ -50,6 +50,10 @@ type Session struct {
 	Expires  int64
 	StepUp   int64
 	Role     string
+	// sesi token API (tanpa cookie): Via="token", Scope read|operate|full
+	Via       string
+	Scope     string
+	TokenName string
 }
 
 type User struct {
@@ -59,6 +63,7 @@ type User struct {
 	TOTPEnc  []byte
 	TOTPLast int64
 	Disabled bool
+	TOTPOn   bool
 }
 
 func openStore(path string) (*Store, error) {
@@ -84,6 +89,8 @@ func openStore(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, err
 	}
+	db.Exec("ALTER TABLE users ADD COLUMN totp_on INTEGER NOT NULL DEFAULT 1")
+	db.Exec("ALTER TABLE users ADD COLUMN totp_pending BLOB")
 	db.Exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'") // migrasi; gagal bila kolom sudah ada (aman diabaikan)
 	return &Store{db}, nil
 }
@@ -111,13 +118,14 @@ func (s *Store) CreateUser(name, passHash string, totpEnc []byte, recoveryHashes
 
 func (s *Store) GetUser(name string) *User {
 	u := &User{}
-	var dis int
-	err := s.db.QueryRow("SELECT id,name,pass_hash,totp_enc,totp_last,disabled FROM users WHERE name=?", name).
-		Scan(&u.ID, &u.Name, &u.PassHash, &u.TOTPEnc, &u.TOTPLast, &dis)
+	var dis, on int
+	err := s.db.QueryRow("SELECT id,name,pass_hash,totp_enc,totp_last,disabled,totp_on FROM users WHERE name=?", name).
+		Scan(&u.ID, &u.Name, &u.PassHash, &u.TOTPEnc, &u.TOTPLast, &dis, &on)
 	if err != nil {
 		return nil
 	}
 	u.Disabled = dis == 1
+	u.TOTPOn = on == 1
 	return u
 }
 
