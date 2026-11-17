@@ -101,7 +101,7 @@ FileVault berhenti di layar unlock, jadi LaunchAgent (termasuk panel, worker, cr
 - Backup masih lokal (disk yang sama), belum offsite. Restore snapshot diuji: terbuka dan datanya terbaca (1 user, 4 baris audit).
 
 ## Keamanan singkat
-Panel hanya memanggil `lab` (argv list, tanpa shell, env bersih, timeout), semua keputusan akses di server, aksi merusak butuh TOTP ulang dan ketik nama, situs dan database sistem tidak bisa diubah/dihapus dari panel, perintah worker/cron dibatasi (program dan flag yang diizinkan, path di bawah `~/MacPanel/wwwroot`), editor config memakai allowlist direktif dan wajib mempertahankan pembatas tailnet. Cookie `__Host-` HttpOnly/Secure/SameSite=Strict, CSP ketat, UI disajikan dari daftar berkas yang dikenal (tanpa listing folder).
+Panel hanya memanggil `lab` (argv list, tanpa shell, env bersih, timeout), semua keputusan akses di server, aksi merusak butuh TOTP ulang dan ketik nama, situs dan database sistem tidak bisa diubah/dihapus dari panel, perintah worker/cron dibatasi (program dan flag yang diizinkan, path di bawah `~/Developer`), editor config memakai allowlist direktif dan wajib mempertahankan pembatas tailnet. Cookie `__Host-` HttpOnly/Secure/SameSite=Strict, CSP ketat, UI disajikan dari daftar berkas yang dikenal (tanpa listing folder).
 
 Terverifikasi dari luar (2026-11-16): akses lewat IP LAN 403, port 9100 tertutup dari LAN, API tanpa sesi 401, `/.env`, `/panel.db`, traversal, dan listing folder tidak bocor.
 
@@ -116,7 +116,7 @@ Belum teruji atau diketahui:
 - Perilaku setelah reboot penuh (Keychain di bawah launchd).
 - `lab update apply` pada paket nyata lewat panel (saat diuji belum ada paket yang perlu di-upgrade). Jadwal cron `--at` sudah teruji: dijadwalkan 21:33, jalan 21:33:05, exit 0.
 - `govulncheck`: dipindai 2026-11-16 (v1.9.0, basis data 11 Nov): tidak ada kerentanan. Percobaan ulang kadang timeout jaringan.
-- Pemindaian parser nginx terhadap tafsir nginx pada kasus langka; `root` situs bisa menyajikan folder lain di bawah `~/MacPanel/wwwroot` oleh pemilik sesi penuh + TOTP.
+- Pemindaian parser nginx terhadap tafsir nginx pada kasus langka; `root` situs bisa menyajikan folder lain di bawah `~/Developer` oleh pemilik sesi penuh + TOTP.
 - Tampilan di Safari/Firefox dan pembaca layar; hanya Chromium yang diuji.
 
 ## Kenapa `home.lab` belum diganti

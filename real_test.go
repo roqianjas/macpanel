@@ -21,7 +21,7 @@ func TestRealLabReadOnly(t *testing.T) {
 	e := newEnv(t)
 	c, _, _ := e.login(e.code(0))
 	home, _ := os.UserHomeDir()
-	e.app.home, e.app.sitesDir = home, home+"/Developer/_ops/web/nginx/sites"
+	e.app.home, e.app.sitesDir = home, home+"/MacPanel/server/nginx/sites"
 	s := e.do("GET", "/api/sites", "", c, "", nil).Body.String()
 	for _, w := range []string{`"name":"home"`, `"name":"nginx"`, `"system":true`} {
 		if !strings.Contains(s, w) {
@@ -43,7 +43,7 @@ func TestRealDBCycle(t *testing.T) {
 	}
 	o := newOpsEnv(t, "x")
 	home, _ := os.UserHomeDir()
-	o.app.labBin, o.app.home, o.app.sitesDir = "/opt/homebrew/bin/lab", home, home+"/Developer/_ops/web/nginx/sites"
+	o.app.labBin, o.app.home, o.app.sitesDir = "/opt/homebrew/bin/lab", home, home+"/MacPanel/server/nginx/sites"
 	o.app.timeout = 60e9
 	defer o.post("/api/db/mysql/paneltest/drop", `{"confirm":"paneltest"}`) // jaring pengaman bila tes gagal di tengah
 	c, b := o.post("/api/db", `{"name":"paneltest","engine":"mysql"}`)
@@ -94,16 +94,16 @@ func TestRealSiteLifecycle(t *testing.T) {
 	o := newOpsEnv(t, "x")
 	home, _ := os.UserHomeDir()
 	a := o.app
-	a.labBin, a.home, a.sitesDir = "/opt/homebrew/bin/lab", home, home+"/Developer/_ops/web/nginx/sites"
-	a.nginxDir, a.certDir, a.logDir, a.errLog = home+"/Developer/_ops/web/nginx", "/opt/homebrew/etc/nginx/certs", "/opt/homebrew/var/log/nginx/sites", "/opt/homebrew/var/log/nginx/error.log"
+	a.labBin, a.home, a.sitesDir = "/opt/homebrew/bin/lab", home, home+"/MacPanel/server/nginx/sites"
+	a.nginxDir, a.certDir, a.logDir, a.errLog = home+"/MacPanel/server/nginx", "/opt/homebrew/etc/nginx/certs", "/opt/homebrew/var/log/nginx/sites", "/opt/homebrew/var/log/nginx/error.log"
 	a.timeout = 90 * time.Second
-	dir := home + "/Developer/_ops/.paneltest/public"
+	dir := home + "/MacPanel/wwwroot/.paneltest/public"
 	os.MkdirAll(dir, 0o755)
 	os.WriteFile(dir+"/index.html", []byte("PANELTEST-INDEX"), 0o644)
 	os.WriteFile(dir+"/.env", []byte("RAHASIA"), 0o644)
 	cleanup := func() {
 		exec.Command("/opt/homebrew/bin/lab", "site", "remove", "paneltest").Run()
-		os.RemoveAll(home + "/Developer/_ops/.paneltest")
+		os.RemoveAll(home + "/MacPanel/wwwroot/.paneltest")
 		os.Remove(a.logDir + "/paneltest.log")
 	}
 	cleanup2 := cleanup
@@ -111,7 +111,7 @@ func TestRealSiteLifecycle(t *testing.T) {
 	step := func(n string, ok bool, extra ...any) {
 		t.Helper()
 		if !ok {
-			cf, _ := os.ReadFile(home + "/Developer/_ops/web/nginx/sites/paneltest.conf")
+			cf, _ := os.ReadFile(home + "/MacPanel/server/nginx/sites/paneltest.conf")
 			el, _ := exec.Command("tail", "-n", "4", a.errLog).Output()
 			t.Logf("KONFIG:\n%s\nERROR LOG:\n%s", cf, el)
 			t.Fatalf("LANGKAH GAGAL: %s %v", n, extra)
@@ -154,7 +154,7 @@ func TestRealSiteLifecycle(t *testing.T) {
 	o.stepup()
 	cur := o.siteConf("paneltest")
 	_ = cur
-	path := home + "/Developer/_ops/web/nginx/sites/paneltest.conf"
+	path := home + "/MacPanel/server/nginx/sites/paneltest.conf"
 	read := func() string { b, _ := os.ReadFile(path); return string(b) }
 	before := read()
 	bad := strings.Replace(before, "    client_max_body_size 10m;", "    client_max_body_size 5x;", 1)
