@@ -42,7 +42,7 @@ func realRun(timeout time.Duration, name string, args ...string) (string, error)
 
 var (
 	topIdleRE  = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)% idle`)
-	memFreeRE  = regexp.MustCompile(`free percentage:\s*(\d+)%`)
+	vmPageRE   = regexp.MustCompile(`page size of (\d+) bytes`)
 	loadRE     = regexp.MustCompile(`\{\s*([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s*\}`)
 	bootRE     = regexp.MustCompile(`sec\s*=\s*(\d+)`)
 	ipv4RE     = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
@@ -66,16 +66,40 @@ func parseTop(out string) (float64, bool) {
 	return cpu, ok
 }
 
-func parseMemPressure(out string) (float64, bool) {
-	m := memFreeRE.FindStringSubmatch(out)
-	if m == nil {
+// parseVMStat menghitung "Memory Used" ala Activity Monitor: App Memory (halaman anonim dikurangi purgeable)
+// + Wired + Compressed, dibagi memori fisik. Cache file TIDAK dihitung terpakai, sama seperti Activity Monitor.
+func parseVMStat(out string, total uint64) (float64, bool) {
+	if total == 0 {
 		return 0, false
 	}
-	free, _ := strconv.Atoi(m[1])
-	if free < 0 || free > 100 {
+	ps := vmPageRE.FindStringSubmatch(out)
+	if ps == nil {
 		return 0, false
 	}
-	return float64(100 - free), true
+	page, _ := strconv.ParseUint(ps[1], 10, 64)
+	get := func(label string) (uint64, bool) {
+		m := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(label) + `:\s*(\d+)\.`).FindStringSubmatch(out)
+		if m == nil {
+			return 0, false
+		}
+		v, _ := strconv.ParseUint(m[1], 10, 64)
+		return v, true
+	}
+	anon, ok1 := get("Anonymous pages")
+	purg, ok2 := get("Pages purgeable")
+	wired, ok3 := get("Pages wired down")
+	comp, ok4 := get("Pages occupied by compressor")
+	if !ok1 || !ok2 || !ok3 || !ok4 || page == 0 {
+		return 0, false
+	}
+	if purg > anon {
+		purg = anon
+	}
+	pct := float64((anon-purg+wired+comp)*page) / float64(total) * 100
+	if pct < 0 || pct > 100 {
+		return 0, false
+	}
+	return pct, true
 }
 
 func parseLoad(out string) ([3]float64, bool) {
@@ -173,14 +197,15 @@ func parsePS(out string, n int) []ProcInfo {
 // ---------- pengumpul ----------
 
 type Collector struct {
-	a      *App
-	run    runner
-	disk   func() (total, free uint64)
-	mu     sync.Mutex
-	prev   map[string]netCounter
-	prevT  time.Time
-	lastAt int64
-	last   struct {
+	a        *App
+	memTotal uint64
+	run      runner
+	disk     func() (total, free uint64)
+	mu       sync.Mutex
+	prev     map[string]netCounter
+	prevT    time.Time
+	lastAt   int64
+	last     struct {
 		CPU, Mem, Disk float64
 		Load           [3]float64
 		Nets           map[string]netCounter
@@ -209,8 +234,13 @@ func (c *Collector) Sample(now time.Time) {
 		cpu, cpuOK = parseTop(o)
 	}
 	mem, memOK := 0.0, false
-	if o, err := c.run(10*time.Second, "/usr/bin/memory_pressure"); err == nil {
-		mem, memOK = parseMemPressure(o)
+	if c.memTotal == 0 {
+		if o, err := c.run(3*time.Second, "/usr/sbin/sysctl", "-n", "hw.memsize"); err == nil {
+			c.memTotal, _ = strconv.ParseUint(strings.TrimSpace(o), 10, 64)
+		}
+	}
+	if o, err := c.run(5*time.Second, "/usr/bin/vm_stat"); err == nil {
+		mem, memOK = parseVMStat(o, c.memTotal)
 	}
 	var load [3]float64
 	if o, err := c.run(3*time.Second, "/usr/sbin/sysctl", "-n", "vm.loadavg"); err == nil {

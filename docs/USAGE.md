@@ -25,7 +25,7 @@ Panel web untuk mengelola environment lokal seperti aaPanel/cPanel: situs, datab
 
 ## Pantau dan bandwidth
 Panel mencatat satu sampel tiap 30 detik ke database panel dan menyimpannya 7 hari. Isinya pengukuran nyata; bila sebuah nilai gagal dibaca, disimpan kosong (bukan 0) dan grafik tidak menggambar titik itu.
-- CPU: `top -l 2` (sampel kedua). Memori: `memory_pressure` (terpakai = 100 - bebas, sama dengan portal). Disk: `statfs` volume Data. Beban: `sysctl vm.loadavg`.
+- CPU: `top -l 2` (sampel kedua). Memori: `vm_stat` (terpakai = App Memory + Wired + Compressed, definisi Activity Monitor). Disk: `statfs` volume Data. Beban: `sysctl vm.loadavg`.
 - Bandwidth: selisih penghitung byte `netstat -ibn` antar sampel, dibagi selang waktu, untuk interface ber-IPv4 non-loopback (LAN `en1` dan Tailscale `utun4` di mesin ini). Penghitung yang turun (reboot, interface baru) tidak menghasilkan laju. Total periode adalah jumlah selisih; lalu lintas saat panel mati tidak ikut terhitung.
   - `en1` (label "LAN") adalah kartu jaringan fisik ke router: semua lalu lintas Mac mini lewat sini, termasuk internet dan paket Tailscale terenkripsi. Ia juga menghitung lalu lintas lokal (laptop ke Mac mini); memisahkan internet dari lokal butuh pencatatan per koneksi, belum ada.
   - `utun4` (Tailscale) hanya lalu lintas di dalam terowongan; paketnya juga terhitung di `en1`. Karena itu kartu Jaringan di Ringkasan hanya menjumlahkan kartu fisik (tanpa Tailscale) agar tidak dobel.
@@ -70,6 +70,7 @@ Tombol Jeda mengganti nama `<situs>.conf` menjadi `<situs>.conf.disabled` (nginx
 - **Backup:** jadwal harian dan retensi bisa diatur (launchd + `backup.conf`), jelajahi arsip dan ekstrak berkas ke `~/MacPanel/backup/restore/` (berkas asli tidak pernah ditimpa).
 - **Pembersihan backup:** retensi otomatis berdasarkan jumlah (`KEEP`) dan umur (`DAYS`) di `~/.config/macminiops/backup.conf`; backup harian memanggil `lab backup prune --auto` setelah selesai. Backup terbaru TIDAK PERNAH dihapus (aturan di CLI). Di halaman Backup: hapus per pilihan, pratinjau lalu bersihkan (melebihi jumlah/umur), dan bersihkan dump DB (`~/MacPanel/backup/db`) serta hasil ekstrak (`~/MacPanel/backup/restore`) per umur, otomatis bila `EXTRA_DAYS` > 0. Hanya berkas bernama pola dump/ekstrak yang dihapus; symlink dan berkas lain dilewati. `~/MacPanel/backup/retired` hanya ditampilkan ukurannya (hapus manual).
 - **Perangkat tepercaya:** saat login (dengan 2FA) centang "Percayai perangkat ini"; perangkat itu lalu cukup kata sandi selama 30 hari. Cookie `__Host-panel-trust` (HttpOnly, Secure, SameSite=Strict) berisi token acak; server hanya menyimpan hash, token dirotasi tiap dipakai, maksimum 10 perangkat per akun. Aksi berbahaya tetap minta 2FA ulang (step-up) karena sesi tepercaya mulai tanpa step-up. Dicabut per perangkat atau semuanya di Aktivitas; ganti kata sandi otomatis mencabut semua; hapus akun ikut menghapus. Kata sandi tetap wajib dan tetap kena pembatasan percobaan. Risiko yang diterima: orang yang memegang cookie tepercaya sekaligus kata sandi bisa masuk tanpa 2FA sampai dicabut. Teruji: browser nyata (centang -> keluar -> masuk tanpa 2FA -> cabut -> minta 2FA lagi), 4 tes Go, mutasi 10/10.
+- **Dokumentasi:** menu Dokumentasi membaca `~/MacPanel/docs/NN-nama.md` (hanya berkas bernama pola itu, tanpa symlink, maks 400 KB) dan menampilkannya lewat renderer Markdown yang tidak pernah menyisipkan HTML mentah. Ada pencarian dan tautan antar dokumen.
 - **Webhook deploy (GitHub):** tab Deploy per situs. Penerima berjalan di listener terpisah `127.0.0.1:9101` (`--hook-addr`) yang hanya melayani `POST /hook/{situs}`; panel (9100) tidak ikut terbuka. Keamanan: HMAC-SHA256 (`X-Hub-Signature-256`), secret 64 hex disimpan terenkripsi dan tampil sekali, hanya branch terpilih, langkah deploy dari konfigurasi (bukan payload), tolak replay (`X-GitHub-Delivery`), jeda 15 dtk, satu deploy sekaligus per situs, kunci IP setelah tanda tangan salah berulang, semua penolakan 404 seragam. Agar GitHub menjangkaunya, ekspos HANYA port 9101 (Tailscale Funnel atau Cloudflare Tunnel); itu keputusan pemilik dan tidak dilakukan otomatis. Teruji nyata dengan repo git: push sah men-deploy (v1 -> v2), tanpa/salah tanda tangan 404, branch lain diabaikan, replay ditolak, LAN ke 9101 tertutup; mutasi 21/21.
 - **DNS (baca saja):** tab DNS di Sistem: dnsmasq menjawab, wildcard vs IP Tailscale, `/etc/resolver`, resolusi tiap situs. Tidak ada tulis (butuh sudo).
 - **Installer:** `install.sh` (lihat README repo).
@@ -113,7 +114,7 @@ Uji tambahan P5 (browser asli, mesin asli): login, Ringkasan, Pantau (grafik den
 
 Belum teruji atau diketahui:
 - Bandwidth hanya mencakup interface yang punya IPv4; interface yang baru muncul tercatat mulai sampel berikutnya. Laju memakai selisih penghitung 30 detik, jadi lonjakan lebih pendek dari itu terrata-rata.
-- Memori memakai angka `memory_pressure` (sama dengan portal), bukan "terpakai" versi Activity Monitor; keduanya bisa berbeda.
+- Memori dihitung seperti Activity Monitor (App Memory + Wired + Compressed; cache file tidak dihitung). Sebelum 2026-11-17 panel memakai `memory_pressure` (100 - bebas) yang menganggap cache sebagai bebas sehingga tampak jauh lebih rendah (26% vs 66%); riwayat grafik sebelum tanggal itu memakai definisi lama.
 - Perilaku setelah reboot penuh (Keychain di bawah launchd).
 - `lab update apply` pada paket nyata lewat panel (saat diuji belum ada paket yang perlu di-upgrade). Jadwal cron `--at` sudah teruji: dijadwalkan 21:33, jalan 21:33:05, exit 0.
 - `govulncheck`: dipindai 2026-11-16 (v1.9.0, basis data 11 Nov): tidak ada kerentanan. Percobaan ulang kadang timeout jaringan.
@@ -122,3 +123,7 @@ Belum teruji atau diketahui:
 
 ## Kenapa `home.lab` belum diganti
 Portal `home.lab` memuat grafik sumber daya, status layanan, log tersaring, dan dokumentasi; panel belum punya itu. Mengganti sekarang berarti kehilangan fitur. `home.lab` tetap hidup sampai panel setara.
+
+
+## Portal home.lab dihapus (2026-11-17)
+`home.lab` dan `hello.lab` dihapus atas permintaan; dokumentasinya pindah ke menu Dokumentasi panel dan grafik sumber daya ada di Ringkasan/Pantau. LaunchAgent `portal-build` dinonaktifkan (plist diarsipkan di `backup/retired`). Kode portal masih ada di `server/portal` (belum dihapus).

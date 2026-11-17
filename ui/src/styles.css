@@ -390,3 +390,24 @@ textarea.mono { width: 100%; }
   .svc-table td.cell-end { flex: 1 1 100%; min-width: 0; white-space: normal; text-align: left; }
   .svc-table .cell-end .row { justify-content: flex-start; flex-wrap: wrap; }
 }
+
+/* Dokumentasi */
+.docs-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: var(--s4); align-items: start; }
+.docs-nav { position: sticky; top: var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
+.docs-search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; background: var(--surface); min-height: 44px; }
+.docs-search input { border: 0; background: transparent; flex: 1; min-width: 0; min-height: 40px; outline-offset: 4px; }
+.docs-index { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.docs-index a { display: block; padding: 10px 12px; border-radius: 10px; color: var(--text); text-decoration: none; min-height: 44px; }
+.docs-index a:hover { background: var(--raised); }
+.docs-index a[aria-current="page"] { background: var(--tint); color: var(--on-tint); font-weight: 600; }
+.docs-body { max-width: 78ch; line-height: 1.65; overflow-wrap: anywhere; }
+.docs-body > * + * { margin-top: var(--s3); }
+.docs-h1 { font-size: var(--t-l); margin-top: 0; } .docs-h2 { font-size: var(--t-m); margin-top: var(--s5) !important; } .docs-h3 { font-size: var(--t-s); font-weight: 700; margin-top: var(--s4) !important; }
+.docs-pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: var(--s3); overflow-x: auto; font-size: var(--t-xs); line-height: 1.5; white-space: pre; }
+.docs-body code.mono { background: var(--raised); border-radius: 6px; padding: 1px 6px; font-size: .92em; }
+.docs-pre code.mono { background: transparent; padding: 0; }
+.docs-list { padding-left: 1.3em; display: flex; flex-direction: column; gap: 4px; }
+.docs-quote { border-left: 3px solid var(--primary); margin-left: 0; padding: 2px 0 2px var(--s3); color: var(--muted); }
+.docs-body .tbl { min-width: 0; }
+.docs-body .tbl td, .docs-body .tbl th { white-space: normal; vertical-align: top; }
+@media (max-width: 900px) { .docs-layout { grid-template-columns: minmax(0, 1fr); } .docs-nav { position: static; } .docs-index { flex-direction: row; flex-wrap: wrap; } }

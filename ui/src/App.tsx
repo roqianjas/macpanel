@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { Activity, BookOpen, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
+import ErrorBoundary from "./ErrorBoundary";
+import Docs from "./pages/Docs";
 import { dismissJob, useTrackedJobs } from "./jobs";
 import Overview from "./pages/Overview";
 import Monitoring from "./pages/Monitoring";
@@ -192,7 +194,7 @@ interface NavItem {
 const GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
   { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
-  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }] },
+  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
 ];
 const ALL = GROUPS.flatMap((g) => g.items);
 
@@ -235,6 +237,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
       case "backup": return <Backups />;
       case "pembaruan": return <Updates />;
       case "aktivitas": return <ActivityPage />;
+      case "dokumen": return <Docs sub={route.sub} />;
       default: return <Overview />;
     }
   })();
@@ -304,7 +307,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
           </div>
         </header>
         <main id="main" className="main" tabIndex={-1}>
-          {page}
+          <ErrorBoundary resetKey={`${route.page}/${route.sub ?? ""}`}>{page}</ErrorBoundary>
         </main>
       </div>
       <button className="scrim-side" aria-label="Tutup menu" tabIndex={-1} onClick={() => setSheet(false)} />

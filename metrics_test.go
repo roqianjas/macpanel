@@ -62,11 +62,19 @@ func TestParseTopTakesLastSample(t *testing.T) {
 }
 
 func TestParseMemLoadBootPS(t *testing.T) {
-	if v, ok := parseMemPressure("System-wide memory free percentage: 34%\n"); !ok || v != 66 {
-		t.Fatalf("%v %v", v, ok)
+	vm := "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free: 70972.\nPages wired down: 100.\nPages purgeable: 50.\nAnonymous pages: 350.\nPages occupied by compressor: 50.\n"
+	// (350-50+100+50) halaman * 16384 / (1000 halaman * 16384) = 45%
+	if v, ok := parseVMStat(vm, 1000*16384); !ok || v != 45 {
+		t.Fatalf("vm_stat: %v %v", v, ok)
 	}
-	if _, ok := parseMemPressure("System-wide memory free percentage: 340%"); ok {
-		t.Fatal("persen > 100 harus ditolak")
+	if _, ok := parseVMStat(vm, 0); ok {
+		t.Fatal("total 0 harus gagal")
+	}
+	if _, ok := parseVMStat("kosong", 1000); ok {
+		t.Fatal("teks tak dikenal harus gagal")
+	}
+	if _, ok := parseVMStat(vm, 100*16384); ok {
+		t.Fatal("hasil >100% harus ditolak")
 	}
 	if l, ok := parseLoad("{ 0.97 1.53 2.14 }\n"); !ok || l != [3]float64{0.97, 1.53, 2.14} {
 		t.Fatalf("%v", l)
@@ -93,9 +101,12 @@ func fakeRunner(t *testing.T, net *string, cpuFail *bool, calls *[]string) runne
 				return "", errors.New("gagal")
 			}
 			return "CPU usage: 1.0% user, 1.0% sys, 90.0% idle\nCPU usage: 5.0% user, 5.0% sys, 90.0% idle\n", nil
-		case "/usr/bin/memory_pressure":
-			return "System-wide memory free percentage: 40%\n", nil
+		case "/usr/bin/vm_stat":
+			return "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages wired down: 100.\nPages purgeable: 50.\nAnonymous pages: 350.\nPages occupied by compressor: 50.\n", nil
 		case "/usr/sbin/sysctl":
+			if len(args) > 1 && args[1] == "hw.memsize" {
+				return "16384000\n", nil
+			}
 			return "{ 1.00 2.00 3.00 }\n", nil
 		case "/usr/sbin/netstat":
 			return *net, nil
@@ -146,7 +157,7 @@ func TestCollectorRatesCounterResetAndNullOnFailure(t *testing.T) {
 	if len(cpu) != 3 || len(mem) != 4 {
 		t.Fatalf("cpu harus 3 titik (1 gagal), mem 4: cpu=%d mem=%d", len(cpu), len(mem))
 	}
-	if cpu[0][1] != 10 || mem[0][1] != 60 || disk[0][1] != 75 || load[0][1] != 1 {
+	if cpu[0][1] != 10 || mem[0][1] != 45 || disk[0][1] != 75 || load[0][1] != 1 {
 		t.Fatalf("nilai: cpu=%v mem=%v disk=%v load=%v", cpu[0], mem[0], disk[0], load[0])
 	}
 	for _, n := range calls {

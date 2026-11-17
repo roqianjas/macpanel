@@ -138,6 +138,7 @@ func routes() []Route {
 		{"POST", "/api/redis/del", Full, hRedisDel},
 		{"POST", "/api/me/password", Full, hMyPassword},
 		{"GET", "/api/me/devices", Full, hDevices},
+		{"GET", "/api/docs", Full, hDocs},
 		{"POST", "/api/me/devices/revoke", Full, hDeviceRevoke},
 		{"GET", "/api/sys/procs", Full, hSysProcs},
 		{"POST", "/api/sys/kill", Full, hSysKill},
