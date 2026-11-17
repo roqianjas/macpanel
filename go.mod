@@ -1,4 +1,4 @@
-module panel
+module github.com/roqianjas/macpanel
 
 go 1.27.4
 

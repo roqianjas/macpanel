@@ -1,0 +1,406 @@
+#!/usr/bin/env python3
+"""lab ext | ini | composer | deploy | backup  (dispatch dari `lab`)
+
+  lab ext list <php>                         JSON: ekstensi bawaan + ekstensi yang bisa dipasang (PECL)
+  lab ext install|remove|enable|disable <php> <nama>
+  lab ini get <php>                          JSON: nilai pool FPM yang boleh diubah
+  lab ini set <php> <kunci>=<nilai> [...]    uji php-fpm -t, restart FPM, kembalikan bila gagal
+  lab composer status                        JSON
+  lab composer install | update              (brew install/upgrade composer)
+  lab composer run <situs> <install|install-nodev|update|dump-autoload|validate>
+  lab deploy info <situs>                    JSON: langkah yang tersedia untuk proyek situs itu
+  lab deploy run <situs> <langkah[,langkah]>
+  lab backup list                            JSON
+  lab backup run
+Tanpa shell: semua argumen list; nama, versi, kunci, dan nilai divalidasi.
+"""
+import argparse, json, os, re, shutil, socket, subprocess, sys, time
+from pathlib import Path
+
+HOME = Path.home()
+OPS = HOME / "Developer/_ops"
+BREW = "/opt/homebrew/bin/brew"
+MISE = "/opt/homebrew/bin/mise"
+COMPOSER = "/opt/homebrew/bin/composer"
+ENV = dict(os.environ, PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_CURL_RETRIES="5")
+PHPS = ["8.2", "8.3", "8.4", "8.5"]
+SITES = OPS / "web/nginx/sites"
+NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$")
+PROTECTED = {"home", "nginx", "db", "kuma", "stats", "hello", "panel"}
+
+
+def die(m):
+    print("lab:", m, file=sys.stderr); sys.exit(1)
+
+
+def sh(cmd, **kw):
+    env = kw.pop("env", ENV)
+    return subprocess.run(cmd, env=env, text=True, capture_output=True, **kw)
+
+
+def stream(cmd, cwd=None, env=None, stdin=None):
+    return subprocess.run(cmd, env=env or ENV, cwd=cwd, stdin=stdin).returncode
+
+
+def formula(v): return "php" if v == "8.5" else f"php@{v}"
+def php_home(v): return Path(f"/opt/homebrew/opt/{formula(v)}")
+def php_bin(v): return str(php_home(v) / "bin/php")
+def conf_dir(v): return Path(f"/opt/homebrew/etc/php/{v}")
+def sock(v): return Path(f"/opt/homebrew/var/run/php-fpm-dev-{v}.sock")
+
+
+def need_php(v):
+    if v not in PHPS: die(f"versi PHP: {', '.join(PHPS)}")
+    if not php_home(v).exists(): die(f"PHP {v} belum terpasang")
+
+
+def sock_ok(v):
+    try:
+        c = socket.socket(socket.AF_UNIX); c.settimeout(1); c.connect(str(sock(v))); c.close(); return True
+    except OSError:
+        return False
+
+
+def restart_fpm(v):
+    """Restart FPM dan tunggu socket benar-benar menjawab (bukan hanya `brew services` bilang started)."""
+    sh([BREW, "services", "restart", formula(v)])
+    for _ in range(20):
+        time.sleep(0.5)
+        if sock_ok(v): return True
+    return False
+
+
+# ---------- ext ----------
+# Hanya ekstensi yang sudah diuji pasang di mesin ini.
+EXTS = {
+    "redis": dict(label="Redis (phpredis)", zend=False, brew=[]),
+    "apcu": dict(label="APCu (cache memori)", zend=False, brew=["pcre2"]),
+    "xdebug": dict(label="Xdebug", zend=True, brew=[], ini=["xdebug.mode=develop,debug"]),
+    "imagick": dict(label="ImageMagick (imagick)", zend=False, brew=["pkgconf", "imagemagick"], cfg='with-imagick="/opt/homebrew/opt/imagemagick"'),
+    "igbinary": dict(label="igbinary (serialisasi cepat)", zend=False, brew=[]),
+    "msgpack": dict(label="MessagePack", zend=False, brew=[]),
+    "pcov": dict(label="PCOV (code coverage)", zend=False, brew=[]),
+    "yaml": dict(label="YAML", zend=False, brew=["libyaml"], cfg='with-yaml="/opt/homebrew/opt/libyaml"'),
+    "memcached": dict(label="Memcached (klien)", zend=False, brew=["libmemcached", "zlib"],
+                      cfg='enable-memcached-session="yes" enable-memcached-igbinary="no" enable-memcached-msgpack="no" enable-memcached-json="no" with-libmemcached-dir="/opt/homebrew/opt/libmemcached" with-zlib-dir="/opt/homebrew/opt/zlib" enable-memcached-sasl="no" with-system-fastlz="no" enable-memcached-protocol="no"'),
+    "mongodb": dict(label="MongoDB", zend=False, brew=["openssl@3"], cfg='with-mongodb-system-libs="no" with-mongodb-ssl="openssl" with-mongodb-sasl="no" with-mongodb-client-side-encryption="no"'),
+}
+
+
+def ext_dir(v):
+    r = sh([php_bin(v), "-r", "echo ini_get('extension_dir');"])
+    return Path(r.stdout.strip())
+
+
+def modules(v):
+    out = sh([php_bin(v), "-m"]).stdout
+    return [l.strip() for l in out.splitlines() if l.strip() and not l.startswith("[")]
+
+
+def ext_ini(v, n): return conf_dir(v) / "conf.d" / f"ext-lab-{n}.ini"
+
+
+def ext_list(v):
+    need_php(v)
+    mods = modules(v); low = {m.lower() for m in mods}
+    ed = ext_dir(v); managed = []
+    for n, c in EXTS.items():
+        on, off = ext_ini(v, n), Path(str(ext_ini(v, n)) + ".disabled")
+        managed.append(dict(name=n, label=c["label"], installed=(ed / f"{n}.so").exists(), enabled=on.exists(), loaded=n in low, zend=c["zend"]))
+    builtin = sorted({m for m in mods if m.lower() not in EXTS}, key=str.lower)
+    print(json.dumps(dict(version=v, builtin=builtin, managed=managed)))
+
+
+def strip_pecl_ini_lines(v, n):
+    """`pecl install` menyisipkan extension="x.so" ke php.ini; pindahkan ke conf.d agar bisa dimatikan satu per satu."""
+    p = conf_dir(v) / "php.ini"
+    if not p.exists(): return
+    pat = re.compile(rf'^\s*(zend_)?extension\s*=\s*"?{re.escape(n)}(\.so)?"?\s*$')
+    lines = p.read_text().splitlines(keepends=True)
+    keep = [l for l in lines if not pat.match(l.strip())]
+    if len(keep) != len(lines):
+        shutil.copy2(p, f"{p}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+        p.write_text("".join(keep))
+
+
+def write_ext_ini(v, n):
+    c = EXTS[n]
+    d = conf_dir(v) / "conf.d"; d.mkdir(parents=True, exist_ok=True)
+    key = "zend_extension" if c["zend"] else "extension"
+    ini = ext_ini(v, n); ini.write_text(f"; Dikelola `lab ext`. Hapus lewat panel atau `lab ext remove`.\n{key}={n}.so\n" + "".join(x + "\n" for x in c.get("ini", [])))
+    Path(str(ini) + ".disabled").unlink(missing_ok=True)
+
+
+def ext_act(a):
+    v, n = a.php, a.name
+    need_php(v)
+    if n not in EXTS: die(f"ekstensi yang didukung: {', '.join(EXTS)}")
+    ini = ext_ini(v, n); off = Path(str(ini) + ".disabled")
+    if a.act == "install":
+        if not (ext_dir(v) / f"{n}.so").exists():
+            for b in EXTS[n]["brew"]:
+                if sh([BREW, "list", "--versions", b]).stdout.strip(): continue
+                print(f"memasang dependensi {b} ...", flush=True)
+                for i in range(4):
+                    if stream([BREW, "install", b]) == 0: break
+                    print(f"brew install {b}: percobaan {i + 1} gagal, ulangi...", flush=True); time.sleep(8)
+                else: die(f"brew install {b} gagal setelah 4 percobaan (jaringan?)")
+            pecl = str(php_home(v) / "bin/pecl")
+            env = dict(ENV, PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig", CPPFLAGS="-I/opt/homebrew/include", CFLAGS="-I/opt/homebrew/include", LDFLAGS="-L/opt/homebrew/lib")
+            for i in range(3):
+                r = subprocess.run([pecl, "install", "-f"] + ([f"--configureoptions={EXTS[n]['cfg']}"] if EXTS[n].get("cfg") else []) + [n], env=env, input="\n" * 10, text=True, capture_output=True)
+                if r.returncode == 0 and (ext_dir(v) / f"{n}.so").exists(): break
+                errs = [l.strip()[:200] for l in (r.stdout + r.stderr).splitlines() if re.search(r"error|fatal|not found", l, re.I)][-4:]
+                print(f"percobaan {i + 1} gagal: {' | '.join(errs) or (r.stdout + r.stderr).strip()[-200:]}", flush=True); time.sleep(5)
+            else: die("pecl install gagal (penyebab di atas)")
+        strip_pecl_ini_lines(v, n)
+        write_ext_ini(v, n)
+    elif a.act == "enable":
+        if not (ext_dir(v) / f"{n}.so").exists(): die(f"{n} belum terpasang di PHP {v}")
+        write_ext_ini(v, n)
+    elif a.act == "disable":
+        if not ini.exists(): die(f"{n} sudah nonaktif atau belum terpasang")
+        off.unlink(missing_ok=True); ini.rename(off)
+    elif a.act == "remove":
+        ini.unlink(missing_ok=True); off.unlink(missing_ok=True)
+        so = ext_dir(v) / f"{n}.so"
+        if so.exists():
+            r = sh([str(php_home(v) / "bin/pecl"), "uninstall", n], input="")
+            strip_pecl_ini_lines(v, n)
+            if so.exists(): so.unlink()
+    ok = restart_fpm(v)
+    mods = {m.lower() for m in modules(v)}
+    want = a.act in ("install", "enable")
+    if want and n not in mods:
+        ini.unlink(missing_ok=True); restart_fpm(v); die(f"{n} tidak termuat di PHP {v}; perubahan dibatalkan")
+    if not want and n in mods: die(f"{n} masih termuat di PHP {v}")
+    if not ok: die(f"FPM {v} tidak menjawab setelah restart; periksa log")
+    print(f"OK: {n} {a.act} pada PHP {v}; FPM dimulai ulang dan {'termuat' if want else 'tidak termuat'} (php -m)")
+
+
+# ---------- ini (pool FPM) ----------
+SIZE = re.compile(r"^\d{1,5}[KMG]$")
+INT = re.compile(r"^(-1|\d{1,6})$")
+INI_KEYS = {
+    "memory_limit": (lambda s: s == "-1" or SIZE.match(s), "mis. 512M, 2G, atau -1"),
+    "upload_max_filesize": (lambda s: SIZE.match(s), "mis. 64M"),
+    "post_max_size": (lambda s: SIZE.match(s), "mis. 64M"),
+    "max_execution_time": (lambda s: INT.match(s), "detik, 0 = tanpa batas"),
+    "max_input_time": (lambda s: INT.match(s), "detik"),
+    "max_input_vars": (lambda s: re.fullmatch(r"\d{3,6}", s), "mis. 3000"),
+    "display_errors": (lambda s: s in ("0", "1"), "0 atau 1"),
+    "date.timezone": (lambda s: re.fullmatch(r"[A-Za-z0-9_+/-]{1,40}", s), "mis. Asia/Jakarta"),
+}
+
+
+def pool_file(v): return conf_dir(v) / "php-fpm.d/dev.conf"
+
+
+def pool_values(v):
+    vals = {}
+    p = pool_file(v)
+    if p.exists():
+        for l in p.read_text().splitlines():
+            m = re.match(r"^php_admin_value\[([a-z_.]+)\]\s*=\s*(\S.*?)\s*$", l)
+            if m: vals[m.group(1)] = m.group(2)
+    return vals
+
+
+def ini_get(v):
+    need_php(v)
+    cur = pool_values(v); rows = []
+    for k, (_, hint) in INI_KEYS.items():
+        eff = sh([php_bin(v), "-n", "-r", f"echo ini_get('{k}');"]).stdout.strip()
+        rows.append(dict(key=k, value=cur.get(k, ""), default=eff, hint=hint))
+    print(json.dumps(dict(version=v, keys=rows)))
+
+
+def tz_ok(v, tz):
+    return sh([php_bin(v), "-n", "-r", "exit(@timezone_open($argv[1]) ? 0 : 1);", "--", tz]).returncode == 0
+
+
+def ini_set(a):
+    v = a.php; need_php(v)
+    pairs = {}
+    for kv in a.pairs:
+        if "=" not in kv: die(f"format kunci=nilai: {kv!r}")
+        k, val = kv.split("=", 1)
+        if k not in INI_KEYS: die(f"kunci tidak didukung: {k!r} (boleh: {', '.join(INI_KEYS)})")
+        if not INI_KEYS[k][0](val): die(f"nilai {k} tidak valid ({INI_KEYS[k][1]})")
+        if k == "date.timezone" and not tz_ok(v, val): die("zona waktu tidak dikenal PHP")
+        pairs[k] = val
+    p = pool_file(v)
+    if not p.exists(): die(f"{p} tidak ada; jalankan `lab php install {v}`")
+    old = p.read_text(); bak = f"{p}.bak.{time.strftime('%Y%m%d-%H%M%S')}"
+    new = old if old.endswith("\n") else old + "\n"
+    for k, val in pairs.items():
+        pat = re.compile(rf"^php_admin_value\[{re.escape(k)}\]\s*=.*$", re.M)
+        line = f"php_admin_value[{k}] = {val}"
+        new = pat.sub(line, new, count=1) if pat.search(new) else new + line + "\n"
+    shutil.copy2(p, bak); p.write_text(new)
+    t = sh([str(php_home(v) / "sbin/php-fpm"), "-t"])
+    if t.returncode:
+        p.write_text(old); die("php-fpm -t gagal, dikembalikan: " + (t.stderr or t.stdout).strip()[-200:])
+    if not restart_fpm(v):
+        p.write_text(old); restart_fpm(v); die("FPM tidak menjawab setelah restart, dikembalikan")
+    print(f"OK: {', '.join(f'{k}={x}' for k, x in pairs.items())} diterapkan ke FPM {v} (cadangan: {Path(bak).name})")
+
+
+# ---------- composer ----------
+def composer_status():
+    inst = Path(COMPOSER).exists()
+    ver, php = "", ""
+    if inst:
+        r = sh([COMPOSER, "--version", "--no-ansi"])
+        m = re.search(r"Composer version (\S+)", r.stdout); ver = m.group(1) if m else ""
+        m = re.search(r"PHP version (\S+)", r.stdout); php = m.group(1) if m else ""
+    out = sh([BREW, "outdated", "--json=v2", "composer"]).stdout or "{}"
+    try: newer = (json.loads(out).get("formulae") or [{}])[0].get("current_version", "")
+    except (ValueError, IndexError, AttributeError): newer = ""
+    print(json.dumps(dict(installed=inst, version=ver, php=php, outdated=bool(newer), latest=newer)))
+
+
+def composer(a):
+    if a.act == "status": return composer_status()
+    if a.act == "install":
+        if Path(COMPOSER).exists(): print("Composer sudah terpasang"); return
+        sys.exit(stream([BREW, "install", "composer"]))
+    if a.act == "update": sys.exit(stream([BREW, "upgrade", "composer"]))
+    if a.act == "run":
+        d, v = project(a.site); sys.exit(0 if run_step(a.cmd.replace("-", "_"), d, v) else 1)
+
+
+# ---------- deploy ----------
+def site_conf(name):
+    if not NAME_RE.match(name or ""): die("nama situs tidak valid")
+    if name in PROTECTED: die(f"situs sistem '{name}' tidak bisa di-deploy dari sini")
+    p = SITES / f"{name}.conf"
+    if not p.exists(): die(f"situs '{name}' tidak ada atau sedang dijeda")
+    return p.read_text()
+
+
+def project(name):
+    """Folder proyek dari `root` nginx (satu tingkat di atas public/), harus di bawah ~/Developer. Versi PHP dari socket FPM."""
+    t = site_conf(name)
+    m = re.search(r"^\s*root\s+([^;\s]+);", t, re.M)
+    if not m: die("situs ini tidak punya root (bukan situs PHP/statis)")
+    root = Path(m.group(1)).resolve()
+    d = root.parent if root.name == "public" else root
+    base = (HOME / "Developer").resolve()
+    if base not in d.parents: die("folder proyek harus di bawah ~/Developer")
+    if not d.is_dir(): die("folder proyek tidak ada")
+    v = re.search(r"php-fpm-dev-(8\.\d)\.sock", t)
+    return d, (v.group(1) if v else None)
+
+
+def node_pm(d):
+    if (d / "pnpm-lock.yaml").exists(): return "pnpm"
+    if (d / "package-lock.json").exists(): return "npm"
+    return None
+
+
+def pkg_script(d, name):
+    try: return name in (json.loads((d / "package.json").read_text()).get("scripts") or {})
+    except (OSError, ValueError): return False
+
+
+def available(d, v):
+    s = []
+    if (d / ".git").exists(): s.append(("git_pull", "Tarik perubahan terbaru (git pull --ff-only)"))
+    if (d / "composer.json").exists() and Path(COMPOSER).exists():
+        s += [("composer_install", "composer install"), ("composer_install_nodev", "composer install --no-dev -o"), ("composer_update", "composer update"), ("dump_autoload", "composer dump-autoload -o")]
+    if node_pm(d): s.append(("node_install", f"{node_pm(d)} install (sesuai lockfile)"))
+    if node_pm(d) and pkg_script(d, "build"): s.append(("node_build", f"{node_pm(d)} run build"))
+    if (d / "artisan").exists() and v:
+        s += [("artisan_migrate", "php artisan migrate --force"), ("artisan_optimize", "php artisan optimize")]
+    if v: s.append(("fpm_restart", f"Mulai ulang FPM {v} (bersihkan opcache)"))
+    return s
+
+
+def deploy_info(name):
+    d, v = project(name)
+    info = dict(site=name, dir=str(d), php=v, steps=[dict(id=i, label=l) for i, l in available(d, v)], git=None)
+    if (d / ".git").exists():
+        g = lambda *x: sh(["/usr/bin/git", "-C", str(d), *x]).stdout.strip()
+        info["git"] = dict(branch=g("rev-parse", "--abbrev-ref", "HEAD"), commit=g("log", "-1", "--format=%h %s")[:120], dirty=bool(g("status", "--porcelain")),
+                           remote=bool(g("remote")))
+    print(json.dumps(info))
+
+
+def run_step(step, d, v):
+    genv = dict(ENV, GIT_TERMINAL_PROMPT="0", GIT_SSH_COMMAND="ssh -o BatchMode=yes", COMPOSER_NO_INTERACTION="1", COMPOSER_ALLOW_SUPERUSER="0")
+    phpx = php_bin(v) if v else "/opt/homebrew/bin/php"
+    pm = node_pm(d)
+    cmds = {
+        "git_pull": ["/usr/bin/git", "-C", str(d), "pull", "--ff-only"],
+        "composer_install": [phpx, COMPOSER, "install", "--no-interaction", "--prefer-dist"],
+        "composer_install_nodev": [phpx, COMPOSER, "install", "--no-interaction", "--prefer-dist", "--no-dev", "-o"],
+        "composer_update": [phpx, COMPOSER, "update", "--no-interaction"],
+        "dump_autoload": [phpx, COMPOSER, "dump-autoload", "-o", "--no-interaction"],
+        "validate": [phpx, COMPOSER, "validate", "--no-interaction"],
+        "artisan_migrate": [phpx, "artisan", "migrate", "--force"],
+        "artisan_optimize": [phpx, "artisan", "optimize"],
+    }
+    if pm == "pnpm": cmds["node_install"] = [MISE, "exec", "--", "pnpm", "install", "--frozen-lockfile"]; cmds["node_build"] = [MISE, "exec", "--", "pnpm", "run", "build"]
+    if pm == "npm": cmds["node_install"] = [MISE, "exec", "--", "npm", "ci"]; cmds["node_build"] = [MISE, "exec", "--", "npm", "run", "build"]
+    print(f"== {step} ==", flush=True)
+    if step == "fpm_restart":
+        if not v: print("situs ini tidak memakai FPM"); return False
+        ok = restart_fpm(v); print("FPM dimulai ulang" if ok else "FPM tidak menjawab"); return ok
+    if step not in cmds: print(f"langkah tidak tersedia untuk proyek ini: {step}"); return False
+    if step in ("git_pull",) and not (d / ".git").exists(): print("bukan repo git"); return False
+    rc = stream(cmds[step], cwd=str(d), env=genv, stdin=subprocess.DEVNULL)
+    print(f"-- {step}: {'ok' if rc == 0 else 'gagal (kode ' + str(rc) + ')'}", flush=True)
+    return rc == 0
+
+
+def deploy(a):
+    if a.act == "info": return deploy_info(a.site)
+    d, v = project(a.site)
+    ok_ids = {i for i, _ in available(d, v)}
+    steps = [s for s in a.steps.split(",") if s]
+    if not steps or len(steps) > 8: die("pilih 1-8 langkah")
+    for s in steps:
+        if s not in ok_ids: die(f"langkah '{s}' tidak tersedia untuk proyek ini (tersedia: {', '.join(sorted(ok_ids)) or '-'})")
+    for s in steps:
+        if not run_step(s, d, v): die(f"berhenti di langkah '{s}'")
+    print("OK: deploy selesai")
+
+
+# ---------- backup ----------
+STAGING = HOME / "Backups/staging"
+
+
+def backup(a):
+    if a.act == "run": sys.exit(stream([str(OPS / "scripts/backup.sh")]))
+    rows = []
+    for d in sorted(STAGING.glob("20*"), reverse=True)[:14] if STAGING.exists() else []:
+        if not d.is_dir(): continue
+        fs = [f for f in d.iterdir() if f.is_file()]
+        rows.append(dict(name=d.name, at=int(d.stat().st_mtime), size=sum(f.stat().st_size for f in fs), files=sorted(f.name for f in fs)))
+    print(json.dumps(dict(backups=rows, offsite=(HOME / ".config/macminiops/offsite").exists())))
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
+    e = top.add_parser("ext").add_subparsers(dest="act", required=True)
+    q = e.add_parser("list"); q.add_argument("php")
+    for x in ("install", "remove", "enable", "disable"): q = e.add_parser(x); q.add_argument("php"); q.add_argument("name")
+    i = top.add_parser("ini").add_subparsers(dest="act", required=True)
+    q = i.add_parser("get"); q.add_argument("php"); q = i.add_parser("set"); q.add_argument("php"); q.add_argument("pairs", nargs="+")
+    c = top.add_parser("composer").add_subparsers(dest="act", required=True)
+    for x in ("status", "install", "update"): c.add_parser(x)
+    q = c.add_parser("run"); q.add_argument("site"); q.add_argument("cmd", choices=["install", "install-nodev", "update", "dump-autoload", "validate"])
+    d = top.add_parser("deploy").add_subparsers(dest="act", required=True)
+    d.add_parser("info").add_argument("site"); q = d.add_parser("run"); q.add_argument("site"); q.add_argument("steps")
+    b = top.add_parser("backup").add_subparsers(dest="act", required=True); b.add_parser("list"); b.add_parser("run")
+    a = ap.parse_args()
+    if a.mod == "ext": ext_list(a.php) if a.act == "list" else ext_act(a)
+    elif a.mod == "ini": ini_get(a.php) if a.act == "get" else ini_set(a)
+    elif a.mod == "composer": composer(a)
+    elif a.mod == "deploy": deploy(a)
+    elif a.mod == "backup": backup(a)
+
+
+if __name__ == "__main__":
+    main()

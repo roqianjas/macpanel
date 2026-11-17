@@ -2,3 +2,7 @@ panel
 *.db
 *.db-wal
 *.db-shm
+*.bak.*
+ui/dist
+ui/node_modules
+.DS_Store

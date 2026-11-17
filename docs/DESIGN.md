@@ -13,12 +13,12 @@ Browser -> nginx panel.lab (TLS mkcert, tailnet_only) -> panel (Go, 127.0.0.1:91
                                                            |- SQLite: user, sesi, audit, job
                                                            '- eksekutor -> `lab ...` (argv list, tanpa shell)
 ```
-- Satu binary Go, LaunchAgent `com.macminiops.panel`, user `rokianjas` (bukan root).
+- Satu binary Go, LaunchAgent `com.macminiops.panel`, user `<user>` (bukan root).
 - SQLite lewat `modernc.org/sqlite` (tanpa cgo). UI = React yang sudah ada (`portal-ui`) dibangun jadi file statis yang disajikan binary yang sama.
 - `home.lab` (portal read-only) tetap hidup sampai panel setara (fase 4), baru digantikan.
 
 ## 3. Model ancaman
-Aset: akun `rokianjas` di Mac mini (kode, SSH key, database, backup). Panel yang bisa menjalankan perintah = **bila dibobol, setara pengambilalihan akun itu.** Ini risiko inti yang tidak bisa dihilangkan, hanya dipersempit.
+Aset: akun `<user>` di Mac mini (kode, SSH key, database, backup). Panel yang bisa menjalankan perintah = **bila dibobol, setara pengambilalihan akun itu.** Ini risiko inti yang tidak bisa dihilangkan, hanya dipersempit.
 
 | Ancaman | Mitigasi |
 |---|---|
@@ -34,7 +34,7 @@ Aset: akun `rokianjas` di Mac mini (kode, SSH key, database, backup). Panel yang
 | Panel sendiri diserang dari dalam (XSS) | CSP ketat tanpa inline script, React tanpa `dangerouslySetInnerHTML`, header `no-store` untuk API |
 | Dependency berbahaya | Dependensi Go minimal (sqlite, argon2 dari `x/crypto`, TOTP ditulis sendiri ±30 baris), `govulncheck` di tes |
 
-**Risiko sisa (jujur):** pelaku yang sudah menguasai akun `rokianjas` bisa mengubah database panel dan audit. Hash berantai hanya mendeteksi, tidak mencegah. Pelaku di tailnet yang memegang password **dan** TOTP bisa menjalankan semua aksi allowlist.
+**Risiko sisa (jujur):** pelaku yang sudah menguasai akun `<user>` bisa mengubah database panel dan audit. Hash berantai hanya mendeteksi, tidak mencegah. Pelaku di tailnet yang memegang password **dan** TOTP bisa menjalankan semua aksi allowlist.
 
 ## 4. Autentikasi
 - **Tidak ada halaman setup web.** Admin dibuat lewat CLI lokal: `panel user add <nama>` (password dimasukkan interaktif, tidak lewat argumen/chat). Nginx UI sempat punya endpoint install publik; kita tidak mengulanginya.

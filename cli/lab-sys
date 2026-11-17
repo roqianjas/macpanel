@@ -1,0 +1,398 @@
+#!/usr/bin/env python3
+"""lab site | php | runtime | update  (dispatch dari `lab`)
+
+  lab site add <nama> <port|folder> [--php 8.x] | remove <nama> | list     (membungkus addsite.sh)
+  lab php list | install <8.2..8.5> | remove <ver>
+  lab runtime list | install <node|go|python|pnpm> <versi> | use <tool> <versi> | remove <tool> <versi>
+  lab service list [--json] | start|stop|restart <id> | logs <id> [-n 40]    (layanan brew/launchd yang diizinkan)
+  lab app list | install <id> | remove <id>                                  (aplikasi opsional: memcached, mailpit)
+  lab site enable|disable <nama>                                             (jeda situs tanpa menghapus)
+  lab update check
+  lab update apply <formula|mise:tool> [--allow-pinned] [--dry-run]    (backup dulu, uji, restart layanan)
+Tanpa shell: semua argumen list; nama dan versi divalidasi.
+"""
+import argparse, json, os, re, socket, subprocess, sys, time
+from pathlib import Path
+
+HOME = Path.home()
+OPS = HOME / "Developer/_ops"
+BREW = "/opt/homebrew/bin/brew"
+MISE = "/opt/homebrew/bin/mise"
+ENV = dict(os.environ, PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", HOMEBREW_NO_AUTO_UPDATE="1", HOMEBREW_CURL_RETRIES="5")
+PHPS = ["8.2", "8.3", "8.4", "8.5"]
+TOOLS = ["node", "go", "python", "pnpm"]
+VER_RE = re.compile(r"^(latest|lts|\d+(\.\d+){0,2})$")
+
+
+def die(m):
+    print("lab:", m, file=sys.stderr); sys.exit(1)
+
+
+def sh(cmd, check=False, **kw):
+    r = subprocess.run(cmd, env=ENV, text=True, capture_output=kw.pop("capture", True), **kw)
+    if check and r.returncode: die(f"{' '.join(cmd[:3])} gagal: {(r.stderr or r.stdout).strip()[-300:]}")
+    return r
+
+
+def stream(cmd):
+    return subprocess.run(cmd, env=ENV).returncode
+
+
+def formula(v): return "php" if v == "8.5" else f"php@{v}"
+def php_bin(v): return f"/opt/homebrew/opt/{formula(v)}"
+
+
+# ---------- site ----------
+NAME_RE = r"[a-z0-9]([a-z0-9-]*[a-z0-9])?"
+SITES_DIR = OPS / "web/nginx/sites"
+PROTECTED = {"home", "nginx", "db", "kuma", "stats", "hello", "panel"}
+
+
+def site_toggle(name, enable):
+    """Jeda/aktifkan situs dengan mengganti nama berkas config (nginx hanya memuat *.conf). Gagal uji = dikembalikan."""
+    if not re.fullmatch(NAME_RE, name or ""): die("nama situs tidak valid")
+    if name in PROTECTED: die(f"situs sistem '{name}' tidak boleh dijeda")
+    on, off = SITES_DIR / f"{name}.conf", SITES_DIR / f"{name}.conf.disabled"
+    src, dst = (off, on) if enable else (on, off)
+    if not src.exists(): die(f"situs '{name}' tidak ada" if not dst.exists() else f"situs '{name}' sudah {'aktif' if enable else 'nonaktif'}")
+    if dst.exists(): die(f"{dst.name} sudah ada")
+    src.rename(dst)
+    t = nginx_test()
+    if t.returncode:
+        dst.rename(src); die("nginx -t gagal, dikembalikan: " + (t.stdout + t.stderr).strip()[-300:])
+    r = sh(["/opt/homebrew/bin/nginx", "-s", "reload"])
+    if r.returncode:
+        dst.rename(src); sh(["/opt/homebrew/bin/nginx", "-s", "reload"]); die("reload gagal, dikembalikan: " + (r.stdout + r.stderr).strip()[-200:])
+    print(f"OK: {name}.lab {'diaktifkan' if enable else 'dijeda'}")
+
+
+def site(a):
+    s = str(OPS / "scripts/addsite.sh")
+    if a.act == "list": sys.exit(stream([s, "--list"]))
+    if a.act == "remove":
+        if re.fullmatch(NAME_RE, a.name or ""): (SITES_DIR / f"{a.name}.conf.disabled").unlink(missing_ok=True)
+        sys.exit(stream([s, "--remove", a.name]))
+    if a.act in ("enable", "disable"): site_toggle(a.name, a.act == "enable"); return
+    if a.act == "cert": cert(a.name); return
+    cmd = [s, a.name, a.target] + (["--php", a.php] if a.php else [])
+    sys.exit(stream(cmd))
+
+
+# ---------- nginx ----------
+NGINX_CONF = OPS / "web/nginx/nginx.conf"
+CERTS = Path("/opt/homebrew/etc/nginx/certs")
+
+
+def nginx_test():
+    return sh(["/opt/homebrew/bin/nginx", "-t", "-c", str(NGINX_CONF)])
+
+
+def nginx(a):
+    t = nginx_test()
+    out = (t.stdout + t.stderr).strip()
+    if t.returncode: print(out); sys.exit(1)
+    if a.act == "test": print("OK: nginx -t lolos"); return
+    r = sh(["/opt/homebrew/bin/nginx", "-s", "reload"])
+    if r.returncode: print((r.stdout + r.stderr).strip()); sys.exit(1)
+    print("OK: nginx -t lolos, reload berhasil")
+
+
+def cert(name):
+    if not re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?", name): die("nama situs tidak valid")
+    tld = (OPS / "web/tld").read_text().strip()
+    host = f"{name}.{tld}"
+    if not (OPS / f"web/nginx/sites/{name}.conf").exists(): die("situs tidak ada")
+    pem, key = CERTS / f"{host}.pem", CERTS / f"{host}-key.pem"
+    r = sh(["/opt/homebrew/bin/mkcert", "-cert-file", str(pem), "-key-file", str(key), host])
+    if r.returncode: die("mkcert gagal: " + (r.stderr or r.stdout)[-200:])
+    os.chmod(key, 0o600)
+    t = nginx_test()
+    if t.returncode: die("nginx -t gagal setelah sertifikat baru: " + (t.stdout + t.stderr)[-200:])
+    sh(["/opt/homebrew/bin/nginx", "-s", "reload"])
+    print(f"OK: sertifikat {host} diperbarui, nginx reload")
+
+
+# ---------- php ----------
+POOL = """; Pool dev PHP {v}. Dikelola `lab php`. Unix socket 0600, tanpa TCP.
+[dev]
+user = {user}
+group = staff
+listen = /opt/homebrew/var/run/php-fpm-dev-{v}.sock
+listen.mode = 0600
+pm = ondemand
+pm.max_children = 8
+pm.process_idle_timeout = 30s
+security.limit_extensions = .php
+php_admin_value[expose_php] = 0
+php_admin_value[memory_limit] = 512M
+php_admin_value[upload_max_filesize] = 64M
+php_admin_value[post_max_size] = 64M
+php_admin_value[error_log] = /opt/homebrew/var/log/php-fpm-dev-{v}.log
+php_admin_flag[log_errors] = on
+"""
+
+
+def php(a):
+    if a.act == "list":
+        for v in PHPS:
+            ok = Path(php_bin(v)).exists(); sock = Path(f"/opt/homebrew/var/run/php-fpm-dev-{v}.sock").exists()
+            ver = sh([php_bin(v) + "/bin/php", "-r", "echo PHP_VERSION;"]).stdout if ok else "-"
+            print(f"{v}  terpasang={'ya' if ok else 'tidak':5} versi={ver:8} fpm_socket={'ada' if sock else '-'}")
+        return
+    v = a.version
+    if v not in PHPS: die(f"versi didukung: {', '.join(PHPS)} (8.1 dan lebih lama dinyatakan deprecated di Homebrew)")
+    f = formula(v)
+    if a.act == "install":
+        if not Path(php_bin(v)).exists():
+            for i in range(3):
+                if stream([BREW, "install", f]) == 0: break
+                print("percobaan", i + 1, "gagal, ulangi..."); time.sleep(8)
+            else: die("brew install gagal")
+        d = Path(f"/opt/homebrew/etc/php/{v}/php-fpm.d")
+        www = d / "www.conf"
+        if www.exists(): www.rename(d / f"www.conf.disabled")  # www.conf bawaan membuka TCP 127.0.0.1:9000
+        (d / "dev.conf").write_text(POOL.format(v=v, user=os.environ.get("USER", HOME.name)))
+        t = sh([php_bin(v) + "/sbin/php-fpm", "-t"])
+        if t.returncode: die("php-fpm -t gagal: " + t.stderr[-300:])
+        sh([BREW, "services", "restart", f], check=True)
+        time.sleep(3)
+        if not Path(f"/opt/homebrew/var/run/php-fpm-dev-{v}.sock").exists(): die("socket FPM tidak muncul")
+        print(f"OK: PHP {v} terpasang, FPM socket aktif. Pakai: lab site add <nama> <folder> --php {v}")
+    elif a.act == "remove":
+        used = [p.name for p in (OPS / "web/nginx/sites").glob("*.conf") if f"php-fpm-dev-{v}.sock" in p.read_text()]
+        if used: die(f"masih dipakai situs: {', '.join(used)}")
+        sh([BREW, "services", "stop", f]); sh([BREW, "uninstall", f], check=True); print(f"OK: PHP {v} dihapus")
+
+
+# ---------- runtime ----------
+def runtime(a):
+    if a.act == "list": sys.exit(stream([MISE, "ls"]))
+    if a.tool not in TOOLS: die(f"tool didukung: {', '.join(TOOLS)}")
+    if not VER_RE.match(a.version): die("versi: angka (22, 24.1) atau latest/lts")
+    spec = f"{a.tool}@{a.version}"
+    if a.act == "install": sys.exit(stream([MISE, "install", spec]))
+    if a.act == "use": sys.exit(stream([MISE, "use", "-g", spec]))
+    if a.act == "remove": sys.exit(stream([MISE, "uninstall", spec]))
+
+
+# ---------- update ----------
+def check(a):
+    d = json.loads(sh([BREW, "outdated", "--json=v2"]).stdout or "{}")
+    pins = set(sh([BREW, "list", "--pinned"]).stdout.split())
+    rows = d.get("formulae", [])
+    print("Homebrew:" if rows else "Homebrew: semua terbaru")
+    for f in rows:
+        n = f["name"]; cur = f["installed_versions"][0]; new = f["current_version"]
+        major = cur.split(".")[0] != new.split(".")[0]
+        tag = "PIN" if n in pins else ""
+        print(f"  {n:18} {cur} -> {new}  {tag} {'(MAYOR: butuh dump/restore)' if major else ''}")
+    o = sh([MISE, "outdated", "--json"])
+    try: mo = json.loads(o.stdout or "{}")
+    except Exception: mo = {}
+    print("mise:" if mo else "mise: semua terbaru")
+    for k, v in mo.items(): print(f"  {k:10} {v.get('current')} -> {v.get('latest')}")
+    print("Pin aktif:", ", ".join(sorted(pins)) or "-")
+    print("Catatan: PostgreSQL/MySQL di-pin. Update patch: lab update apply <formula> --allow-pinned. Mayor: manual lewat dump.")
+
+
+def services_of(name):
+    out = sh([BREW, "services", "list"]).stdout.splitlines()
+    return [l.split()[0] for l in out if l.split() and l.split()[0] == name and "started" in l]
+
+
+def apply(a):
+    t = a.target
+    if t.startswith("mise:"):
+        tool = t[5:]
+        if tool not in TOOLS: die("tool mise tidak dikenal")
+        if a.dry_run: print("dry-run:", MISE, "upgrade", tool); return
+        sys.exit(stream([MISE, "upgrade", tool]))
+    if not re.fullmatch(r"[a-z0-9@._+-]+", t): die("nama formula tidak valid")
+    d = json.loads(sh([BREW, "outdated", "--json=v2"]).stdout or "{}")
+    row = next((f for f in d.get("formulae", []) if f["name"] == t), None)
+    if not row: die(f"{t} tidak usang (atau tidak terpasang)")
+    cur, new = row["installed_versions"][0], row["current_version"]
+    if cur.split(".")[0] != new.split(".")[0]: die(f"{cur} -> {new} berganti versi mayor: tidak otomatis (dump, pasang, restore)")
+    pinned = t in sh([BREW, "list", "--pinned"]).stdout.split()
+    if pinned and not a.allow_pinned: die(f"{t} di-pin; tambahkan --allow-pinned bila yakin (hanya patch/minor)")
+    svc = services_of(t)
+    print(f"rencana: backup -> {'unpin -> ' if pinned else ''}upgrade {t} {cur} -> {new}{' -> pin' if pinned else ''}{' -> restart service' if svc else ''}")
+    if a.dry_run: return
+    if stream(["/bin/bash", str(OPS / "scripts/backup.sh")]) != 0: die("backup gagal, update dibatalkan")
+    log = HOME / "Backups/update-log.txt"; log.parent.mkdir(exist_ok=True)
+    with open(log, "a") as fh: fh.write(f"{time.strftime('%F %T')} {t} {cur} -> {new}\n")
+    if pinned: sh([BREW, "unpin", t], check=True)
+    try:
+        rc = stream([BREW, "upgrade", t])
+    finally:
+        if pinned: sh([BREW, "pin", t])
+    if rc: die("brew upgrade gagal (pin dikembalikan). Versi lama masih di Cellar bila tersisa: brew info " + t)
+    if svc:
+        sh([BREW, "services", "restart", t]); time.sleep(5)
+        if not services_of(t): die(f"{t} tidak berjalan setelah update! Cek log. Backup ada di ~/Backups/staging")
+    now = sh([BREW, "list", "--versions", t]).stdout.strip()
+    print(f"OK: {now}" + (" | service jalan" if svc else ""))
+
+
+# ---------- layanan dan aplikasi ----------
+UID = os.getuid()
+LAUNCH = HOME / "Library/LaunchAgents"
+LOGD = Path("/opt/homebrew/var/log")
+
+
+def S(id, label, group, kind, name, **kw):
+    return dict(id=id, label=label, group=group, kind=kind, name=name, port=kw.get("port"), sock=kw.get("sock"), log=kw.get("log"),
+                ctl=kw.get("ctl", True), optional=kw.get("optional", False), proc=kw.get("proc"), desc=kw.get("desc", ""))
+
+
+CATALOG = [
+    S("nginx", "nginx", "Web server", "brew", "nginx", port=443, log=str(LOGD / "nginx/error.log"), desc="Reverse proxy dan web server semua situs .lab"),
+    S("php-8.2", "PHP-FPM 8.2", "PHP", "brew", "php@8.2", sock="/opt/homebrew/var/run/php-fpm-dev-8.2.sock", log=str(LOGD / "php-fpm.log"), desc="Pool dev (unix socket); log master FPM dipakai bersama semua versi PHP"),
+    S("php-8.3", "PHP-FPM 8.3", "PHP", "brew", "php@8.3", sock="/opt/homebrew/var/run/php-fpm-dev-8.3.sock", log=str(LOGD / "php-fpm.log"), desc="Pool dev (unix socket); log master FPM dipakai bersama semua versi PHP"),
+    S("php-8.4", "PHP-FPM 8.4", "PHP", "brew", "php@8.4", sock="/opt/homebrew/var/run/php-fpm-dev-8.4.sock", log=str(LOGD / "php-fpm.log"), desc="Pool dev (unix socket); log master FPM dipakai bersama semua versi PHP"),
+    S("php-8.5", "PHP-FPM 8.5", "PHP", "brew", "php", sock="/opt/homebrew/var/run/php-fpm-dev-8.5.sock", log=str(LOGD / "php-fpm.log"), desc="Pool dev (unix socket); log master FPM dipakai bersama semua versi PHP"),
+    S("postgresql", "PostgreSQL 17", "Database", "brew", "postgresql@17", port=5432, log=str(LOGD / "postgresql@17.log"), desc="127.0.0.1:5432"),
+    S("mysql", "MySQL 8.4", "Database", "brew", "mysql@8.4", port=3306, log="/opt/homebrew/var/mysql/*.err", desc="127.0.0.1:3306"),
+    S("redis", "Redis", "Cache dan antrean", "brew", "redis", port=6379, log=str(LOGD / "redis.log"), desc="127.0.0.1:6379"),
+    S("memcached", "Memcached", "Cache dan antrean", "brew", "memcached", port=11211, optional=True, desc="Cache memori, opsional (port 11211)"),
+    S("mailpit", "Mailpit", "Alat pengembangan", "brew", "mailpit", port=8025, optional=True, desc="Penangkap email dev: SMTP 1025, UI 127.0.0.1:8025"),
+    S("netdata", "Netdata", "Monitoring", "brew", "netdata", port=19999, log=str(LOGD / "netdata/daemon.log"), desc="Metrik sistem real-time (stats.lab)"),
+    S("uptime-kuma", "Uptime Kuma", "Monitoring", "launchd", "com.macminiops.uptime-kuma", port=3001, log=str(HOME / "Library/Logs/uptime-kuma.log"), desc="Pemantau uptime (kuma.lab)"),
+    S("nginx-ui", "Nginx UI", "Alat pengembangan", "brew", "nginx-ui", port=9000, log=str(LOGD / "nginx-ui.log"), desc="Editor config nginx (nginx.lab)"),
+    S("dnsmasq", "dnsmasq", "Jaringan", "brew", "dnsmasq", ctl=False, proc="dnsmasq", desc="DNS *.lab; dijalankan sebagai root, kendali lewat sudo di terminal"),
+    S("panel", "Panel", "Sistem", "launchd", "com.macminiops.panel", port=9100, ctl=False, log=str(HOME / "Library/Logs/panel.log"), desc="Panel ini; tidak bisa dihentikan dari dirinya sendiri"),
+]
+BY_ID = {c["id"]: c for c in CATALOG}
+
+
+def tcp_ok(port):
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.4): return True
+    except OSError: return False
+
+
+def unix_ok(path):
+    try:
+        c = socket.socket(socket.AF_UNIX); c.settimeout(0.4); c.connect(path); c.close(); return True
+    except OSError: return False
+
+
+def brew_versions():
+    r = sh([BREW, "list", "--versions"])
+    return {l.split()[0]: l.split()[-1] for l in r.stdout.splitlines() if l.strip()}
+
+
+def brew_status():
+    r = sh([BREW, "services", "list", "--json"])
+    try: return {x["name"]: x.get("status") for x in json.loads(r.stdout or "[]")}
+    except Exception: return {}
+
+
+def probe(c):
+    if c["port"]: return tcp_ok(c["port"])
+    if c["sock"]: return unix_ok(c["sock"])
+    if c["proc"]: return sh(["/usr/bin/pgrep", "-x", c["proc"]]).returncode == 0
+    return False
+
+
+def launchd_loaded(label):
+    return sh(["/bin/launchctl", "print", f"gui/{UID}/{label}"]).returncode == 0
+
+
+def snapshot():
+    vers, bst, rows = brew_versions(), brew_status(), []
+    for c in CATALOG:
+        if c["kind"] == "brew": installed, ver = c["name"] in vers, vers.get(c["name"], "")
+        else: installed, ver = (LAUNCH / f"{c['name']}.plist").exists(), ""
+        if not installed: state = "not_installed"
+        elif probe(c): state = "running"
+        elif c["kind"] == "brew" and bst.get(c["name"]) == "error": state = "error"
+        else: state = "stopped"
+        rows.append(dict(id=c["id"], label=c["label"], group=c["group"], kind=c["kind"], version=ver, state=state, port=c["port"],
+                         installed=installed, ctl=c["ctl"], optional=c["optional"], desc=c["desc"], has_log=bool(c["log"])))
+    return rows
+
+
+def service(a):
+    if a.act == "list":
+        rows = snapshot()
+        if a.json: print(json.dumps(rows)); return
+        for r in rows: print(f"{r['id']:14}{r['state']:15}{r['version']:10}{r['label']}")
+        return
+    c = BY_ID.get(a.id)
+    if not c: die(f"layanan '{a.id}' tidak dikenal")
+    if a.act == "logs":
+        if not c["log"]: die("layanan ini tidak punya log yang bisa ditampilkan")
+        import glob
+        fs = sorted(glob.glob(c["log"]), key=os.path.getmtime)
+        if not fs: die("log belum ada")
+        n = max(1, min(int(a.n), 500))
+        print(f"== {fs[-1]}"); print("\n".join(Path(fs[-1]).read_text(errors="replace").splitlines()[-n:])); return
+    if not c["ctl"]: die(f"'{c['id']}' tidak bisa dikendalikan dari sini ({c['desc']})")
+    if not snapshot_one(c)[0]: die(f"'{c['id']}' belum terpasang")
+    if c["kind"] == "brew":
+        r = sh([BREW, "services", a.act, c["name"]])
+    else:
+        plist = str(LAUNCH / f"{c['name']}.plist"); tgt = f"gui/{UID}/{c['name']}"
+        if a.act == "restart": r = sh(["/bin/launchctl", "kickstart", "-k", tgt]) if launchd_loaded(c["name"]) else sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist])
+        elif a.act == "stop": r = sh(["/bin/launchctl", "bootout", tgt])
+        else: r = sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist]) if not launchd_loaded(c["name"]) else sh(["/bin/true"])
+    if r.returncode: die((r.stderr or r.stdout).strip()[-300:] or "gagal")
+    want = a.act != "stop"
+    for _ in range(20):
+        time.sleep(0.5)
+        if probe(c) == want: break
+    now = probe(c)
+    if now != want: die(f"perintah {a.act} dikirim, tetapi {c['label']} {'belum berjalan' if want else 'masih berjalan'}")
+    print(f"OK: {c['label']} {'berjalan' if now else 'berhenti'}")
+
+
+def snapshot_one(c):
+    if c["kind"] == "brew": return (c["name"] in brew_versions(),)
+    return ((LAUNCH / f"{c['name']}.plist").exists(),)
+
+
+def app(a):
+    opt = {c["id"]: c for c in CATALOG if c["optional"]}
+    if a.act == "list":
+        for r in snapshot():
+            if r["optional"]: print(f"{r['id']:12}{'terpasang' if r['installed'] else 'belum':10}{r['version']}")
+        return
+    c = opt.get(a.id)
+    if not c: die(f"aplikasi '{a.id}' tidak ada di katalog (opsional: {', '.join(opt)})")
+    installed = c["name"] in brew_versions()
+    if a.act == "install":
+        if installed: print(f"sudah terpasang: {c['label']}"); return
+        if stream([BREW, "install", c["name"]]): die("brew install gagal")
+        print(f"OK: {c['label']} terpasang. Jalankan dari halaman Aplikasi.")
+    else:
+        if not installed: print(f"belum terpasang: {c['label']}"); return
+        sh([BREW, "services", "stop", c["name"]])
+        if stream([BREW, "uninstall", c["name"]]): die("brew uninstall gagal")
+        print(f"OK: {c['label']} dihapus")
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
+    s = top.add_parser("site").add_subparsers(dest="act", required=True)
+    s.add_parser("list"); p = s.add_parser("add"); p.add_argument("name"); p.add_argument("target"); p.add_argument("--php", choices=PHPS)
+    s.add_parser("remove").add_argument("name"); s.add_parser("cert").add_argument("name")
+    for x in ("enable", "disable"): s.add_parser(x).add_argument("name")
+    sv = top.add_parser("service").add_subparsers(dest="act", required=True); q = sv.add_parser("list"); q.add_argument("--json", action="store_true")
+    for x in ("start", "stop", "restart"): sv.add_parser(x).add_argument("id")
+    q = sv.add_parser("logs"); q.add_argument("id"); q.add_argument("-n", default="40")
+    ap_ = top.add_parser("app").add_subparsers(dest="act", required=True); ap_.add_parser("list")
+    for x in ("install", "remove"): ap_.add_parser(x).add_argument("id")
+    ng = top.add_parser("nginx").add_subparsers(dest="act", required=True); ng.add_parser("test"); ng.add_parser("reload")
+    ph = top.add_parser("php").add_subparsers(dest="act", required=True); ph.add_parser("list")
+    for x in ("install", "remove"): ph.add_parser(x).add_argument("version")
+    r = top.add_parser("runtime").add_subparsers(dest="act", required=True); r.add_parser("list")
+    for x in ("install", "use", "remove"): q = r.add_parser(x); q.add_argument("tool"); q.add_argument("version")
+    u = top.add_parser("update").add_subparsers(dest="act", required=True); u.add_parser("check")
+    q = u.add_parser("apply"); q.add_argument("target"); q.add_argument("--allow-pinned", action="store_true"); q.add_argument("--dry-run", action="store_true")
+    a = ap.parse_args()
+    {"site": site, "php": php, "runtime": runtime, "nginx": nginx, "service": service, "app": app}.get(a.mod, lambda a: check(a) if a.act == "check" else apply(a))(a)
+
+
+if __name__ == "__main__":
+    main()
