@@ -50,7 +50,7 @@ export default function Apps() {
         {groups.map(({ g, items }) => (
           <Card key={g} title={g}>
             <div className="tbl-wrap">
-              <table className="tbl tbl-fixed">
+              <table className="tbl tbl-fixed svc-table">
                 <colgroup><col style={{ width: "30%" }} /><col style={{ width: "128px" }} /><col style={{ width: "96px" }} /><col style={{ width: "64px" }} /><col /></colgroup>
                 <thead>
                   <tr>
@@ -69,8 +69,8 @@ export default function Apps() {
                         <span className="small muted" style={{ fontWeight: 400, display: "block" }}>{s.desc}</span>
                       </th>
                       <td><Chip tone={stateTone(s.state)}>{stateText[s.state]}</Chip></td>
-                      <td className="mono">{s.version || "-"}</td>
-                      <td className="mono">{s.port ?? "-"}</td>
+                      <td className="mono" data-label="Versi">{s.version || "-"}</td>
+                      <td className="mono" data-label="Port">{s.port ?? "-"}</td>
                       <td className="cell-end">
                         <div className="row">
                           {!s.installed && s.optional && (

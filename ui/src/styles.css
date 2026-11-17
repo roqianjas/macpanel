@@ -347,3 +347,46 @@ textarea.mono { width: 100%; }
 .tbl td, .tbl th { overflow-wrap: normal; word-break: normal; }
 
 @media (max-width: 760px) { .tbl { min-width: 680px; } }
+
+/* Tabel dengan kolom aksi: tata letak otomatis supaya tombol tidak meluber ke kolom sebelah.
+   Kolom aksi selebar isinya; teks panjang (jalur, daftar berkas) boleh turun baris tanpa menyempitkan kolom lain. */
+.tbl-fixed { table-layout: auto; }
+.tbl-fixed td, .tbl-fixed th { overflow-wrap: break-word; }
+.tbl td.cell-end, .tbl th.cell-end { width: 1%; white-space: nowrap; }
+.tbl-fixed td.mono { white-space: normal; word-break: normal; }
+.tbl-fixed td.mono.nowrap { white-space: nowrap; }
+@media (max-width: 760px) { .tbl { min-width: 720px; } }
+
+/* Tablet: tabel dengan kolom aksi tidak boleh menyempitkan kolom nama/deskripsi; bila sempit, gulir di dalam kartu. */
+.tbl-fixed { min-width: 760px; }
+.tbl-fixed tbody th { min-width: 220px; }
+.tile-ds { min-width: 0; overflow-wrap: anywhere; }
+.tiles { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+
+/* Layar sangat sempit (320px): baris daftar boleh turun baris, teks kecil tidak meluber. */
+.list-row { flex-wrap: wrap; gap: var(--s1) var(--s3); }
+.list-row > * { min-width: 0; }
+.small.muted, p.small { overflow-wrap: anywhere; }
+.kpi-rows li { min-width: 0; } .kpi-rows li > span { min-width: 0; overflow-wrap: anywhere; } .kpi-rows .mono { white-space: normal; }
+
+/* Kolom aksi: tombol boleh turun baris (2 per baris) sehingga semua terlihat tanpa menggeser tabel. */
+.tbl-fixed { min-width: 600px; }
+.tbl td.cell-end { white-space: normal; width: 1%; min-width: 150px; }
+.cell-end .row { flex-wrap: wrap; justify-content: flex-end; }
+@media (min-width: 1280px) { .tbl td.cell-end { white-space: nowrap; } .cell-end .row { flex-wrap: nowrap; } }
+.tbl td.cell-end { min-width: 230px; }
+@media (min-width: 900px) { .tbl-fixed { min-width: 0; } }
+
+/* Daftar layanan: di bawah 1280px tiap baris bertumpuk (nama, lalu status/versi/port, lalu tombol) supaya tidak ada kolom yang saling timpa. */
+@media (max-width: 1279px) {
+  .svc-table { min-width: 0; table-layout: auto; }
+  .svc-table colgroup, .svc-table thead { display: none; }
+  .svc-table, .svc-table tbody { display: block; }
+  .svc-table tbody tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+  .svc-table tbody tr:last-child { border-bottom: 0; }
+  .svc-table tbody th, .svc-table td { display: block; border: 0; padding: 0; min-width: 0; width: auto; }
+  .svc-table tbody th { flex: 1 1 100%; }
+  .svc-table td[data-label]::before { content: attr(data-label) " "; color: var(--muted); font-family: inherit; font-size: var(--t-xs); }
+  .svc-table td.cell-end { flex: 1 1 100%; min-width: 0; white-space: normal; text-align: left; }
+  .svc-table .cell-end .row { justify-content: flex-start; flex-wrap: wrap; }
+}
