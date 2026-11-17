@@ -309,3 +309,5 @@ select { padding-right: 8px; }
   .ext-row > .chip, .ext-row > .ext-state { grid-column: 1; }
   .ext-act { grid-column: 2; grid-row: 1 / span 3; }
 }
+
+.sec-title { font: 600 var(--t-m, 1rem)/1.3 var(--font); margin: var(--s2) 0 0; }

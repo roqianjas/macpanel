@@ -101,6 +101,7 @@ type IniKey struct {
 	Value   string `json:"value"`
 	Default string `json:"default"`
 	Hint    string `json:"hint"`
+	Group   string `json:"group"`
 }
 
 func hIniGet(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
@@ -119,7 +120,13 @@ func hIniGet(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 	}
 	keys := []IniKey{}
 	for _, k := range l.Keys {
-		if _, known := iniKeys[k.Key]; known {
+		_, known := iniKeys[k.Key]
+		if _, pool := poolKeys[k.Key]; known || pool {
+			if pool {
+				k.Group = "fpm"
+			} else {
+				k.Group = "php"
+			}
 			keys = append(keys, k)
 		}
 	}
@@ -135,13 +142,16 @@ func hIniSet(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if len(in.Values) == 0 || len(in.Values) > len(iniKeys) {
+	if len(in.Values) == 0 || len(in.Values) > len(iniKeys)+len(poolKeys) {
 		jerr(w, 400, "tidak ada nilai untuk disimpan")
 		return
 	}
 	args := []string{"ini", "set", v}
 	for _, k := range sortedKeys(in.Values) {
 		check, known := iniKeys[k]
+		if pc, pool := poolKeys[k]; pool {
+			check, known = pc, true
+		}
 		if !known {
 			jerr(w, 400, "pengaturan tidak didukung: "+k)
 			return

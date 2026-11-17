@@ -193,6 +193,17 @@ INI_KEYS = {
 }
 
 
+POOL_KEYS = {
+    "pm": (lambda s: s in ("static", "dynamic", "ondemand"), "static, dynamic, atau ondemand"),
+    "pm.max_children": (lambda s: re.fullmatch(r"\d{1,3}", s) and 1 <= int(s) <= 200, "1-200 proses"),
+    "pm.start_servers": (lambda s: re.fullmatch(r"\d{1,3}", s) and 1 <= int(s) <= 200, "mode dynamic: proses awal"),
+    "pm.min_spare_servers": (lambda s: re.fullmatch(r"\d{1,3}", s) and 1 <= int(s) <= 200, "mode dynamic: minimum menganggur"),
+    "pm.max_spare_servers": (lambda s: re.fullmatch(r"\d{1,3}", s) and 1 <= int(s) <= 200, "mode dynamic: maksimum menganggur"),
+    "pm.process_idle_timeout": (lambda s: re.fullmatch(r"\d{1,4}s", s), "mode ondemand, mis. 30s"),
+    "pm.max_requests": (lambda s: re.fullmatch(r"\d{1,6}", s) and int(s) <= 100000, "0 = tanpa daur ulang"),
+}
+
+
 def pool_file(v): return conf_dir(v) / "php-fpm.d/dev.conf"
 
 
@@ -203,6 +214,8 @@ def pool_values(v):
         for l in p.read_text().splitlines():
             m = re.match(r"^php_admin_value\[([a-z_.]+)\]\s*=\s*(\S.*?)\s*$", l)
             if m: vals[m.group(1)] = m.group(2)
+            m = re.match(r"^(pm(?:\.[a-z_]+)?)\s*=\s*(\S.*?)\s*$", l)
+            if m and m.group(1) in POOL_KEYS: vals[m.group(1)] = m.group(2)
     return vals
 
 
@@ -211,7 +224,9 @@ def ini_get(v):
     cur = pool_values(v); rows = []
     for k, (_, hint) in INI_KEYS.items():
         eff = sh([php_bin(v), "-n", "-r", f"echo ini_get('{k}');"]).stdout.strip()
-        rows.append(dict(key=k, value=cur.get(k, ""), default=eff, hint=hint))
+        rows.append(dict(key=k, value=cur.get(k, ""), default=eff, hint=hint, group="php"))
+    for k, (_, hint) in POOL_KEYS.items():
+        rows.append(dict(key=k, value=cur.get(k, ""), default="", hint=hint, group="fpm"))
     print(json.dumps(dict(version=v, keys=rows)))
 
 
@@ -225,7 +240,10 @@ def ini_set(a):
     for kv in a.pairs:
         if "=" not in kv: die(f"format kunci=nilai: {kv!r}")
         k, val = kv.split("=", 1)
-        if k not in INI_KEYS: die(f"kunci tidak didukung: {k!r} (boleh: {', '.join(INI_KEYS)})")
+        if k in POOL_KEYS:
+            if not POOL_KEYS[k][0](val): die(f"nilai {k} tidak valid ({POOL_KEYS[k][1]})")
+            pairs[k] = val; continue
+        if k not in INI_KEYS: die(f"kunci tidak didukung: {k!r} (boleh: {', '.join(list(INI_KEYS) + list(POOL_KEYS))})")
         if not INI_KEYS[k][0](val): die(f"nilai {k} tidak valid ({INI_KEYS[k][1]})")
         if k == "date.timezone" and not tz_ok(v, val): die("zona waktu tidak dikenal PHP")
         pairs[k] = val
@@ -234,9 +252,22 @@ def ini_set(a):
     old = p.read_text(); bak = f"{p}.bak.{time.strftime('%Y%m%d-%H%M%S')}"
     new = old if old.endswith("\n") else old + "\n"
     for k, val in pairs.items():
-        pat = re.compile(rf"^php_admin_value\[{re.escape(k)}\]\s*=.*$", re.M)
-        line = f"php_admin_value[{k}] = {val}"
+        if k in POOL_KEYS:
+            pat = re.compile(rf"^{re.escape(k)}\s*=.*$", re.M); line = f"{k} = {val}"
+        else:
+            pat = re.compile(rf"^php_admin_value\[{re.escape(k)}\]\s*=.*$", re.M)
+            line = f"php_admin_value[{k}] = {val}"
         new = pat.sub(line, new, count=1) if pat.search(new) else new + line + "\n"
+    eff = {}
+    for l in new.splitlines():
+        m = re.match(r"^(pm(?:\.[a-z_]+)?)\s*=\s*(\S+)", l)
+        if m and m.group(1) in POOL_KEYS: eff[m.group(1)] = m.group(2)
+    if eff.get("pm") == "dynamic":
+        try:
+            mn, st, mx, ch = (int(eff[k]) for k in ("pm.min_spare_servers", "pm.start_servers", "pm.max_spare_servers", "pm.max_children"))
+        except (KeyError, ValueError): die("mode dynamic butuh pm.start_servers, pm.min_spare_servers, pm.max_spare_servers, dan pm.max_children")
+        if not (1 <= mn <= st <= mx <= ch): die("mode dynamic: min_spare <= start_servers <= max_spare <= max_children")
+    if eff.get("pm") == "static" and "pm.max_children" not in eff: die("mode static butuh pm.max_children")
     shutil.copy2(p, bak); p.write_text(new)
     t = sh([str(php_home(v) / "sbin/php-fpm"), "-t"])
     if t.returncode:
@@ -381,6 +412,107 @@ def backup(a):
     print(json.dumps(dict(backups=rows, offsite=(HOME / ".config/macminiops/offsite").exists())))
 
 
+# ---------- dbcfg: pengaturan server MySQL dan Redis (berkas milik panel, bukan my.cnf/redis.conf asli) ----------
+MY_SIZE = re.compile(r"^\d{1,5}[MG]$")
+MYSQL_KEYS = {
+    "max_connections": (lambda s: re.fullmatch(r"\d{2,4}", s) and 10 <= int(s) <= 2000, "10-2000"),
+    "innodb_buffer_pool_size": (lambda s: MY_SIZE.match(s) and 64 <= (int(s[:-1]) * (1024 if s[-1] == "G" else 1)) <= 8192, "64M-8G, mis. 512M"),
+    "max_allowed_packet": (lambda s: MY_SIZE.match(s) and 1 <= (int(s[:-1]) * (1024 if s[-1] == "G" else 1)) <= 1024, "1M-1G, mis. 64M"),
+    "slow_query_log": (lambda s: s in ("0", "1"), "0 atau 1"),
+    "long_query_time": (lambda s: re.fullmatch(r"\d{1,2}(\.\d)?", s) and float(s) <= 60, "detik, 0-60"),
+}
+MYSQL_FILE = Path("/opt/homebrew/etc/my.cnf.d/20-macpanel.cnf")
+MYSQL_SLOW = "/opt/homebrew/var/mysql/macpanel-slow.log"
+REDIS_KEYS = {
+    "maxmemory": (lambda s: s == "0" or re.fullmatch(r"\d{1,5}(mb|gb)", s), "0 (tanpa batas) atau mis. 256mb, 2gb"),
+    "maxmemory-policy": (lambda s: s in ("noeviction", "allkeys-lru", "volatile-lru", "allkeys-lfu", "volatile-lfu", "allkeys-random", "volatile-ttl"), "noeviction, allkeys-lru, volatile-lru, ..."),
+    "appendonly": (lambda s: s in ("yes", "no"), "yes atau no"),
+    "save": (lambda s: s in ("off", "default"), "off atau default (3600 1 300 100 60 10000)"),
+}
+REDIS_CONF = Path("/opt/homebrew/etc/redis.conf")
+REDIS_INC = Path("/opt/homebrew/etc/redis.d/macpanel.conf")
+
+
+def _kv_file(path, keys):
+    cur = {}
+    if path.exists():
+        for l in path.read_text().splitlines():
+            m = re.match(r"^([a-z_-]+)\s+(.*?)\s*$", l) if path == REDIS_INC else re.match(r"^([a-z_]+)\s*=\s*(.*?)\s*$", l)
+            if m and m.group(1) in keys: cur[m.group(1)] = m.group(2).strip('"')
+    return cur
+
+
+def mysql_live(k):
+    root = {}
+    for ln in (HOME / ".config/macminiops/db.env").read_text().splitlines():
+        if "=" in ln and not ln.startswith("#"): a, b = ln.split("=", 1); root[a.strip()] = b.strip().strip("'\"")
+    e = dict(ENV, MYSQL_PWD=root.get("MYSQL_ROOT_PASSWORD", ""))
+    r = subprocess.run(["/opt/homebrew/opt/mysql@8.4/bin/mysql", "-h127.0.0.1", "-uroot", "-N", "-e", f"SELECT @@{k}"], env=e, text=True, capture_output=True)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def redis_live(k):
+    r = sh(["/opt/homebrew/bin/redis-cli", "-h", "127.0.0.1", "CONFIG", "GET", k])
+    l = r.stdout.splitlines()
+    return l[1] if r.returncode == 0 and len(l) >= 2 else ""
+
+
+def dbcfg(a):
+    eng = a.engine
+    keys, path = (MYSQL_KEYS, MYSQL_FILE) if eng == "mysql" else (REDIS_KEYS, REDIS_INC)
+    live = mysql_live if eng == "mysql" else redis_live
+    if a.act == "get":
+        cur = _kv_file(path, keys)
+        print(json.dumps(dict(engine=eng, keys=[dict(key=k, value=cur.get(k, ""), live=live(k), hint=h) for k, (_, h) in keys.items()])))
+        return
+    if a.act == "slow":
+        if eng != "mysql": die("slow log hanya untuk MySQL")
+        p = Path(MYSQL_SLOW)
+        print("\n".join(p.read_text(errors="replace").splitlines()[-200:]) if p.exists() else "(log kosong; aktifkan slow_query_log)")
+        return
+    pairs = {}
+    for kv in a.pairs:
+        if "=" not in kv: die(f"format kunci=nilai: {kv!r}")
+        k, val = kv.split("=", 1)
+        if k not in keys: die(f"kunci tidak didukung: {k!r} (boleh: {', '.join(keys)})")
+        if not keys[k][0](val): die(f"nilai {k} tidak valid ({keys[k][1]})")
+        pairs[k] = val
+    if not pairs: die("tidak ada nilai")
+    cur = _kv_file(path, keys); cur.update(pairs)
+    old = path.read_text() if path.exists() else None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if old is not None: shutil.copy2(path, f"{path}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+    if eng == "mysql":
+        body = "# Dikelola MacPanel (`lab dbcfg`). Jangan edit manual.\n[mysqld]\n" + "".join(f"{k} = {v}\n" for k, v in cur.items())
+        if cur.get("slow_query_log") == "1": body += f"slow_query_log_file = {MYSQL_SLOW}\n"
+        svc, port = "mysql@8.4", 3306
+    else:
+        body = "# Dikelola MacPanel (`lab dbcfg`). Jangan edit manual.\n"
+        for k, v in cur.items():
+            if k == "save": body += 'save ""\n' if v == "off" else "save 3600 1 300 100 60 10000\n"
+            else: body += f"{k} {v}\n"
+        svc, port = "redis", 6379
+        inc = f"include {REDIS_INC}"
+        t = REDIS_CONF.read_text()
+        if inc not in t:
+            shutil.copy2(REDIS_CONF, f"{REDIS_CONF}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+            REDIS_CONF.write_text(t.rstrip("\n") + f"\n\n# MacPanel\n{inc}\n")
+    path.write_text(body)
+    sh([BREW, "services", "restart", svc])
+    ok = False
+    for _ in range(40):
+        time.sleep(0.5)
+        try:
+            c = socket.create_connection(("127.0.0.1", port), 1); c.close(); ok = True; break
+        except OSError: pass
+    good = ok and all(live(k) != "" for k in pairs)
+    if not good:
+        if old is None: path.unlink(missing_ok=True)
+        else: path.write_text(old)
+        sh([BREW, "services", "restart", svc]); die(f"{eng} tidak naik dengan pengaturan baru; dikembalikan")
+    print("OK: " + ", ".join(f"{k}={pairs[k]} (aktif: {live(k)})" for k in pairs))
+
+
 def main():
     ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
     e = top.add_parser("ext").add_subparsers(dest="act", required=True)
@@ -393,6 +525,9 @@ def main():
     q = c.add_parser("run"); q.add_argument("site"); q.add_argument("cmd", choices=["install", "install-nodev", "update", "dump-autoload", "validate"])
     d = top.add_parser("deploy").add_subparsers(dest="act", required=True)
     d.add_parser("info").add_argument("site"); q = d.add_parser("run"); q.add_argument("site"); q.add_argument("steps")
+    dc = top.add_parser("dbcfg").add_subparsers(dest="act", required=True)
+    for x in ("get", "slow"): q = dc.add_parser(x); q.add_argument("engine", choices=["mysql", "redis"])
+    q = dc.add_parser("set"); q.add_argument("engine", choices=["mysql", "redis"]); q.add_argument("pairs", nargs="+")
     b = top.add_parser("backup").add_subparsers(dest="act", required=True); b.add_parser("list"); b.add_parser("run")
     a = ap.parse_args()
     if a.mod == "ext": ext_list(a.php) if a.act == "list" else ext_act(a)
@@ -400,6 +535,7 @@ def main():
     elif a.mod == "composer": composer(a)
     elif a.mod == "deploy": deploy(a)
     elif a.mod == "backup": backup(a)
+    elif a.mod == "dbcfg": dbcfg(a)
 
 
 if __name__ == "__main__":

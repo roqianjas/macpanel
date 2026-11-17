@@ -13,6 +13,7 @@ interface Ext {
   zend: boolean;
 }
 interface IniKey {
+  group?: string;
   key: string;
   value: string;
   default: string;
@@ -180,13 +181,23 @@ function Settings({ v }: { v: string }) {
       <p className="small muted">Berlaku untuk situs web (FPM) PHP {v}. Perintah di terminal (artisan, composer) memakai pengaturan PHP bawaan. Kolom kosong berarti tidak diubah; nilai bawaan PHP ditampilkan sebagai petunjuk.</p>
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
-        <div className="grid-form">
-          {q.data?.keys.map((k) => (
-            <Field key={k.key} label={k.key} hint={`${k.hint}. Saat ini: ${k.value || `bawaan (${k.default || "kosong"})`}`}>
-              {(id, d) => <input id={id} aria-describedby={d} className="mono" value={edit[k.key] ?? ""} placeholder="(tidak diubah)" onChange={(e) => setEdit((p) => ({ ...p, [k.key]: e.target.value }))} spellCheck={false} />}
-            </Field>
-          ))}
-        </div>
+        {[
+          { g: "php", t: "Batas PHP" },
+          { g: "fpm", t: "Pool FPM (jumlah proses)" },
+        ].map((sec) => (
+          <section key={sec.g} className="stack" aria-label={sec.t}>
+            <h3 className="sec-title">{sec.t}</h3>
+            <div className="grid-form">
+              {q.data?.keys
+                .filter((k) => (k.group ?? "php") === sec.g)
+                .map((k) => (
+                  <Field key={k.key} label={k.key} hint={`${k.hint}. Saat ini: ${k.value || `bawaan${k.default ? ` (${k.default})` : ""}`}`}>
+                    {(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={edit[k.key] ?? ""} placeholder="(tidak diubah)" onChange={(e) => setEdit((p) => ({ ...p, [k.key]: e.target.value }))} spellCheck={false} />}
+                  </Field>
+                ))}
+            </div>
+          </section>
+        ))}
         <div className="row-end">
           <button className="btn btn-primary" disabled={busy || changed.length === 0}>
             {busy ? "Menyimpan…" : `Simpan dan mulai ulang FPM${changed.length ? ` (${changed.length})` : ""}`}

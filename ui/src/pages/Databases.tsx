@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Archive, ArchiveRestore, Plus, Trash2 } from "lucide-react";
 import { errText, fmtTime, get, post, upload } from "../api";
 import { trackJob } from "../jobs";
+import DbConfig from "./DbConfig";
 import { fmtBytes } from "../lib";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 
@@ -84,6 +85,7 @@ export default function Databases() {
         ))}
         <p className="small muted">Untuk melihat isi tabel pakai Adminer di db.lab atau DBeaver lewat tailnet. Kata sandi proyek ada di berkas ~/.config/macminiops/projects di Mac mini.</p>
       </State>
+      <DbConfig />
       {restoring && (
         <RestoreDialog
           engine={restoring.engine}

@@ -247,8 +247,8 @@ def cmd_restore(a):
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] in ("worker", "job", "site", "php", "runtime", "update", "nginx", "service", "app", "ext", "ini", "composer", "deploy", "backup"):
-        os.execv(sys.executable, [sys.executable, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lab-svc" if sys.argv[1] in ("worker", "job") else "lab-dev" if sys.argv[1] in ("ext", "ini", "composer", "deploy", "backup") else "lab-sys"), *sys.argv[1:]])
+    if len(sys.argv) > 1 and sys.argv[1] in ("worker", "job", "site", "php", "runtime", "update", "nginx", "service", "app", "ext", "ini", "composer", "deploy", "backup", "dbcfg"):
+        os.execv(sys.executable, [sys.executable, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lab-svc" if sys.argv[1] in ("worker", "job") else "lab-dev" if sys.argv[1] in ("ext", "ini", "composer", "deploy", "backup", "dbcfg") else "lab-sys"), *sys.argv[1:]])
     ap = argparse.ArgumentParser(prog="lab"); sp = ap.add_subparsers(dest="mod", required=True)
     db = sp.add_parser("db").add_subparsers(dest="act", required=True)
     db.add_parser("list").set_defaults(f=cmd_list)
