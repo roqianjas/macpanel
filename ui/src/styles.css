@@ -342,3 +342,8 @@ textarea.mono { width: 100%; }
 
 .tbl input.rowcheck, .rowcheck { width: 22px; min-width: 0; height: 22px; padding: 0; }
 .tbl td:has(> .rowcheck), .tbl th:has(> .sr) { width: 1%; min-width: 44px; padding-right: 0; white-space: nowrap; }
+
+.cell-end .row > span { white-space: nowrap; }
+.tbl td, .tbl th { overflow-wrap: normal; word-break: normal; }
+
+@media (max-width: 760px) { .tbl { min-width: 680px; } }

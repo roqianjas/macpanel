@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS conf_versions(id INTEGER PRIMARY KEY, site TEXT NOT N
 CREATE INDEX IF NOT EXISTS cv_site ON conf_versions(site, id);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, usr TEXT NOT NULL, action TEXT NOT NULL,
   detail TEXT NOT NULL, ip TEXT NOT NULL, prev TEXT NOT NULL, hash TEXT NOT NULL);
-`
+` + hooksSchema
 
 const (
 	idleTTL   = 30 * time.Minute

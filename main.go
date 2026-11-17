@@ -75,6 +75,7 @@ func main() {
 	uiDir := fs.String("ui", filepath.Join(userHome(), "Developer/_ops/web/panel/ui/dist"), "folder hasil build UI")
 	stdin := fs.Bool("password-stdin", false, "baca password dari stdin (otomasi/tes)")
 	role := fs.String("role", "admin", "peran user: admin atau viewer (hanya-baca)")
+	hookAddr := fs.String("hook-addr", "", "alamat listen penerima webhook (loopback), kosong = nonaktif")
 	cmd, rest := os.Args[1], os.Args[2:]
 	sub := ""
 	if (cmd == "user" || cmd == "audit") && len(rest) > 0 {
@@ -111,6 +112,14 @@ func main() {
 		app.col = newCollector(app)
 		go app.col.Run(context.Background())
 		srv := &http.Server{Addr: *addr, Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 150 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
+		if *hookAddr != "" {
+			if !strings.HasPrefix(*hookAddr, "127.0.0.1:") && !strings.HasPrefix(*hookAddr, "[::1]:") {
+				fatal("hook-addr harus loopback")
+			}
+			hs := &http.Server{Addr: *hookAddr, Handler: app.HookHandler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10}
+			go func() { fatal(hs.ListenAndServe().Error()) }()
+			fmt.Println("penerima webhook di", *hookAddr)
+		}
 		fmt.Println("panel mendengarkan di", *addr)
 		fatal(srv.ListenAndServe().Error())
 	case cmd == "user" && sub == "list":

@@ -55,3 +55,7 @@ func hSysKill(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	pid := strconv.Itoa(in.PID)
 	a.record(w, ss, a.clientIP(r), "proc_kill", pid, a.mutate([]string{"sys", "kill", pid}, ""))
 }
+
+func hSysDNS(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
+	labJSON(a, w, []string{"sys", "dns"}, 60*time.Second, "gagal membaca DNS")
+}

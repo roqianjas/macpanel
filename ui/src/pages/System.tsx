@@ -8,6 +8,7 @@ const TABS = [
   { id: "keamanan", label: "Keamanan" },
   { id: "proses", label: "Proses" },
   { id: "disk", label: "Disk" },
+  { id: "dns", label: "DNS" },
   { id: "docker", label: "Docker" },
 ];
 
@@ -18,7 +19,7 @@ export default function System() {
       <PageHead title="Sistem" desc="Status keamanan, proses, pemakaian disk, dan Docker. Halaman ini hanya membaca, kecuali menghentikan proses pengembangan." />
       <Tabs tabs={TABS} value={tab} onChange={setTab} label="Bagian sistem" />
       <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
-        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <Disk /> : <Docker />}
+        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <Disk /> : tab === "dns" ? <Dns /> : <Docker />}
       </div>
     </>
   );
@@ -177,5 +178,36 @@ function Docker() {
         <p className="small muted">Panel hanya menampilkan status Docker (baca saja).</p>
       </State>
     </Card>
+  );
+}
+
+function Dns() {
+  const q = useLoad(() => get<{ tld: string; config: string[]; resolver: string | null; wildcard: string | null; tailscale_ip: string | null; wildcard_matches_tailscale: boolean | null; responding: boolean; rows: { name: string; ip: string | null; ok: boolean }[] }>("/api/sys/dns"));
+  const d = q.data;
+  return (
+    <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
+      {d && (
+        <div className="stack">
+          <Card title={`DNS *.${d.tld}`} action={<button className="btn" onClick={q.reload}>Periksa ulang</button>}>
+            <ul className="list">
+              <li className="list-row"><span>dnsmasq menjawab</span><Chip tone={d.responding ? "ok" : "bad"}>{d.responding ? "Ya" : "Tidak"}</Chip></li>
+              <li className="list-row"><span>Wildcard mengarah ke</span><span className="mono">{d.wildcard ?? "tidak ada"}</span></li>
+              <li className="list-row"><span>IP Tailscale Mac ini</span><span className="mono">{d.tailscale_ip ?? "tidak terbaca"}</span></li>
+              <li className="list-row"><span>Wildcard sama dengan IP Tailscale</span>{d.wildcard_matches_tailscale === null ? <Chip tone="mute">Tidak diketahui</Chip> : <Chip tone={d.wildcard_matches_tailscale ? "ok" : "warn"}>{d.wildcard_matches_tailscale ? "Ya" : "Berbeda"}</Chip>}</li>
+              <li className="list-row"><span>/etc/resolver/{d.tld}</span><span className="mono">{d.resolver ?? "tidak ada"}</span></li>
+            </ul>
+            <p className="small muted">Satu aturan wildcard sudah menjawab semua situs, jadi tidak ada zona atau rekaman per situs untuk dikelola. Halaman ini hanya membaca. Mengubah DNS butuh sudo; edit <span className="mono">/opt/homebrew/etc/dnsmasq.conf</span> di Terminal.</p>
+            {d.wildcard_matches_tailscale === false && <Alert tone="warn">Wildcard tidak sama dengan IP Tailscale saat ini. Perangkat lain di tailnet akan memakai alamat yang salah sampai dnsmasq.conf diperbarui.</Alert>}
+          </Card>
+          <Card title="Resolusi per situs">
+            <ul className="list">
+              {d.rows.map((r) => (
+                <li key={r.name} className="list-row"><span className="mono">{r.name}</span><span className="mono">{r.ip ?? "tidak terjawab"}</span><Chip tone={r.ok ? "ok" : "bad"}>{r.ok ? "OK" : "Salah"}</Chip></li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      )}
+    </State>
   );
 }

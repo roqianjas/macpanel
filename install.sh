@@ -94,7 +94,7 @@ if [ "$SYSTEM" = 1 ]; then
   <key>Label</key><string>com.macminiops.panel</string>
   <key>ProgramArguments</key><array>
     <string>$PANEL/panel</string><string>serve</string><string>--addr</string><string>127.0.0.1:9100</string>
-    <string>--origin</string><string>https://panel.$TLD</string><string>--ui</string><string>$PANEL/ui/dist</string>
+    <string>--hook-addr</string><string>127.0.0.1:9101</string><string>--origin</string><string>https://panel.$TLD</string><string>--ui</string><string>$PANEL/ui/dist</string>
   </array>
   <key>WorkingDirectory</key><string>$PANEL</string>
   <key>EnvironmentVariables</key><dict><key>PATH</key><string>$BREWP/bin:/usr/bin:/bin</string><key>HOME</key><string>$HOME</string></dict>

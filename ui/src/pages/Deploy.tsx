@@ -3,6 +3,7 @@ import { Rocket } from "lucide-react";
 import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, State, useLoad } from "../ui";
+import Webhook from "./Webhook";
 
 interface Info {
   dir: string;
@@ -89,6 +90,7 @@ export default function Deploy({ name }: { name: string }) {
                 </button>
               </div>
             </Card>
+            <Webhook name={name} steps={steps} />
             {out && (
               <Card title={out.ok ? "Hasil: selesai" : "Hasil: gagal"}>
                 <pre className="logbox mono" tabIndex={0} aria-label="Keluaran deploy">{out.text || "(tanpa keluaran)"}</pre>
