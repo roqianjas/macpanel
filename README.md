@@ -8,6 +8,16 @@ Manage websites (nginx), multiple PHP versions and extensions, MySQL/PostgreSQL 
 
 Keywords: macOS server panel, Mac mini home server, nginx panel for Mac, aaPanel alternative for macOS, cPanel alternative macOS, Homebrew PHP-FPM manager, launchd GUI, self-hosted dev server panel.
 
+## Screenshots
+
+Captured from a throwaway demo instance (fake sites, empty database list, no real hostnames or IPs).
+
+| | |
+|---|---|
+| ![Overview](docs/screenshots/overview.png) | ![Websites](docs/screenshots/websites.png) |
+| ![Apps](docs/screenshots/apps.png) | ![PHP and runtimes](docs/screenshots/php.png) |
+| ![Backups](docs/screenshots/backups.png) | ![Monitoring](docs/screenshots/monitoring.png) |
+
 ## Features
 - **Websites:** add/remove/pause sites (PHP, static, reverse proxy), per-site PHP version, rewrite/redirect rules, nginx config editor with version history and automatic rollback on `nginx -t` failure, local HTTPS (mkcert), logs, HTTP health + certificate expiry.
 - **PHP:** install 8.2-8.5 side by side, PECL extensions with on/off switches (redis, apcu, xdebug, imagick, igbinary, msgpack, pcov, yaml, memcached, mongodb), FPM pool settings, restart + logs, Composer.

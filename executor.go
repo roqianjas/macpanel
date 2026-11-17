@@ -57,7 +57,7 @@ func (a *App) runLabT(args []string, stdin string, timeout time.Duration) Result
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, a.labBin, args...)
-	cmd.Env = []string{"PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", "HOME=" + a.home, "LANG=en_US.UTF-8"}
+	cmd.Env = []string{"PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", "HOME=" + a.home, "MACPANEL_HOME=" + a.root, "LANG=en_US.UTF-8"}
 	cmd.Dir = a.home
 	cmd.Stdin = strings.NewReader(stdin)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

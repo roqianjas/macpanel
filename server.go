@@ -78,7 +78,7 @@ func newApp(st *Store, key []byte, cfg Config) *App {
 		root = filepath.Join(home, "MacPanel")
 	}
 	return &App{st: st, key: key, cfg: cfg, dummy: hashPassword("dummy-untuk-menyamakan-waktu"), now: time.Now,
-		labBin: "/opt/homebrew/bin/lab", home: home, root: root, wwwroot: filepath.Join(root, "wwwroot"), sitesDir: filepath.Join(root, "server/nginx/sites"), tld: "lab", probeAddr: "127.0.0.1:443", timeout: 120 * time.Second, longTimeout: 30 * time.Minute,
+		labBin: "/opt/homebrew/bin/lab", home: home, root: root, wwwroot: filepath.Join(root, "wwwroot"), sitesDir: filepath.Join(root, "server/nginx/sites"), tld: "lab", probeAddr: envOr("MACPANEL_PROBE_ADDR", "127.0.0.1:443"), timeout: 120 * time.Second, longTimeout: 30 * time.Minute,
 		nginxDir: filepath.Join(root, "server/nginx"), certDir: "/opt/homebrew/etc/nginx/certs", logDir: "/opt/homebrew/var/log/nginx/sites", errLog: "/opt/homebrew/var/log/nginx/error.log"}
 }
 
@@ -459,4 +459,12 @@ func hMe(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 
 func hAudit(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	jsonOut(w, 200, map[string]any{"rows": a.st.RecentAudit(100)})
+}
+
+// envOr membaca env opsional (dipakai untuk instance demo/uji); nilai bawaan dipakai bila kosong.
+func envOr(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
 }
