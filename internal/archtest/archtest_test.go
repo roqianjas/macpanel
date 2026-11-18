@@ -22,6 +22,7 @@ var layer = map[string]int{
 	"internal/overview": 4, // agregator: boleh membaca beberapa domain
 	"internal/server":   5, // akar komposisi: merangkai semua domain
 	"cmd/panel":         6,
+	"cmd/genapi":        6, // generator spesifikasi API dari tabel rute
 	"internal/testenv":  6, // utilitas tes
 }
 

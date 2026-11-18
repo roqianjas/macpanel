@@ -418,3 +418,12 @@ textarea.mono { width: 100%; }
 .docs-body .docs-list li::marker { color: var(--muted); }
 .docs-body .tbl-wrap { margin: 0; padding: 0; }
 .docs-body .tbl { width: 100%; }
+
+/* Daftar: cari + halaman. Kolom cari dan ringkasan satu baris di layar lebar, bertumpuk di ponsel. */
+.list-tools { display: grid; gap: var(--s2); grid-template-columns: minmax(0, 1fr); margin-bottom: var(--s3); align-items: end; }
+.list-search { max-width: 420px; }
+.search-wrap { position: relative; display: flex; align-items: center; }
+.search-wrap .icon { position: absolute; left: var(--s2); color: var(--muted); pointer-events: none; }
+.search-wrap input { width: 100%; padding-left: calc(var(--s2) + 18px + var(--s2)); }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+@media (min-width: 720px) { .list-tools { grid-template-columns: minmax(0, 420px) 1fr; } .list-tools > p { text-align: right; } }

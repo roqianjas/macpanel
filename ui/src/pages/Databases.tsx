@@ -6,6 +6,7 @@ import DbConfig from "./DbConfig";
 import DbAccess from "./DbAccess";
 import RedisBrowser from "./RedisBrowser";
 import { fmtBytes } from "../lib";
+import { PagedList } from "../features/list/ListTools";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { RootPasswords } from "./DbUsers";
 
@@ -56,8 +57,12 @@ export default function Databases() {
                 <p className="muted">Belum ada database {ENGINE_LABEL[en]}.</p>
               </div>
             ) : (
-              <ul className="list">
-                {data!.databases[en].map((n) => (
+              <PagedList
+                items={data!.databases[en]}
+                text={(n) => n}
+                label={`Cari database ${ENGINE_LABEL[en]}`}
+                hint="Ketik sebagian nama"
+                render={(n) => (
                   <li key={n} className="list-row">
                     <span className="mono">{n}</span>
                     {isSys(n) ? (
@@ -87,8 +92,8 @@ export default function Databases() {
                     </div>
                     )}
                   </li>
-                ))}
-              </ul>
+                )}
+              />
             )}
           </Card>
         ))}

@@ -13,12 +13,12 @@ PY    := python3
 PKG   := ./cmd/panel
 PYSRC := cli cli/lab cli/panelctl
 
-.PHONY: check quick fmt fmt-check vet lint test race ui-check ui-build cli-check cli-test cli-live build deploy hooks secrets clean
+.PHONY: check quick fmt fmt-check vet lint test race gen-api api-check ui-check ui-build cli-check cli-test cli-live build deploy hooks secrets clean
 
-check: fmt-check vet lint race ui-check cli-check secrets
+check: fmt-check vet lint race api-check ui-check cli-check secrets
 	@echo "== make check: OK =="
 
-quick: fmt-check vet test ui-check cli-check secrets
+quick: fmt-check vet test api-check ui-check cli-check secrets
 	@echo "== make quick: OK =="
 
 fmt:
@@ -39,6 +39,13 @@ test:
 
 race:
 	$(GO) test -race -count=1 ./...
+
+# Spesifikasi OpenAPI dan tipe path UI diturunkan dari tabel rute Go. Edit rute lalu jalankan `make gen-api`.
+gen-api:
+	$(GO) run ./cmd/genapi
+
+api-check:
+	$(GO) run ./cmd/genapi -check
 
 ui-check:
 	cd ui && $(PNPM) exec tsc --noEmit && $(PNPM) run test

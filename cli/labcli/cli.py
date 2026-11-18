@@ -196,6 +196,7 @@ def reg_dev(top):
         q = rd.add_parser(x)
         q.add_argument("--db", type=int, default=0)
         q.add_argument("arg", nargs="?", default="")
+    rd.add_parser("password", help="kata sandi Redis: status | enable | disable").add_argument("mode", choices=["status", "enable", "disable"])
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
     for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd"):
         sy.add_parser(x)

@@ -1,22 +1,62 @@
-import { fmtTime, get } from "../api";
-import { Card, Chip, PageHead, State, statusTone, useLoad } from "../ui";
+import { Search } from "lucide-react";
+import { fmtTime } from "../api";
+import { useCursorList } from "../features/list/useCursorList";
+import { Card, Chip, PageHead, State, statusTone } from "../ui";
 
 interface Row {
+  id: number;
   at: number;
   user: string;
   action: string;
   detail: string;
   ip: string;
 }
+interface Job {
+  id: number;
+  at: number;
+  action: string;
+  status: string;
+}
+
+const PAGE = 25;
+
+function Tools({ id, label, hint, q, setQ, shown, total, searching }: { id: string; label: string; hint: string; q: string; setQ: (s: string) => void; shown: number; total: number; searching: boolean }) {
+  return (
+    <div className="list-tools">
+      <div className="field list-search">
+        <label htmlFor={id}>{label}</label>
+        <div className="search-wrap">
+          <Search size={18} className="icon" aria-hidden="true" />
+          <input id={id} type="search" value={q} onChange={(e) => setQ(e.target.value)} maxLength={80} autoComplete="off" placeholder={hint} />
+        </div>
+      </div>
+      <p className="small muted" role="status" aria-live="polite">
+        {total === 0 ? (searching ? "Tidak ada yang cocok." : "Kosong.") : shown >= total ? `${total} ${searching ? "cocok" : "catatan"}.` : `Menampilkan ${shown} dari ${total}${searching ? " yang cocok" : ""}.`}
+      </p>
+    </div>
+  );
+}
+
+function More({ hasMore, busy, onMore, what }: { hasMore: boolean; busy: boolean; onMore: () => void; what: string }) {
+  if (!hasMore) return null;
+  return (
+    <div className="pager">
+      <button type="button" className="btn" disabled={busy} onClick={onMore}>
+        {busy ? "Memuat…" : `Muat ${what} lebih lama`}
+      </button>
+    </div>
+  );
+}
 
 export default function Activity() {
-  const audit = useLoad(() => get<{ rows: Row[] }>("/api/audit?limit=100"));
-  const jobs = useLoad(() => get<{ jobs: { id: number; at: number; action: string; status: string }[] }>("/api/jobs?limit=50"));
+  const audit = useCursorList<Row>("/api/audit", PAGE);
+  const jobs = useCursorList<Job>("/api/jobs", PAGE);
   return (
     <>
       <PageHead title="Aktivitas" desc="Jejak audit berantai: setiap login, percobaan gagal, dan perubahan tercatat. Verifikasi integritas dengan: panel audit verify." />
-      <Card title="Audit (100 terakhir)">
-        <State loading={audit.loading && !audit.data} error={audit.error} empty={!!audit.data && audit.data.rows.length === 0} emptyText="Belum ada catatan." onRetry={audit.reload}>
+      <Card title="Audit">
+        <Tools id="audit-q" label="Cari audit" hint="Pengguna, aksi, atau detail" q={audit.q} setQ={audit.setQ} shown={audit.rows.length} total={audit.total} searching={audit.searching} />
+        <State loading={audit.loading && audit.rows.length === 0} error={audit.error} empty={!audit.loading && audit.rows.length === 0} emptyText={audit.searching ? "Tidak ada catatan yang cocok dengan pencarian ini." : "Belum ada catatan."} onRetry={audit.reload}>
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
@@ -29,8 +69,8 @@ export default function Activity() {
                 </tr>
               </thead>
               <tbody>
-                {audit.data?.rows.map((r, i) => (
-                  <tr key={i}>
+                {audit.rows.map((r) => (
+                  <tr key={r.id}>
                     <td className="nowrap">{fmtTime(r.at)}</td>
                     <td className="mono">{r.user || "-"}</td>
                     <td className="mono">{r.action}</td>
@@ -43,12 +83,14 @@ export default function Activity() {
               </tbody>
             </table>
           </div>
+          <More hasMore={audit.hasMore} busy={audit.loadingMore} onMore={audit.more} what="catatan" />
         </State>
       </Card>
       <Card title="Aksi terakhir">
-        <State loading={jobs.loading && !jobs.data} error={jobs.error} empty={!!jobs.data && jobs.data.jobs.length === 0} emptyText="Belum ada aksi." onRetry={jobs.reload}>
+        <Tools id="jobs-q" label="Cari aksi" hint="Nama aksi atau status" q={jobs.q} setQ={jobs.setQ} shown={jobs.rows.length} total={jobs.total} searching={jobs.searching} />
+        <State loading={jobs.loading && jobs.rows.length === 0} error={jobs.error} empty={!jobs.loading && jobs.rows.length === 0} emptyText={jobs.searching ? "Tidak ada aksi yang cocok dengan pencarian ini." : "Belum ada aksi."} onRetry={jobs.reload}>
           <ul className="list">
-            {jobs.data?.jobs.map((j) => (
+            {jobs.rows.map((j) => (
               <li key={j.id} className="list-row">
                 <div>
                   <p className="mono">{j.action}</p>
@@ -60,6 +102,7 @@ export default function Activity() {
               </li>
             ))}
           </ul>
+          <More hasMore={jobs.hasMore} busy={jobs.loadingMore} onMore={jobs.more} what="aksi" />
         </State>
       </Card>
     </>

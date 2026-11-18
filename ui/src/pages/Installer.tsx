@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { errText, get, post } from "../api";
+import type { PostUrl } from "../api.gen";
 import { trackJob } from "../jobs";
 import { Alert, Field, Modal, useLoad } from "../ui";
 
@@ -22,7 +23,7 @@ const APP_HINT: Record<string, string> = {
 function useRun(onDone: (name: string) => void) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const run = async (path: string, body: object, label: string, name: string) => {
+  const run = async (path: PostUrl, body: object, label: string, name: string) => {
     setBusy(true);
     setErr("");
     try {

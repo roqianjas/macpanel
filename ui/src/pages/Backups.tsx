@@ -3,6 +3,8 @@ import { DatabaseBackup } from "lucide-react";
 import { errText, fmtTime, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { fmtBytes } from "../lib";
+import { ListSearch, Pager, useListView } from "../features/list/ListTools";
+import { newestName } from "../features/list/paging";
 import { Alert, Card, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { CleanupCard, ExtrasCard } from "./BackupCleanup";
 
@@ -36,6 +38,9 @@ export default function Backups() {
     }
   };
   const rows = q.data?.backups ?? [];
+  // Yang terbaru ditentukan dari waktu, bukan dari posisi baris: setelah dicari/dipaginasi posisi 0 di halaman bukan lagi yang terbaru.
+  const newest = newestName(rows);
+  const lv = useListView(rows, (r) => `${r.name} ${r.files.join(" ")} ${fmtTime(r.at)}`);
   return (
     <>
       <PageHead
@@ -57,6 +62,7 @@ export default function Backups() {
       <Schedule />
       <Card title="Daftar backup" action={sel.length > 0 ? <button className="btn btn-danger-ghost" onClick={() => setDelAsk(true)}>Hapus {sel.length} terpilih</button> : undefined}>
         <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && rows.length === 0} emptyText="Belum ada backup. Jalankan yang pertama." onRetry={q.reload}>
+          <ListSearch lv={lv} label="Cari backup" hint="Tanggal, nama, atau isi" />
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
@@ -69,10 +75,10 @@ export default function Backups() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
+                {lv.view.rows.map((r) => (
                   <tr key={r.name}>
                     <td>
-                      <input type="checkbox" className="rowcheck" disabled={i === 0} checked={sel.includes(r.name)} onChange={(e) => setSel((p) => (e.target.checked ? [...p, r.name] : p.filter((x) => x !== r.name)))} aria-label={i === 0 ? `Backup ${r.name} (terbaru, tidak bisa dihapus)` : `Pilih backup ${r.name}`} title={i === 0 ? "Backup terbaru tidak bisa dihapus" : undefined} />
+                      <input type="checkbox" className="rowcheck" disabled={r.name === newest} checked={sel.includes(r.name)} onChange={(e) => setSel((p) => (e.target.checked ? [...p, r.name] : p.filter((x) => x !== r.name)))} aria-label={r.name === newest ? `Backup ${r.name} (terbaru, tidak bisa dihapus)` : `Pilih backup ${r.name}`} title={r.name === newest ? "Backup terbaru tidak bisa dihapus" : undefined} />
                     </td>
                     <td className="nowrap">{fmtTime(r.at)}</td>
                     <td className="nowrap">{fmtBytes(r.size)}</td>
@@ -91,6 +97,7 @@ export default function Backups() {
               </tbody>
             </table>
           </div>
+          <Pager lv={lv} />
         </State>
       </Card>
       <CleanupCard onChanged={() => { setSel([]); q.reload(); }} />

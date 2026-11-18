@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Copy } from "lucide-react";
 import { errText, fmtTime, get, post } from "../api";
+import type { PostUrl } from "../api.gen";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, State, useLoad } from "../ui";
 
 const PRIV_LABEL: Record<string, string> = { ro: "Baca-saja", rw: "Baca-tulis", all: "Penuh" };
@@ -105,7 +106,7 @@ interface DbUser {
 type Secret = { title: string; label: string; value: string; note?: string } | null;
 
 export function DbUsersSection({ engine, name }: { engine: string; name: string }) {
-  const base = `/api/db/${engine}/${name}/dbusers`;
+  const base = `/api/db/${engine}/${name}/dbusers` as const;
   const q = useLoad(() => get<{ users: DbUser[]; port: number }>(base), [engine, name]);
   const [adding, setAdding] = useState(false);
   const [pwFor, setPwFor] = useState<string | null>(null);
@@ -215,7 +216,7 @@ export function DbUsersSection({ engine, name }: { engine: string; name: string 
   );
 }
 
-function AddUser({ base, onClose, onDone }: { base: string; onClose: () => void; onDone: (r: { user: string; password?: string; port: number }) => void }) {
+function AddUser({ base, onClose, onDone }: { base: PostUrl; onClose: () => void; onDone: (r: { user: string; password?: string; port: number }) => void }) {
   const [user, setUser] = useState("");
   const [privs, setPrivs] = useState("ro");
   const [own, setOwn] = useState(false);

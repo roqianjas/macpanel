@@ -1,0 +1,2634 @@
+{
+  "info": {
+    "description": "Diturunkan otomatis dari tabel rute Go (cmd/genapi). Hanya path, metode, tingkat akses (x-level), dan ketersediaan lewat token API (x-token). Skema badan permintaan dan respons tidak disertakan.",
+    "title": "MacPanel API",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/accounts": {
+      "get": {
+        "operationId": "get_api_accounts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      },
+      "post": {
+        "operationId": "post_api_accounts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/accounts/{name}/2fa-off": {
+      "post": {
+        "operationId": "post_api_accounts_name_2fa_off",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/accounts/{name}/disable": {
+      "post": {
+        "operationId": "post_api_accounts_name_disable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/accounts/{name}/enable": {
+      "post": {
+        "operationId": "post_api_accounts_name_enable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/accounts/{name}/remove": {
+      "post": {
+        "operationId": "post_api_accounts_name_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/accounts/{name}/reset": {
+      "post": {
+        "operationId": "post_api_accounts_name_reset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/accounts/{name}/role": {
+      "post": {
+        "operationId": "post_api_accounts_name_role",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "operationId": "get_api_alerts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/apps/{id}/install": {
+      "post": {
+        "operationId": "post_api_apps_id_install",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/apps/{id}/remove": {
+      "post": {
+        "operationId": "post_api_apps_id_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "operationId": "get_api_audit",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "post_api_auth_login",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "public",
+        "x-token": false
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "post_api_auth_logout",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "any",
+        "x-token": false
+      }
+    },
+    "/api/auth/stepup": {
+      "post": {
+        "operationId": "post_api_auth_stepup",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/auth/totp": {
+      "post": {
+        "operationId": "post_api_auth_totp",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "password",
+        "x-token": false
+      }
+    },
+    "/api/backups": {
+      "get": {
+        "operationId": "get_api_backups",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/config": {
+      "get": {
+        "operationId": "get_api_backups_config",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_backups_config",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/delete": {
+      "post": {
+        "operationId": "post_api_backups_delete",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/extract": {
+      "post": {
+        "operationId": "post_api_backups_extract",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/extras": {
+      "get": {
+        "operationId": "get_api_backups_extras",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_backups_extras",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/extras-preview": {
+      "get": {
+        "operationId": "get_api_backups_extras_preview",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/ls": {
+      "get": {
+        "operationId": "get_api_backups_ls",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/prune": {
+      "post": {
+        "operationId": "post_api_backups_prune",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/prune-preview": {
+      "get": {
+        "operationId": "get_api_backups_prune_preview",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/backups/run": {
+      "post": {
+        "operationId": "post_api_backups_run",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/composer": {
+      "get": {
+        "operationId": "get_api_composer",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/composer/{action}": {
+      "post": {
+        "operationId": "post_api_composer_action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db": {
+      "get": {
+        "operationId": "get_api_db",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_db",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db/{engine}/{name}/creds": {
+      "post": {
+        "operationId": "post_api_db_engine_name_creds",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/db/{engine}/{name}/dbusers": {
+      "get": {
+        "operationId": "get_api_db_engine_name_dbusers",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_db_engine_name_dbusers",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/db/{engine}/{name}/dbusers/{user}/passwd": {
+      "post": {
+        "operationId": "post_api_db_engine_name_dbusers_user_passwd",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/db/{engine}/{name}/dbusers/{user}/privs": {
+      "post": {
+        "operationId": "post_api_db_engine_name_dbusers_user_privs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/db/{engine}/{name}/dbusers/{user}/remove": {
+      "post": {
+        "operationId": "post_api_db_engine_name_dbusers_user_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/db/{engine}/{name}/drop": {
+      "post": {
+        "operationId": "post_api_db_engine_name_drop",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db/{engine}/{name}/dump": {
+      "post": {
+        "operationId": "post_api_db_engine_name_dump",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db/{engine}/{name}/dumps": {
+      "get": {
+        "operationId": "get_api_db_engine_name_dumps",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db/{engine}/{name}/passwd": {
+      "post": {
+        "operationId": "post_api_db_engine_name_passwd",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db/{engine}/{name}/restore": {
+      "post": {
+        "operationId": "post_api_db_engine_name_restore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db/{engine}/{name}/upload": {
+      "post": {
+        "operationId": "post_api_db_engine_name_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/db/{engine}/{name}/users": {
+      "get": {
+        "operationId": "get_api_db_engine_name_users",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/dbcfg/{engine}": {
+      "get": {
+        "operationId": "get_api_dbcfg_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_dbcfg_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/dbcfg/{engine}/slow": {
+      "get": {
+        "operationId": "get_api_dbcfg_engine_slow",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/dbroot/{engine}/passwd": {
+      "post": {
+        "operationId": "post_api_dbroot_engine_passwd",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/docker": {
+      "get": {
+        "operationId": "get_api_docker",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/compose/{project}/logs": {
+      "get": {
+        "operationId": "get_api_docker_compose_project_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/compose/{project}/ps": {
+      "get": {
+        "operationId": "get_api_docker_compose_project_ps",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/compose/{project}/{action}": {
+      "post": {
+        "operationId": "post_api_docker_compose_project_action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/containers/{id}/logs": {
+      "get": {
+        "operationId": "get_api_docker_containers_id_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/containers/{id}/{action}": {
+      "post": {
+        "operationId": "post_api_docker_containers_id_action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/images/prune": {
+      "post": {
+        "operationId": "post_api_docker_images_prune",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/images/pull": {
+      "post": {
+        "operationId": "post_api_docker_images_pull",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/images/remove": {
+      "post": {
+        "operationId": "post_api_docker_images_remove",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docker/stats": {
+      "get": {
+        "operationId": "get_api_docker_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "operationId": "get_api_docs",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/hw": {
+      "get": {
+        "operationId": "get_api_hw",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/hw/thresholds": {
+      "get": {
+        "operationId": "get_api_hw_thresholds",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_hw_thresholds",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/installer": {
+      "post": {
+        "operationId": "post_api_installer",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "operationId": "get_api_jobs",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/jobs/{id}": {
+      "get": {
+        "operationId": "get_api_jobs_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "get_api_me",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/me/2fa": {
+      "get": {
+        "operationId": "get_api_me_2fa",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/2fa/disable": {
+      "post": {
+        "operationId": "post_api_me_2fa_disable",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/2fa/enable": {
+      "post": {
+        "operationId": "post_api_me_2fa_enable",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/2fa/setup": {
+      "post": {
+        "operationId": "post_api_me_2fa_setup",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/devices": {
+      "get": {
+        "operationId": "get_api_me_devices",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/devices/revoke": {
+      "post": {
+        "operationId": "post_api_me_devices_revoke",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/password": {
+      "post": {
+        "operationId": "post_api_me_password",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/tokens": {
+      "get": {
+        "operationId": "get_api_me_tokens",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      },
+      "post": {
+        "operationId": "post_api_me_tokens",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/me/tokens/revoke": {
+      "post": {
+        "operationId": "post_api_me_tokens_revoke",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "operationId": "get_api_metrics",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/netmon": {
+      "get": {
+        "operationId": "get_api_netmon",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/notify": {
+      "get": {
+        "operationId": "get_api_notify",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      },
+      "post": {
+        "operationId": "post_api_notify",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/notify/test": {
+      "post": {
+        "operationId": "post_api_notify_test",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/php": {
+      "get": {
+        "operationId": "get_api_php",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/php/{version}/ext": {
+      "get": {
+        "operationId": "get_api_php_version_ext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/php/{version}/ext/{name}/{action}": {
+      "post": {
+        "operationId": "post_api_php_version_ext_name_action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/php/{version}/ini": {
+      "get": {
+        "operationId": "get_api_php_version_ini",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_php_version_ini",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/php/{version}/install": {
+      "post": {
+        "operationId": "post_api_php_version_install",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/php/{version}/remove": {
+      "post": {
+        "operationId": "post_api_php_version_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/redis/del": {
+      "post": {
+        "operationId": "post_api_redis_del",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/redis/get": {
+      "post": {
+        "operationId": "post_api_redis_get",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/redis/info": {
+      "get": {
+        "operationId": "get_api_redis_info",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/redis/scan": {
+      "get": {
+        "operationId": "get_api_redis_scan",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/routes": {
+      "get": {
+        "operationId": "get_api_routes",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/runtime": {
+      "get": {
+        "operationId": "get_api_runtime",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/runtime/{tool}/{version}/install": {
+      "post": {
+        "operationId": "post_api_runtime_tool_version_install",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tool",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/runtime/{tool}/{version}/remove": {
+      "post": {
+        "operationId": "post_api_runtime_tool_version_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tool",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/runtime/{tool}/{version}/use": {
+      "post": {
+        "operationId": "post_api_runtime_tool_version_use",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tool",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/services": {
+      "get": {
+        "operationId": "get_api_services",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/services/{id}/logs": {
+      "get": {
+        "operationId": "get_api_services_id_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/services/{id}/{action}": {
+      "post": {
+        "operationId": "post_api_services_id_action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "get_api_settings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_settings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/settings/public": {
+      "get": {
+        "operationId": "get_api_settings_public",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "public",
+        "x-token": true
+      }
+    },
+    "/api/sites": {
+      "get": {
+        "operationId": "get_api_sites",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_sites",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/auth": {
+      "get": {
+        "operationId": "get_api_sites_name_auth",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/auth/users": {
+      "post": {
+        "operationId": "post_api_sites_name_auth_users",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/auth/users/{user}/remove": {
+      "post": {
+        "operationId": "post_api_sites_name_auth_users_user_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/clone": {
+      "post": {
+        "operationId": "post_api_sites_name_clone",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/config": {
+      "get": {
+        "operationId": "get_api_sites_name_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_sites_name_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/deploy": {
+      "get": {
+        "operationId": "get_api_sites_name_deploy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_sites_name_deploy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/env": {
+      "get": {
+        "operationId": "get_api_sites_name_env",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      },
+      "post": {
+        "operationId": "post_api_sites_name_env",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/sites/{name}/hook": {
+      "get": {
+        "operationId": "get_api_sites_name_hook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_sites_name_hook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/hook/remove": {
+      "post": {
+        "operationId": "post_api_sites_name_hook_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/logs": {
+      "get": {
+        "operationId": "get_api_sites_name_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/remove": {
+      "post": {
+        "operationId": "post_api_sites_name_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/restore": {
+      "post": {
+        "operationId": "post_api_sites_name_restore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/settings": {
+      "get": {
+        "operationId": "get_api_sites_name_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_sites_name_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/ssl": {
+      "get": {
+        "operationId": "get_api_sites_name_ssl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/ssl/renew": {
+      "post": {
+        "operationId": "post_api_sites_name_ssl_renew",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/stats": {
+      "get": {
+        "operationId": "get_api_sites_name_stats",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/{action}": {
+      "post": {
+        "operationId": "post_api_sites_name_action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sys/disk": {
+      "get": {
+        "operationId": "get_api_sys_disk",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sys/dns": {
+      "get": {
+        "operationId": "get_api_sys_dns",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sys/docker": {
+      "get": {
+        "operationId": "get_api_sys_docker",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sys/kill": {
+      "post": {
+        "operationId": "post_api_sys_kill",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sys/procs": {
+      "get": {
+        "operationId": "get_api_sys_procs",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sys/security": {
+      "get": {
+        "operationId": "get_api_sys_security",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/system": {
+      "get": {
+        "operationId": "get_api_system",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/tasks/{kind}": {
+      "get": {
+        "operationId": "get_api_tasks_kind",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_tasks_kind",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/tasks/{kind}/{name}/logs": {
+      "get": {
+        "operationId": "get_api_tasks_kind_name_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/tasks/{kind}/{name}/remove": {
+      "post": {
+        "operationId": "post_api_tasks_kind_name_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/tasks/{kind}/{name}/restart": {
+      "post": {
+        "operationId": "post_api_tasks_kind_name_restart",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/updates": {
+      "get": {
+        "operationId": "get_api_updates",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/updates/apply": {
+      "post": {
+        "operationId": "post_api_updates_apply",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "get_api_users",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "get_healthz",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "public",
+        "x-token": true
+      }
+    }
+  }
+}

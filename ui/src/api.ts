@@ -1,3 +1,5 @@
+import type { GetUrl, PostUrl } from "./api.gen";
+
 export class ApiError extends Error {
   status: number;
   data: any;
@@ -73,8 +75,10 @@ export async function upload<T = any>(path: string, file: File): Promise<T> {
   return data as T;
 }
 
-export const get = <T = any>(p: string) => api<T>("GET", p);
-export const post = <T = any>(p: string, b: unknown = {}) => api<T>("POST", p, b);
+// Path diperiksa saat kompilasi terhadap tabel rute Go (api.gen.ts, dihasilkan oleh `make gen-api`):
+// salah ketik atau rute yang sudah dihapus di server membuat `tsc` gagal, bukan 404 saat dipakai.
+export const get = <T = any>(p: GetUrl) => api<T>("GET", p);
+export const post = <T = any>(p: PostUrl, b: unknown = {}) => api<T>("POST", p, b);
 
 /** Pesan galat yang aman ditampilkan, termasuk keluaran aksi (422). */
 export function errText(e: unknown): string {

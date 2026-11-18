@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Play, RotateCw, Square, Trash2, Download } from "lucide-react";
 import { errText, get, post } from "../api";
+import type { GetUrl } from "../api.gen";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, Tabs, usePoll } from "../ui";
 
@@ -18,7 +19,7 @@ export default function Docker({ goto }: { goto?: (id: string) => void }) {
   const stats = usePoll(() => (ov.data?.status.running ? get<{ stats: Stat[] }>("/api/docker/stats") : Promise.resolve({ stats: [] })), 15000, [ov.data?.status.running]);
   const [tab, setTab] = useState("container");
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
-  const [logOf, setLogOf] = useState<{ title: string; url: string } | null>(null);
+  const [logOf, setLogOf] = useState<{ title: string; url: GetUrl } | null>(null);
   const [rm, setRm] = useState<{ kind: "ctr" | "img"; ref: string } | null>(null);
   const [pull, setPull] = useState(false);
   const st = ov.data?.status;
@@ -175,7 +176,7 @@ export default function Docker({ goto }: { goto?: (id: string) => void }) {
   );
 }
 
-function LogDialog({ title, url, onClose }: { title: string; url: string; onClose: () => void }) {
+function LogDialog({ title, url, onClose }: { title: string; url: GetUrl; onClose: () => void }) {
   const { data, error, loading, reload } = usePoll(() => get<{ log: string }>(url), 5000);
   return (
     <Modal title={title} onClose={onClose} wide>

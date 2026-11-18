@@ -83,6 +83,15 @@ GET /api/audit?limit=25&cursor=<next>&q=<teks>
 - Retensi (`internal/system/retention.go`): audit 365 hari (sisa minimal 1000 baris), jobs 90 hari (sisa minimal 200, job berjalan tidak disentuh). Pemangkasan audit menyimpan hash baris terakhir yang dibuang sebagai jangkar (`audit_anchor`) dalam transaksi yang sama; `VerifyAudit` mulai dari jangkar itu, jadi rantai tetap dapat diverifikasi.
 - Jebakan: koneksi SQLite hanya satu (`SetMaxOpenConns(1)`). Jangan memanggil `Setting()` atau query lain saat `rows` masih terbuka; itu deadlock.
 
+## API dan UI
+
+- **Satu sumber kebenaran untuk rute.** `internal/server.Routes()` adalah tabel rute. `cmd/genapi` (paket `internal/apispec`) menurunkan `docs/openapi.json` (OpenAPI 3.1) dan `ui/src/api.gen.ts` dari tabel itu. Jalankan `make gen-api` setelah mengubah rute; `make check` menjalankan `api-check` dan gagal bila berkas di disk tidak sinkron.
+- **Cakupan yang jujur.** Yang dihasilkan: path, metode, parameter path, tingkat akses (`x-level`), dan apakah token API boleh memanggil (`x-token`). Skema badan permintaan/respons TIDAK dihasilkan: handler menulis map dinamis, jadi skemanya tidak dapat diturunkan tanpa mengubah handler. Tipe respons tetap ditulis di sisi UI (`get<T>`).
+- **Path diperiksa saat kompilasi.** `get()` dan `post()` di `ui/src/api.ts` hanya menerima `GetUrl`/`PostUrl`. Path yang salah ketik atau rute yang sudah dihapus di server membuat `tsc` gagal. Path yang dirakit dari variabel harus dideklarasikan `as const` agar tetap bertipe templat literal.
+- **Struktur UI.** `ui/src/features/<domain>/` memuat logika murni (`model.ts`, diuji unit), komponen, dan hook per domain. `pages/*.tsx` tinggal perakit. Sudah dipindah: `features/hardware`, `features/netmon`, `features/notify`, `features/list`, `features/sites`.
+- **Daftar.** `features/list/paging.ts` (murni): saring, potong halaman, gabung halaman cursor. `ListTools.tsx`: `useListView`, `ListSearch`, `Pager`, `PagedList` untuk data yang sudah dimuat penuh. `useCursorList.ts`: halaman cursor dari server dengan pencarian server dan penjaga respons basi. Aturan yang bergantung pada posisi baris (mis. "backup terbaru tidak boleh dihapus") harus memakai identitas (`newestName`), bukan indeks, karena posisi berubah saat difilter atau dipaginasi.
+- **Tes UI.** `vitest` dengan `jsdom` dan Testing Library untuk komponen interaktif (`*.test.tsx` memakai `// @vitest-environment jsdom`); logika murni tetap di lingkungan node.
+
 ## CLI `lab` (Python)
 
 ```

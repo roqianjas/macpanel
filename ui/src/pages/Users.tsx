@@ -150,7 +150,7 @@ function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; on
       setBusy(false);
     }
   };
-  const base = `/api/accounts/${acc.name}`;
+  const base = `/api/accounts/${acc.name}` as const;
   return (
     <Modal title={`Kelola ${acc.name}`} onClose={onClose}>
       <div className="stack">
