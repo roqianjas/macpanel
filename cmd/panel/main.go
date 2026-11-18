@@ -17,6 +17,7 @@ import (
 	"github.com/roqianjas/macpanel/internal/core"
 	"github.com/roqianjas/macpanel/internal/crypto"
 	"github.com/roqianjas/macpanel/internal/deploy"
+	"github.com/roqianjas/macpanel/internal/hardware"
 	"github.com/roqianjas/macpanel/internal/server"
 	"github.com/roqianjas/macpanel/internal/store"
 	"github.com/roqianjas/macpanel/internal/system"
@@ -115,6 +116,7 @@ func main() {
 		app.UIDir = *uiDir
 		system.SetCollector(app, system.NewCollector(app))
 		go system.ActiveCollector(app).Run(context.Background())
+		go hardware.Run(context.Background(), app)
 		srv := &http.Server{Addr: *addr, Handler: server.Handler(app), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 150 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 		if *hookAddr != "" {
 			if !strings.HasPrefix(*hookAddr, "127.0.0.1:") && !strings.HasPrefix(*hookAddr, "[::1]:") {

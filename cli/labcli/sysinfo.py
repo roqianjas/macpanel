@@ -251,6 +251,14 @@ def sys_dns():
 
 
 def sysx(a):
+    if a.act == "hw":
+        from labcli.hardware import sys_hw
+
+        return sys_hw()
+    if a.act == "ssd":
+        from labcli.hardware import sys_ssd
+
+        return sys_ssd()
     if a.act == "dns":
         return sys_dns()
     if a.act == "procs":

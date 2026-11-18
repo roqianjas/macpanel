@@ -33,6 +33,7 @@ export PATH="$BREWP/bin:$BREWP/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
 [ "$(id -u)" != 0 ] || { echo "Jangan jalankan sebagai root."; exit 1; }
 
 NEED=(nginx mkcert dnsmasq sqlite)
+[ "$(uname -m)" = arm64 ] && NEED+=(macmon)  # sensor suhu tanpa sudo; hanya Apple Silicon
 have_tool() { command -v "$1" >/dev/null 2>&1 || { command -v mise >/dev/null 2>&1 && mise which "$1" >/dev/null 2>&1; }; }
 for t in go node pnpm; do have_tool "$t" || NEED+=("$t"); done
 MISSING=(); for f in "${NEED[@]}"; do "$BREWP/bin/brew" list --versions "$f" >/dev/null 2>&1 || have_tool "$f" || MISSING+=("$f"); done

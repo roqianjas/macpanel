@@ -159,6 +159,8 @@ def main():
     a = sp.add_parser("set", help="ubah pengaturan panel")
     a.add_argument("--name")
     a.add_argument("--theme", choices=["system", "light", "dark"])
+    a = sp.add_parser("hw", help="suhu, kipas, daya, tekanan memori, SSD, perkiraan disk penuh")
+    a.add_argument("--range", choices=["1h", "24h", "7d"], default="1h")
     for nm, hp in (("audit", "riwayat aksi (terbaru dulu)"), ("jobs", "riwayat job (terbaru dulu)")):
         a = sp.add_parser(nm, help=hp)
         a.add_argument("--limit", type=int, default=25, help="baris per halaman, 1-200 (bawaan 25)")
@@ -228,6 +230,8 @@ def main():
         if not body:
             die("beri --name dan/atau --theme", 2)
         emit(*c.run("POST", "/api/settings", body))
+    if cmd == "hw":
+        emit(*c.run("GET", f"/api/hw?range={args.range}"))
     if cmd in ("audit", "jobs"):
         qs = {"limit": args.limit}
         if args.cursor:

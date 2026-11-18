@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/roqianjas/macpanel/internal/core"
+	"github.com/roqianjas/macpanel/internal/hardware"
 	"github.com/roqianjas/macpanel/internal/services"
 	"github.com/roqianjas/macpanel/internal/sites"
 	"github.com/roqianjas/macpanel/internal/store"
@@ -95,6 +96,9 @@ func Alerts(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Sessio
 			}
 		}
 		al.cache, al.at = ComputeAlerts(&si, svcs, sites.ListSiteRows(a), a.Now(), a.ProbeAddr != ""), a.Now()
+		for _, f := range hardware.Findings(hardware.InputsNow(a)) {
+			al.cache = append(al.cache, Alert{f.ID, f.Level, f.Title, f.Detail, "#/pantau"})
+		}
 	}
 	core.WriteJSON(w, 200, map[string]any{"alerts": al.cache, "at": al.at.Unix(), "notify": "hanya ditampilkan di panel; tidak ada pesan keluar"})
 }

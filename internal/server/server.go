@@ -16,6 +16,7 @@ import (
 	"github.com/roqianjas/macpanel/internal/deploy"
 	"github.com/roqianjas/macpanel/internal/docker"
 	"github.com/roqianjas/macpanel/internal/docs"
+	"github.com/roqianjas/macpanel/internal/hardware"
 	"github.com/roqianjas/macpanel/internal/jobs"
 	"github.com/roqianjas/macpanel/internal/overview"
 	"github.com/roqianjas/macpanel/internal/phpruntime"
@@ -188,6 +189,7 @@ func Routes() []core.Route {
 		{Method: "POST", Path: "/api/apps/{id}/remove", Level: core.Full, H: services.AppRemove},
 		{Method: "POST", Path: "/api/sites/{name}/{action}", Level: core.Full, H: sites.SiteToggle},
 		{Method: "GET", Path: "/api/metrics", Level: core.Full, H: system.Metrics},
+		{Method: "GET", Path: "/api/hw", Level: core.Full, H: hardware.Hardware},
 		{Method: "GET", Path: "/api/system", Level: core.Full, H: system.System},
 		{Method: "GET", Path: "/api/php", Level: core.Full, H: phpruntime.PHPList},
 		{Method: "POST", Path: "/api/php/{version}/install", Level: core.Full, H: phpruntime.PHPInstall},

@@ -4,6 +4,7 @@ import { CountUp, LineChart, RangePicker, Ring, Sparkline, toneOf } from "../cha
 import { stateText, stateTone, useAlerts, useMetrics, useServices, useSystem } from "../data";
 import { fmtAgo, fmtBytes, fmtRate, fmtUptime, type RangeKey } from "../lib";
 import { Card, Chip, Mark, State, usePoll } from "../ui";
+import HealthCard from "../features/hardware/HealthCard";
 import { useState } from "react";
 
 interface Counts {
@@ -113,6 +114,7 @@ export default function Overview() {
           <p className="small muted">Peringatan hanya tampil di panel ini; tidak ada pesan keluar (email atau chat).</p>
         </Card>
       )}
+      <HealthCard />
       <ul className="tiles" aria-label="Akses cepat">
         {tiles.map((t) => (
           <li key={t.href}>

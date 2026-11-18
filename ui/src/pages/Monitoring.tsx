@@ -4,6 +4,7 @@ import { LineChart, RangePicker } from "../charts";
 import { useMetrics, useSystem } from "../data";
 import { byteUnit, fmtBytes, fmtRate, niceTop, RANGES, type RangeKey } from "../lib";
 import { Card, PageHead, State } from "../ui";
+import HardwareSection from "../features/hardware/HardwareSection";
 
 export default function Monitoring() {
   const [range, setRange] = useState<RangeKey>("1h");
@@ -42,6 +43,8 @@ export default function Monitoring() {
                 <LineChart title="Pemakaian disk" rangeKey={range} domain={[0, 100]} tickFmt={(v) => `${Math.round(v)}%`} series={[{ key: "disk", label: "Disk", pts: m.disk, fmt: (v) => `${v.toFixed(1).replace(".", ",")}%` }]} />
               </Card>
             </div>
+
+            <HardwareSection range={range} />
 
             <h2 className="card-title" style={{ marginTop: 8 }}>
               <Network size={18} className="icon" aria-hidden="true" /> Bandwidth jaringan
