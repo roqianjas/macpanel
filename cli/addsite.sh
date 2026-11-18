@@ -34,7 +34,7 @@ if [ -n "$PHPV" ]; then
   [ -S "/opt/homebrew/var/run/php-fpm-dev-$PHPV.sock" ] || { echo "FPM $PHPV belum jalan (brew services start php@$PHPV)"; exit 1; }
 fi
 NAME="${1:-}"; TARGET="${2:-}"
-[[ "$NAME" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || { echo "nama harus huruf kecil/angka/-"; exit 1; }
+[[ "$NAME" =~ ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$ ]] || { echo "nama harus huruf kecil/angka/-, 1-40 karakter"; exit 1; }
 [ -n "$TARGET" ] || { echo "pakai: addsite.sh <nama> <port|direktori>"; exit 1; }
 HOST="$NAME.$TLD"; F="$N/sites/$NAME.conf"
 SN="$HOST"; MKNAMES=("$HOST")

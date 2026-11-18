@@ -4,6 +4,7 @@ import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoa
 import { hasDevicePref, setDevicePref, setPublicSettings, useServerTheme, useThemePref, usePanelName, type Pref } from "../settings";
 import Account from "./Account";
 import NotifyCard from "../features/notify/NotifyCard";
+import ThresholdsCard from "../features/hardware/ThresholdsCard";
 
 const THEMES: { id: Pref; label: string }[] = [
   { id: "system", label: "Ikuti sistem" },
@@ -419,6 +420,7 @@ export default function Settings() {
       <PageHead title="Pengaturan" desc="Nama dan tema panel, kata sandi, verifikasi dua langkah, perangkat tepercaya, dan token API." />
       <PanelCard />
       <NotifyCard />
+      <ThresholdsCard />
       <Account />
       <TwoFactor />
       <Tokens />

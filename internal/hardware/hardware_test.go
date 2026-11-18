@@ -103,12 +103,12 @@ func TestFindingsTemperatureThresholds(t *testing.T) {
 		want string
 	}{{40, ""}, {84.9, ""}, {85, "warn"}, {94.9, "warn"}, {95, "bad"}, {120, "bad"}}
 	for _, c := range cases {
-		got := ids(Findings(Inputs{Snap: snap(map[string]float64{"cpu": c.cpu}), Now: now}))["hw-temp-cpu"]
+		got := ids(Findings(Inputs{Th: DefaultThresholds(), Snap: snap(map[string]float64{"cpu": c.cpu}), Now: now}))["hw-temp-cpu"]
 		if got != c.want {
 			t.Errorf("cpu %v: %q, mau %q", c.cpu, got, c.want)
 		}
 	}
-	got := ids(Findings(Inputs{Snap: snap(map[string]float64{"ssd": 72, "gpu": 96}), Now: now}))
+	got := ids(Findings(Inputs{Th: DefaultThresholds(), Snap: snap(map[string]float64{"ssd": 72, "gpu": 96}), Now: now}))
 	if got["hw-temp-ssd"] != "warn" || got["hw-temp-gpu"] != "bad" {
 		t.Fatalf("%v", got)
 	}
@@ -119,23 +119,23 @@ func TestFindingsThrottleMemoryAndSwap(t *testing.T) {
 	s := snap(map[string]float64{"cpu": 50})
 	s.Thermal = &Thermal{SpeedLimit: 70, Throttled: true}
 	s.Mem = &Mem{PressurePct: fl(85), SwapUsedMB: fl(3000)}
-	got := ids(Findings(Inputs{Snap: s, Now: now}))
+	got := ids(Findings(Inputs{Th: DefaultThresholds(), Snap: s, Now: now}))
 	if got["hw-throttle"] != "bad" || got["hw-mempress"] != "warn" || got["hw-swap"] != "warn" {
 		t.Fatalf("%v", got)
 	}
 	s.Mem.PressurePct = fl(95)
-	if ids(Findings(Inputs{Snap: s, Now: now}))["hw-mempress"] != "bad" {
+	if ids(Findings(Inputs{Th: DefaultThresholds(), Snap: s, Now: now}))["hw-mempress"] != "bad" {
 		t.Fatal("tekanan 95% harus bad")
 	}
 	s.Mem, s.Thermal = &Mem{PressurePct: fl(40), SwapUsedMB: fl(0.2)}, &Thermal{SpeedLimit: 100}
-	if len(Findings(Inputs{Snap: s, Now: now})) != 0 {
+	if len(Findings(Inputs{Th: DefaultThresholds(), Snap: s, Now: now})) != 0 {
 		t.Fatal("kondisi normal tidak boleh memunculkan peringatan")
 	}
 }
 
 func TestFindingsStaleHidesStaleReadings(t *testing.T) {
 	// angka panas yang sudah basi tidak boleh memicu peringatan suhu; yang muncul peringatan "berhenti"
-	got := ids(Findings(Inputs{Snap: snap(map[string]float64{"cpu": 99}), Stale: true, Now: time.Unix(1000+600, 0)}))
+	got := ids(Findings(Inputs{Th: DefaultThresholds(), Snap: snap(map[string]float64{"cpu": 99}), Stale: true, Now: time.Unix(1000+600, 0)}))
 	if len(got) != 1 || got["hw-stale"] != "warn" {
 		t.Fatalf("%v", got)
 	}
@@ -143,14 +143,14 @@ func TestFindingsStaleHidesStaleReadings(t *testing.T) {
 
 func TestFindingsNoSensor(t *testing.T) {
 	s := &Snapshot{At: 1000, Source: "none", Temps: map[string]float64{}, Errors: []string{"macmon tidak terpasang", "tidak ada sumber suhu (pasang macmon)"}}
-	fs := Findings(Inputs{Snap: s, Now: time.Unix(1010, 0)})
+	fs := Findings(Inputs{Th: DefaultThresholds(), Snap: s, Now: time.Unix(1010, 0)})
 	if len(fs) != 1 || fs[0].ID != "hw-nosensor" || fs[0].Detail != s.Errors[1] {
 		t.Fatalf("%+v", fs)
 	}
 }
 
 func TestFindingsBeforeFirstSampleStaysQuiet(t *testing.T) {
-	if fs := Findings(Inputs{Now: time.Unix(1, 0)}); len(fs) != 0 {
+	if fs := Findings(Inputs{Th: DefaultThresholds(), Now: time.Unix(1, 0)}); len(fs) != 0 {
 		t.Fatalf("sebelum sampel pertama tidak boleh ada alert: %+v", fs)
 	}
 }
@@ -158,7 +158,7 @@ func TestFindingsBeforeFirstSampleStaysQuiet(t *testing.T) {
 func TestFindingsSMART(t *testing.T) {
 	now := time.Unix(1010, 0)
 	for smart, want := range map[string]string{"Verified": "", "Not Supported": "", "": "", "Failing": "bad", "About to fail": "bad"} {
-		got := ids(Findings(Inputs{SSD: &SSD{Smart: smart}, Now: now}))["hw-smart"]
+		got := ids(Findings(Inputs{Th: DefaultThresholds(), SSD: &SSD{Smart: smart}, Now: now}))["hw-smart"]
 		if got != want {
 			t.Errorf("smart %q: %q, mau %q", smart, got, want)
 		}
@@ -172,7 +172,7 @@ func TestFindingsDiskForecast(t *testing.T) {
 		f    Forecast
 		want string
 	}{{d(2, 0.9), "bad"}, {d(10, 0.9), "warn"}, {d(14, 0.9), ""}, {d(30, 0.99), ""}, {d(2, 0.3), ""}} {
-		if got := ids(Findings(Inputs{Forecast: c.f, Now: now}))["hw-diskforecast"]; got != c.want {
+		if got := ids(Findings(Inputs{Th: DefaultThresholds(), Forecast: c.f, Now: now}))["hw-diskforecast"]; got != c.want {
 			t.Errorf("%v hari r2 %v: %q, mau %q", *c.f.DaysToFull, c.f.R2, got, c.want)
 		}
 	}

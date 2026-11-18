@@ -5,17 +5,11 @@ import (
 	"time"
 )
 
-// Ambang bawaan. Apple Silicon membatasi kecepatan sendiri mendekati 100 °C, jadi 85/95 memberi aba-aba
-// sebelum itu. Belum bisa diubah dari UI (bagian dari rencana pengaturan alert).
+// Ambang suhu, tekanan memori, dan swap ada di thresholds.go (dapat diubah pemilik).
 const (
-	CPUWarn, CPUBad   = 85.0, 95.0
-	GPUWarn, GPUBad   = 85.0, 95.0
-	SSDWarn, SSDBad   = 70.0, 80.0
-	PressWarn, PressB = 80.0, 90.0
-	SwapWarnMB        = 2048.0
-	ForecastWarnDays  = 14.0
-	ForecastBadDays   = 3.0
-	forecastMinR2     = 0.5
+	ForecastWarnDays = 14.0
+	ForecastBadDays  = 3.0
+	forecastMinR2    = 0.5
 )
 
 // Finding: peringatan turunan; overview mengubahnya menjadi Alert (domain tidak boleh mengimpor overview).
@@ -28,6 +22,7 @@ type Inputs struct {
 	Stale    bool
 	SSD      *SSD
 	Forecast Forecast
+	Th       Thresholds
 	Now      time.Time
 }
 
@@ -63,7 +58,7 @@ func Findings(in Inputs) []Finding {
 			for _, c := range []struct {
 				key, name string
 				warn, bad float64
-			}{{"cpu", "CPU", CPUWarn, CPUBad}, {"gpu", "GPU", GPUWarn, GPUBad}, {"ssd", "SSD", SSDWarn, SSDBad}} {
+			}{{"cpu", "CPU", in.Th.CPUWarn, in.Th.CPUBad}, {"gpu", "GPU", in.Th.CPUWarn, in.Th.CPUBad}, {"ssd", "SSD", in.Th.SSDWarn, in.Th.SSDBad}} {
 				if v, ok := s.Temps[c.key]; ok {
 					add("hw-temp-"+c.key, level(v, c.warn, c.bad), "Suhu "+c.name+" tinggi", fmt.Sprintf("%.0f °C", v))
 				}
@@ -73,9 +68,9 @@ func Findings(in Inputs) []Finding {
 			}
 			if s.Mem != nil {
 				if s.Mem.PressurePct != nil {
-					add("hw-mempress", level(*s.Mem.PressurePct, PressWarn, PressB), "Tekanan memori tinggi", fmt.Sprintf("%.0f%%", *s.Mem.PressurePct))
+					add("hw-mempress", level(*s.Mem.PressurePct, in.Th.PressWarn, in.Th.PressBad), "Tekanan memori tinggi", fmt.Sprintf("%.0f%%", *s.Mem.PressurePct))
 				}
-				if s.Mem.SwapUsedMB != nil && *s.Mem.SwapUsedMB >= SwapWarnMB {
+				if s.Mem.SwapUsedMB != nil && *s.Mem.SwapUsedMB >= in.Th.SwapMB {
 					add("hw-swap", "warn", "Swap banyak terpakai", fmt.Sprintf("%.0f MB", *s.Mem.SwapUsedMB))
 				}
 			}

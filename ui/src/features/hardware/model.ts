@@ -46,7 +46,7 @@ export interface HwData {
   peak: Record<string, number>;
   samples: number;
   throttled_samples: number;
-  thresholds: { cpu_warn: number; cpu_bad: number; ssd_warn: number; ssd_bad: number; press_warn: number; press_bad: number };
+  thresholds: { cpu_warn: number; cpu_bad: number; ssd_warn: number; ssd_bad: number; press_warn: number; press_bad: number; swap_mb: number };
 }
 
 export type Tone = "ok" | "warn" | "bad" | "mute";

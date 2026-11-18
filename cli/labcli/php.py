@@ -26,6 +26,20 @@ php_admin_flag[log_errors] = on
 """
 
 
+def write_pool(path, v):
+    """Tulis pool dev bila belum ada. Bila sudah ada dan sah (socket yang benar), BIARKAN: file itu memuat penyetelan
+    pengguna (lab ini set / panel) yang tidak boleh hilang saat `php install` dijalankan ulang. Bila ada tetapi tidak
+    sah, simpan cadangan berstempel waktu lalu tulis ulang dari templat."""
+    want = f"listen = /opt/homebrew/var/run/php-fpm-dev-{v}.sock"
+    if path.exists():
+        cur = path.read_text()
+        if want in cur and "[dev]" in cur:
+            return False
+        path.rename(path.with_name(f"{path.name}.bak.{time.strftime('%Y%m%d-%H%M%S')}"))
+    path.write_text(POOL.format(v=v, user=os.environ.get("USER", HOME.name)))
+    return True
+
+
 def php(a):
     if a.act == "list":
         for v in PHPS:
@@ -51,7 +65,7 @@ def php(a):
         www = d / "www.conf"
         if www.exists():
             www.rename(d / "www.conf.disabled")  # www.conf bawaan membuka TCP 127.0.0.1:9000
-        (d / "dev.conf").write_text(POOL.format(v=v, user=os.environ.get("USER", HOME.name)))
+        write_pool(d / "dev.conf", v)
         t = sh([php_prefix(v) + "/sbin/php-fpm", "-t"])
         if t.returncode:
             die("php-fpm -t gagal: " + t.stderr[-300:])

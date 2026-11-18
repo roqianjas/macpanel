@@ -20,7 +20,7 @@ func InputsNow(a *core.App) Inputs {
 		total = ssd.Total
 	}
 	_, _, disk, _ := a.Store.Series(now.Unix()-retain, 1800)
-	return Inputs{Snap: snap, Stale: stale, SSD: ssd, Forecast: ForecastDisk(disk, total), Now: now}
+	return Inputs{Snap: snap, Stale: stale, SSD: ssd, Forecast: ForecastDisk(disk, total), Th: LoadThresholds(a), Now: now}
 }
 
 // Hardware: GET /api/hw?range=1h|24h|7d
@@ -40,6 +40,6 @@ func Hardware(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Sess
 		"now": in.Snap, "stale": in.Stale, "ssd": in.SSD, "forecast": in.Forecast,
 		"range": rk, "bucket": rs.Bucket, "interval": int(SampleEvery.Seconds()),
 		"series": hs.Series, "peak": hs.Peak, "samples": hs.Samples, "throttled_samples": hs.ThrottledSamples,
-		"thresholds": map[string]float64{"cpu_warn": CPUWarn, "cpu_bad": CPUBad, "ssd_warn": SSDWarn, "ssd_bad": SSDBad, "press_warn": PressWarn, "press_bad": PressB},
+		"thresholds": LoadThresholds(a),
 	})
 }

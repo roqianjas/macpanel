@@ -6,7 +6,7 @@ import sys
 from labcli.core import OPS, PROTECTED, ROOT, die, sh, stream
 from labcli.nginx import cert, nginx_test
 
-SITE_NAME_PAT = r"[a-z0-9]([a-z0-9-]*[a-z0-9])?"
+SITE_NAME_PAT = r"[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?"  # sama dengan panel (1-40); label DNS maksimal 63
 
 
 SITES_DIR = OPS / "nginx/sites"

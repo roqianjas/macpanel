@@ -191,6 +191,8 @@ func Routes() []core.Route {
 		{Method: "POST", Path: "/api/sites/{name}/{action}", Level: core.Full, H: sites.SiteToggle},
 		{Method: "GET", Path: "/api/metrics", Level: core.Full, H: system.Metrics},
 		{Method: "GET", Path: "/api/hw", Level: core.Full, H: hardware.Hardware},
+		{Method: "GET", Path: "/api/hw/thresholds", Level: core.Full, H: hardware.ThresholdsGet},
+		{Method: "POST", Path: "/api/hw/thresholds", Level: core.Full, H: hardware.ThresholdsSet},
 		{Method: "GET", Path: "/api/netmon", Level: core.Full, H: netmon.Handler},
 		{Method: "GET", Path: "/api/notify", Level: core.Full, H: overview.NotifyGet},
 		{Method: "POST", Path: "/api/notify", Level: core.Full, H: overview.NotifySet},

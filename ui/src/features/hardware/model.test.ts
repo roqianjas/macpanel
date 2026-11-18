@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { backupStatus, certStatus, fanText, forecastText, freshness, fmtTemp, num, pressureStatus, smartStatus, tempStatus, throttleStatus, verdict, type HwData, type HwForecast } from "./model";
 
-const th = { cpu_warn: 85, cpu_bad: 95, ssd_warn: 70, ssd_bad: 80, press_warn: 80, press_bad: 90 };
+const th = { cpu_warn: 85, cpu_bad: 95, ssd_warn: 70, ssd_bad: 80, press_warn: 80, press_bad: 90, swap_mb: 2048 };
 
 describe("num dan fmtTemp", () => {
   it("memakai koma desimal", () => expect(num(10.84, 1)).toBe("10,8"));
