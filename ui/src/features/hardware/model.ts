@@ -131,3 +131,29 @@ export function verdict(rows: Status[]): Status {
   if (ok === 0) return { tone: "mute", text: "Belum ada data komponen" };
   return { tone: "ok", text: rows.some((r) => r.tone === "mute") ? "Yang terbaca normal, sebagian belum terbaca" : "Semua komponen normal" };
 }
+
+/** Sertifikat situs: hari tersisa terkecil. Ambang sama dengan alert server (di bawah 14 hari = perhatian, 0 atau kurang = penting). */
+export function certStatus(minDays: number | null | undefined): Status {
+  if (minDays == null || !Number.isFinite(minDays)) return { tone: "mute", text: "Tidak ada sertifikat" };
+  if (minDays <= 0) return { tone: "bad", text: "Kedaluwarsa" };
+  if (minDays < 14) return { tone: "warn", text: "Segera habis" };
+  return { tone: "ok", text: "Aman" };
+}
+
+export interface BackupInfo {
+  at: number;
+  count: number;
+  local_only: boolean;
+  name: string;
+}
+
+/** Backup: umur dan kejujuran lokasi. Salinan di disk yang sama bukan backup penuh, jadi local_only tidak pernah tampil "Aman" begitu saja. */
+export function backupStatus(b: BackupInfo | null | undefined, nowSec: number): { st: Status; text: string } {
+  if (!b) return { st: { tone: "warn", text: "Belum ada" }, text: "Belum ada backup. Jalankan backup pertama." };
+  const hours = Math.max(0, Math.floor((nowSec - b.at) / 3600));
+  const age = hours < 1 ? "kurang dari 1 jam lalu" : hours < 48 ? `${hours} jam lalu` : `${Math.floor(hours / 24)} hari lalu`;
+  const where = b.local_only ? " Hanya di disk yang sama dengan data asli, belum ada salinan di luar mesin." : "";
+  if (hours > 36) return { st: { tone: "warn", text: "Sudah lama" }, text: `Backup terakhir ${age}.${where}` };
+  if (b.local_only) return { st: { tone: "warn", text: "Hanya lokal" }, text: `Backup terakhir ${age}.${where}` };
+  return { st: { tone: "ok", text: "Aman" }, text: `Backup terakhir ${age}.` };
+}

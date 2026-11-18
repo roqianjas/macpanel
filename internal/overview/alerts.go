@@ -9,6 +9,7 @@ import (
 
 	"github.com/roqianjas/macpanel/internal/core"
 	"github.com/roqianjas/macpanel/internal/hardware"
+	"github.com/roqianjas/macpanel/internal/netmon"
 	"github.com/roqianjas/macpanel/internal/services"
 	"github.com/roqianjas/macpanel/internal/sites"
 	"github.com/roqianjas/macpanel/internal/store"
@@ -80,7 +81,9 @@ type alState struct {
 	at    time.Time
 }
 
-func Alerts(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Session) {
+// CurrentAlerts mengembalikan peringatan aktif (dihitung ulang paling cepat tiap 30 detik) dan waktu hitungnya.
+// Dipakai handler /api/alerts dan pengirim notifikasi, supaya keduanya selalu melihat hal yang sama.
+func CurrentAlerts(a *core.App) ([]Alert, time.Time) {
 	al := core.Local[alState](a, "alerts")
 	al.mu.Lock()
 	defer al.mu.Unlock()
@@ -99,6 +102,22 @@ func Alerts(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Sessio
 		for _, f := range hardware.Findings(hardware.InputsNow(a)) {
 			al.cache = append(al.cache, Alert{f.ID, f.Level, f.Title, f.Detail, "#/pantau"})
 		}
+		for _, f := range netmon.Findings(netmon.InputsNow(a)) {
+			al.cache = append(al.cache, Alert{f.ID, f.Level, f.Title, f.Detail, "#/pantau"})
+		}
 	}
-	core.WriteJSON(w, 200, map[string]any{"alerts": al.cache, "at": al.at.Unix(), "notify": "hanya ditampilkan di panel; tidak ada pesan keluar"})
+	return nonNil(al.cache), al.at
+}
+
+func Alerts(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Session) {
+	list, at := CurrentAlerts(a)
+	core.WriteJSON(w, 200, map[string]any{"alerts": list, "at": at.Unix(), "notify": NotifyHint(a)})
+}
+
+// nonNil menyalin daftar dan menjamin hasilnya tidak nil: JSON-nya harus "[]", bukan "null"
+// (UI membaca .length langsung; null membuat seluruh aplikasi kosong).
+func nonNil(l []Alert) []Alert {
+	out := make([]Alert, len(l))
+	copy(out, l)
+	return out
 }

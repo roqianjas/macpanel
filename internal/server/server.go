@@ -18,6 +18,7 @@ import (
 	"github.com/roqianjas/macpanel/internal/docs"
 	"github.com/roqianjas/macpanel/internal/hardware"
 	"github.com/roqianjas/macpanel/internal/jobs"
+	"github.com/roqianjas/macpanel/internal/netmon"
 	"github.com/roqianjas/macpanel/internal/overview"
 	"github.com/roqianjas/macpanel/internal/phpruntime"
 	"github.com/roqianjas/macpanel/internal/redis"
@@ -190,6 +191,10 @@ func Routes() []core.Route {
 		{Method: "POST", Path: "/api/sites/{name}/{action}", Level: core.Full, H: sites.SiteToggle},
 		{Method: "GET", Path: "/api/metrics", Level: core.Full, H: system.Metrics},
 		{Method: "GET", Path: "/api/hw", Level: core.Full, H: hardware.Hardware},
+		{Method: "GET", Path: "/api/netmon", Level: core.Full, H: netmon.Handler},
+		{Method: "GET", Path: "/api/notify", Level: core.Full, H: overview.NotifyGet},
+		{Method: "POST", Path: "/api/notify", Level: core.Full, H: overview.NotifySet},
+		{Method: "POST", Path: "/api/notify/test", Level: core.Full, H: overview.NotifyTest},
 		{Method: "GET", Path: "/api/system", Level: core.Full, H: system.System},
 		{Method: "GET", Path: "/api/php", Level: core.Full, H: phpruntime.PHPList},
 		{Method: "POST", Path: "/api/php/{version}/install", Level: core.Full, H: phpruntime.PHPInstall},

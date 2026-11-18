@@ -47,7 +47,7 @@ ui-build:
 	cd ui && $(PNPM) run build
 
 cli-check:
-	@$(PY) -m compileall -q cli/labcli cli/lab cli/panelctl; find cli -name __pycache__ -prune -exec rm -rf {} +
+	@$(PY) -m compileall -q cli/labcli cli/lab cli/panelctl; find cli -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
 	@if command -v ruff >/dev/null; then ruff check $(PYSRC) && ruff format --check $(PYSRC); else echo "ruff tidak terpasang (uv tool install ruff), dilewati"; fi
 	@bash -n cli/addsite.sh cli/backup.sh cli/logrotate.sh install.sh scripts/*.sh
 	@$(MAKE) --no-print-directory cli-test
@@ -55,7 +55,7 @@ cli-check:
 cli-test:
 	@if command -v uv >/dev/null; then uv run --with pytest python -m pytest cli/tests -q; \
 	elif $(PY) -c 'import pytest' 2>/dev/null; then $(PY) -m pytest cli/tests -q; \
-	else echo "pytest tidak tersedia (brew install uv)"; exit 1; fi; find cli -name __pycache__ -prune -exec rm -rf {} +
+	else echo "pytest tidak tersedia (brew install uv)"; exit 1; fi; find cli -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
 
 cli-live:
 	MACPANEL_LIVE=1 uv run --with pytest python -m pytest cli/tests -q -m live

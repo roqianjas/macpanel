@@ -43,6 +43,7 @@ func (s *Store) PruneMetrics(before int64) {
 	_, _ = s.DB.Exec("DELETE FROM metrics WHERE t<?", before)
 	_, _ = s.DB.Exec("DELETE FROM netm WHERE t<?", before)
 	s.PruneHW(before)
+	s.PruneNetq(before)
 }
 
 func (s *Store) Series(since, bucket int64) (cpu, mem, disk, load [][2]float64) {

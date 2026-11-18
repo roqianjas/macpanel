@@ -251,6 +251,10 @@ def sys_dns():
 
 
 def sysx(a):
+    if a.act == "net":
+        from labcli.netcheck import sys_net
+
+        return sys_net(a.dns_name)
     if a.act == "hw":
         from labcli.hardware import sys_hw
 

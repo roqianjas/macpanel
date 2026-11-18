@@ -5,6 +5,7 @@ import { useMetrics, useSystem } from "../data";
 import { byteUnit, fmtBytes, fmtRate, niceTop, RANGES, type RangeKey } from "../lib";
 import { Card, PageHead, State } from "../ui";
 import HardwareSection from "../features/hardware/HardwareSection";
+import NetSection from "../features/netmon/NetSection";
 
 export default function Monitoring() {
   const [range, setRange] = useState<RangeKey>("1h");
@@ -45,6 +46,8 @@ export default function Monitoring() {
             </div>
 
             <HardwareSection range={range} />
+
+            <NetSection range={range} />
 
             <h2 className="card-title" style={{ marginTop: 8 }}>
               <Network size={18} className="icon" aria-hidden="true" /> Bandwidth jaringan

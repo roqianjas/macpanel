@@ -84,6 +84,9 @@ func OpenStore(path string) (*Store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(netqSchema); err != nil {
+		return nil, err
+	}
 	if _, err := db.Exec(hwSchema); err != nil {
 		return nil, err
 	}

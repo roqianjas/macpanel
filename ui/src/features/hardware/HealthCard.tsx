@@ -1,7 +1,11 @@
 import { Thermometer } from "lucide-react";
-import { Card, Chip, Mark, State } from "../../ui";
-import { fanText, forecastText, fmtTemp, freshness, num, pressureStatus, smartStatus, tempStatus, throttleStatus, verdict, type Status } from "./model";
+import { get } from "../../api";
+import { useSystem } from "../../data";
+import { Card, Chip, Mark, State, usePoll } from "../../ui";
+import { backupStatus, certStatus, fanText, forecastText, fmtTemp, freshness, num, pressureStatus, smartStatus, tempStatus, throttleStatus, verdict, type Status } from "./model";
 import { useHw } from "./useHw";
+import { useNetmon } from "../netmon/useNetmon";
+import { fmtMs, internetStatus, tailscaleStatus } from "../netmon/model";
 
 // Ikon Thermometer: kartu ini tentang suhu dan kondisi komponen, jadi ikonnya relevan dengan isinya.
 // Satu fokus per layar: judul kartu berisi kesimpulan (normal / perlu dicek); baris di bawahnya rincian.
@@ -16,6 +20,9 @@ interface Row {
 
 export default function HealthCard() {
   const hw = useHw("1h");
+  const sys = useSystem();
+  const net = useNetmon("1h");
+  const sites = usePoll(() => get<{ sites: { system?: boolean; enabled?: boolean; ssl_days: number | null }[] }>("/api/sites"), 120000);
   const d = hw.data;
   const now = Math.floor(Date.now() / 1000);
   const th = d?.thresholds;
@@ -35,6 +42,22 @@ export default function HealthCard() {
           { key: "fan", label: "Kipas", value: live ? fanText(s!.fan) : "n/a", st: { tone: live && s!.fan ? "ok" : "mute", text: live && s!.fan ? "Berputar" : "Tidak terbaca" } },
         ]
       : [];
+  // Sertifikat dan backup: bukan perangkat keras, tetapi menjawab pertanyaan yang sama ("apakah mesin ini sehat?")
+  const sslList = (sites.data?.sites ?? []).filter((x) => !x.system && x.enabled !== false && x.ssl_days != null).map((x) => x.ssl_days as number);
+  const minSsl = sslList.length ? Math.min(...sslList) : null;
+  const bk = backupStatus(sys.data?.backup, now);
+  if (d && sys.data) {
+    rows.push({ key: "cert", label: "Sertifikat situs", value: minSsl == null ? "n/a" : `${minSsl} hari`, hint: minSsl == null ? "Belum ada situs ber-SSL" : "sisa terpendek di antara situs aktif", st: certStatus(minSsl) });
+    rows.push({ key: "backup", label: "Backup terakhir", value: sys.data.backup ? `${Math.max(0, Math.floor((now - sys.data.backup.at) / 3600))} jam lalu` : "n/a", hint: bk.text, st: bk.st });
+  }
+  const nd = net.data;
+  if (d && nd) {
+    const nlive = !!nd.now && !nd.stale;
+    const tsS = nlive ? tailscaleStatus(nd.now!.tailscale) : { tone: "mute" as const, text: "Tidak terbaca" };
+    rows.unshift({ key: "ts", label: "Tailscale", value: nlive && nd.now!.tailscale ? `${nd.now!.tailscale.peers_online} perangkat online` : "n/a", hint: "jalur akses jarak jauh ke mesin ini", st: tsS });
+    const inS = nlive ? internetStatus(nd.now!.internet, nd.thresholds.slow_ms) : { tone: "mute" as const, text: "Tidak terbaca" };
+    rows.splice(1, 0, { key: "inet", label: "Internet", value: nlive ? fmtMs(nd.now!.internet.ms) : "n/a", hint: "waktu sambung TCP keluar", st: inS });
+  }
   const v = verdict(rows.map((r) => r.st));
   const fc = d ? forecastText(d.forecast) : null;
 

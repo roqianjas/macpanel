@@ -80,4 +80,8 @@ export interface AlertItem {
   detail: string;
   link: string;
 }
-export const useAlerts = () => usePoll(() => get<{ alerts: AlertItem[]; at: number }>("/api/alerts"), 60000);
+// alerts dijaga tidak null di sini: satu respons null pernah membuat seluruh aplikasi kosong (App membaca .length).
+export const useAlerts = () => usePoll(async () => {
+  const r = await get<{ alerts: AlertItem[] | null; at: number; notify?: string }>("/api/alerts");
+  return { ...r, alerts: r.alerts ?? [] };
+}, 60000);

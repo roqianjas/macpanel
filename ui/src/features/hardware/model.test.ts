@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fanText, forecastText, freshness, fmtTemp, num, pressureStatus, smartStatus, tempStatus, throttleStatus, verdict, type HwData, type HwForecast } from "./model";
+import { backupStatus, certStatus, fanText, forecastText, freshness, fmtTemp, num, pressureStatus, smartStatus, tempStatus, throttleStatus, verdict, type HwData, type HwForecast } from "./model";
 
 const th = { cpu_warn: 85, cpu_bad: 95, ssd_warn: 70, ssd_bad: 80, press_warn: 80, press_bad: 90 };
 
@@ -139,5 +139,40 @@ describe("verdict", () => {
   it("tanpa data sama sekali bukan normal", () => {
     expect(verdict([]).tone).toBe("mute");
     expect(verdict([s("mute"), s("mute")])).toEqual({ tone: "mute", text: "Belum ada data komponen" });
+  });
+});
+
+describe("certStatus", () => {
+  it.each([
+    [null, "mute"],
+    [undefined, "mute"],
+    [NaN, "mute"],
+    [-3, "bad"],
+    [0, "bad"],
+    [1, "warn"],
+    [13, "warn"],
+    [14, "ok"],
+    [800, "ok"],
+  ])("%s hari", (d, tone) => expect(certStatus(d as number | null).tone).toBe(tone));
+});
+
+describe("backupStatus", () => {
+  const now = 1_000_000;
+  const b = (hoursAgo: number, local = false) => ({ at: now - hoursAgo * 3600, count: 5, local_only: local, name: "x" });
+  it("tanpa backup", () => expect(backupStatus(null, now).st.tone).toBe("warn"));
+  it("segar dan offsite = aman", () => expect(backupStatus(b(2), now).st).toEqual({ tone: "ok", text: "Aman" }));
+  it("lokal saja tidak pernah disebut aman", () => {
+    const r = backupStatus(b(2, true), now);
+    expect(r.st.tone).toBe("warn");
+    expect(r.text).toContain("disk yang sama");
+  });
+  it("lewat 36 jam = sudah lama (sama dengan server)", () => {
+    expect(backupStatus(b(36), now).st.tone).toBe("ok");
+    expect(backupStatus(b(37), now).st).toEqual({ tone: "warn", text: "Sudah lama" });
+  });
+  it("satuan umur", () => {
+    expect(backupStatus(b(0), now).text).toContain("kurang dari 1 jam");
+    expect(backupStatus(b(30), now).text).toContain("30 jam lalu");
+    expect(backupStatus(b(72), now).text).toContain("3 hari lalu");
   });
 });

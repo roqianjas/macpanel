@@ -199,6 +199,7 @@ def reg_dev(top):
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
     for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd"):
         sy.add_parser(x)
+    sy.add_parser("net").add_argument("--dns-name", default="", help="nama lokal yang dites resolusinya (mis. panel.lab)")
     sy.add_parser("kill").add_argument("pid", type=int)
     sy.add_parser("stats").add_argument("name")
     dc = top.add_parser("dbcfg").add_subparsers(dest="act", required=True)

@@ -111,7 +111,7 @@ export default function Overview() {
               </li>
             ))}
           </ul>
-          <p className="small muted">Peringatan hanya tampil di panel ini; tidak ada pesan keluar (email atau chat).</p>
+          <p className="small muted">Peringatan {alerts.data.notify ?? "hanya ditampilkan di panel; tidak ada pesan keluar"}.</p>
         </Card>
       )}
       <HealthCard />
