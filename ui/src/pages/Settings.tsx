@@ -106,7 +106,7 @@ function PanelCard() {
 }
 
 // ---------- 2FA ----------
-function TwoFactor() {
+export function TwoFactor() {
   const q = useLoad(() => get<{ enabled: boolean; recovery_left: number }>("/api/me/2fa"));
   const [note, setNote] = useState<Note>(null);
   const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null);

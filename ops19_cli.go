@@ -40,6 +40,33 @@ func cliAdmin(st *Store, cmd, sub string, pos []string, o cliOpts) bool {
 		}
 		st.Audit("cli", "user_passwd", pos[0]+" (semua sesi dan perangkat tepercaya dicabut)", "local", time.Now())
 		fmt.Println("Kata sandi", pos[0], "diganti; semua sesi dan perangkat tepercaya dicabut.")
+	case cmd == "user" && (sub == "disable" || sub == "enable"):
+		if len(pos) != 1 || !nameRE.MatchString(pos[0]) {
+			fatal("pakai: panel user disable|enable <nama>")
+		}
+		if sub == "disable" && st.AdminsExcept(pos[0]) < 1 {
+			fatal("tidak boleh menyisakan nol admin aktif")
+		}
+		if !st.SetDisabled(pos[0], sub == "disable") {
+			fatal("user tidak ada")
+		}
+		st.Audit("cli", "account_"+sub, pos[0], "local", time.Now())
+		fmt.Println("OK:", pos[0], map[string]string{"disable": "dinonaktifkan (sesi dicabut)", "enable": "diaktifkan"}[sub])
+	case cmd == "user" && sub == "reset":
+		if len(pos) != 1 || !nameRE.MatchString(pos[0]) {
+			fatal("pakai: panel user reset <nama>   (kata sandi sementara; wajib diganti saat masuk)")
+		}
+		u := st.GetUser(pos[0])
+		if u == nil {
+			fatal("user tidak ada")
+		}
+		temp := randToken()[:20]
+		if err := st.SetTempPassword(u.ID, hashPassword(temp)); err != nil {
+			fatal(err.Error())
+		}
+		st.Audit("cli", "account_reset", pos[0], "local", time.Now())
+		fmt.Println("Kata sandi sementara untuk", pos[0], "(tampil sekali; sesi, perangkat tepercaya, dan token dicabut):")
+		fmt.Println("  ", temp)
 	case cmd == "user" && sub == "2fa":
 		if len(pos) != 2 || (pos[0] != "on" && pos[0] != "off") || !nameRE.MatchString(pos[1]) {
 			fatal("pakai: panel user 2fa on|off <nama>")

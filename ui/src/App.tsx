@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BookOpen, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { Activity, BookOpen, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
 import ErrorBoundary from "./ErrorBoundary";
 import { setDevicePref, usePanelName, useThemePref } from "./settings";
-import Settings from "./pages/Settings";
+import Settings, { TwoFactor } from "./pages/Settings";
+import Users from "./pages/Users";
+import Account from "./pages/Account";
 import Docs from "./pages/Docs";
 import { dismissJob, useTrackedJobs } from "./jobs";
 import Overview from "./pages/Overview";
@@ -180,7 +182,7 @@ interface NavItem {
 const GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
   { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
-  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "pengaturan", label: "Pengaturan", icon: SettingsIcon }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
+  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "pengaturan", label: "Pengaturan", icon: SettingsIcon }, { id: "pengguna", label: "Pengguna", icon: UsersIcon }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
 ];
 const ALL = GROUPS.flatMap((g) => g.items);
 
@@ -225,6 +227,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
       case "pembaruan": return <Updates />;
       case "aktivitas": return <ActivityPage />;
       case "pengaturan": return <Settings />;
+      case "pengguna": return <Users />;
       case "dokumen": return <Docs sub={route.sub} />;
       default: return <Overview />;
     }
@@ -251,7 +254,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
           <div key={g.label} className="side-group">
             <p className="side-label">{g.label}</p>
             <ul>
-              {g.items.map((n) => (
+              {g.items.filter((n) => n.id !== "pengguna" || role === "admin").map((n) => (
                 <li key={n.id}>
                   <a href={`#/${n.id}`} className={route.page === n.id ? "on" : ""} aria-current={route.page === n.id ? "page" : undefined}>
                     <n.icon size={20} aria-hidden="true" />
@@ -304,16 +307,34 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
   );
 }
 
+function ForcedChange({ onLogout }: { onLogout: () => void }) {
+  const panelName = usePanelName();
+  return (
+    <main id="main" tabIndex={-1} style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
+      <div className="stack">
+        <h1>{panelName}: ganti kata sandi sementara</h1>
+        <Alert tone="warn">Akun ini memakai kata sandi sementara dari admin. Ganti sekarang untuk melanjutkan. Anda juga dapat menyalakan verifikasi dua langkah (2FA) di bawah.</Alert>
+        <Account forced onDone={() => location.reload()} />
+        <TwoFactor />
+        <div className="row-end">
+          <button className="btn" onClick={onLogout}>Keluar</button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState<string | null | undefined>(undefined);
   const [role, setRoleState] = useState("admin");
   const [stepUp, setStepUp] = useState<null | ((ok: boolean) => void)>(null);
+  const [mustChange, setMustChange] = useState(false);
   useEffect(() => {
     setStepUpHandler(() => new Promise<boolean>((resolve) => setStepUp(() => (ok: boolean) => { setStepUp(null); resolve(ok); })));
     const un = () => setUser(null);
     addEventListener(UNAUTH, un);
-    get<{ user: string; csrf: string; role?: string }>("/api/me")
-      .then((r) => { setCsrf(r.csrf); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); setUser(r.user); })
+    get<{ user: string; csrf: string; role?: string; must_change?: boolean }>("/api/me")
+      .then((r) => { setMustChange(!!r.must_change); setCsrf(r.csrf); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); setUser(r.user); })
       .catch(() => setUser(null));
     return () => removeEventListener(UNAUTH, un);
   }, []);
@@ -329,7 +350,7 @@ export default function App() {
     );
   return (
     <>
-      {user ? <Shell user={user} role={role} onLogout={logout} /> : <Login onDone={(u) => { get<{ role?: string }>("/api/me").then((r) => { setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); }).catch(() => {}); setUser(u); }} />}
+      {user && mustChange ? <ForcedChange onLogout={logout} /> : user ? <Shell user={user} role={role} onLogout={logout} /> : <Login onDone={(u) => { get<{ role?: string; must_change?: boolean }>("/api/me").then((r) => { setMustChange(!!r.must_change); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); }).catch(() => {}); setUser(u); }} />}
       {stepUp && <StepUpDialog resolve={stepUp} />}
     </>
   );

@@ -174,6 +174,20 @@ func routes() []Route {
 		{"POST", "/api/dbcfg/{engine}", Full, hDBCfgSet},
 		{"GET", "/api/dbcfg/{engine}/slow", Full, hSlowLog},
 		{"GET", "/api/users", Full, hUsers},
+		{"GET", "/api/accounts", Full, hAccounts},
+		{"POST", "/api/accounts", Full, hAccountCreate},
+		{"POST", "/api/accounts/{name}/role", Full, hAccountRole},
+		{"POST", "/api/accounts/{name}/disable", Full, hAccountDisable},
+		{"POST", "/api/accounts/{name}/enable", Full, hAccountEnable},
+		{"POST", "/api/accounts/{name}/reset", Full, hAccountReset},
+		{"POST", "/api/accounts/{name}/2fa-off", Full, hAccount2FAOff},
+		{"POST", "/api/accounts/{name}/remove", Full, hAccountRemove},
+		{"GET", "/api/db/{engine}/{name}/dbusers", Full, hDBUserList},
+		{"POST", "/api/db/{engine}/{name}/dbusers", Full, hDBUserAdd},
+		{"POST", "/api/db/{engine}/{name}/dbusers/{user}/passwd", Full, hDBUserPasswd},
+		{"POST", "/api/db/{engine}/{name}/dbusers/{user}/privs", Full, hDBUserPrivs},
+		{"POST", "/api/db/{engine}/{name}/dbusers/{user}/remove", Full, hDBUserRemove},
+		{"POST", "/api/dbroot/{engine}/passwd", Full, hDBRootPasswd},
 		{"POST", "/api/db/{engine}/{name}/upload", Full, hDBUpload},
 		{"POST", "/api/backups/run", Full, hBackupRun},
 		{"GET", "/api/services", Full, hServicesList},
@@ -317,6 +331,10 @@ func (a *App) wrap(rt Route) http.HandlerFunc {
 				return
 			}
 		}
+		if ss != nil && ss.MustChange && ss.Via != "token" && ss.Stage == "full" && !mustChangeOK(r.URL.Path) {
+			jerr(w, 403, "ganti kata sandi sementara dulu")
+			return
+		}
 		if ss != nil && ss.Via == "token" {
 			if !tokenAllowed(r.Method, r.URL.Path) {
 				jerr(w, 403, "tidak tersedia lewat token API")
@@ -337,7 +355,7 @@ func (a *App) wrap(rt Route) http.HandlerFunc {
 			return
 		}
 		if r.Method != "GET" && r.Method != "HEAD" {
-			if ss != nil && ss.Stage == "full" && ss.Role == "viewer" && r.URL.Path != "/api/auth/logout" {
+			if ss != nil && ss.Stage == "full" && ss.Role == "viewer" && !viewerSelfService(r.URL.Path) {
 				jerr(w, 403, "akun ini hanya-baca")
 				return
 			}
@@ -528,7 +546,7 @@ func (a *App) requireStepUp(w http.ResponseWriter, ss *Session) bool {
 }
 
 func hMe(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
-	jsonOut(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.now().Unix(), "role": ss.Role, "via": ss.Via, "scope": ss.Scope})
+	jsonOut(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.now().Unix(), "role": ss.Role, "via": ss.Via, "scope": ss.Scope, "must_change": ss.MustChange})
 }
 
 func hAudit(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
@@ -541,4 +559,14 @@ func envOr(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// mustChangeOK: akun dengan kata sandi sementara hanya boleh mengganti kata sandi / menyiapkan 2FA.
+func mustChangeOK(p string) bool {
+	return p == "/api/me" || p == "/api/me/password" || strings.HasPrefix(p, "/api/me/2fa") || strings.HasPrefix(p, "/api/auth/") || p == "/api/settings/public" || p == "/api/settings"
+}
+
+// viewerSelfService: satu-satunya penulisan yang boleh dilakukan akun hanya-baca, semuanya hanya menyangkut akunnya sendiri.
+func viewerSelfService(p string) bool {
+	return p == "/api/auth/logout" || p == "/api/auth/stepup" || p == "/api/me/password" || strings.HasPrefix(p, "/api/me/2fa/") || p == "/api/me/devices/revoke"
 }

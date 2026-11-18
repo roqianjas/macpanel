@@ -11,7 +11,6 @@ interface Row {
 
 export default function Activity() {
   const audit = useLoad(() => get<{ rows: Row[] }>("/api/audit"));
-  const users = useLoad(() => get<{ users: { name: string; role: string; disabled: boolean; created: number }[]; howto: string }>("/api/users"));
   const jobs = useLoad(() => get<{ jobs: { id: number; at: number; action: string; status: string }[] }>("/api/jobs"));
   return (
     <>
@@ -46,27 +45,6 @@ export default function Activity() {
           </div>
         </State>
       </Card>
-      {!users.error && (
-        <Card title="Pengguna">
-          <State loading={users.loading && !users.data} error="" onRetry={users.reload}>
-            <ul className="list">
-              {users.data?.users.map((u) => (
-                <li key={u.name} className="list-row">
-                  <div>
-                    <p className="mono">{u.name}</p>
-                    <p className="small muted">Dibuat {fmtTime(u.created)}</p>
-                  </div>
-                  <div className="row">
-                    {u.disabled && <Chip tone="warn">Nonaktif</Chip>}
-                    <Chip tone={u.role === "admin" ? "info" : "mute"}>{u.role === "admin" ? "Admin" : "Hanya-baca"}</Chip>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <p className="small muted">{users.data?.howto} Kata sandi dan kunci TOTP sengaja hanya dibuat di terminal, tidak lewat web.</p>
-          </State>
-        </Card>
-      )}
       <Card title="Aksi terakhir">
         <State loading={jobs.loading && !jobs.data} error={jobs.error} empty={!!jobs.data && jobs.data.jobs.length === 0} emptyText="Belum ada aksi." onRetry={jobs.reload}>
           <ul className="list">

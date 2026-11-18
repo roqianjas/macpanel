@@ -2,7 +2,7 @@ import { useState } from "react";
 import { errText, fmtTime, get, post } from "../api";
 import { Alert, Card, Field, State, useLoad } from "../ui";
 
-export default function Account() {
+export default function Account({ forced, onDone }: { forced?: boolean; onDone?: () => void } = {}) {
   const [cur, setCur] = useState("");
   const [nw, setNw] = useState("");
   const [again, setAgain] = useState("");
@@ -19,6 +19,7 @@ export default function Account() {
       setCur("");
       setNw("");
       setAgain("");
+      onDone?.();
     } catch (x) {
       setMsg({ tone: "bad", text: errText(x) });
     } finally {
@@ -27,7 +28,7 @@ export default function Account() {
   };
   return (
     <div className="stack">
-    <Devices />
+    {!forced && <Devices />}
     <Card title="Ganti kata sandi">
       <form onSubmit={submit} className="stack" autoComplete="off">
         <p className="small muted">Meminta kata sandi ulang. Semua sesi lain dikeluarkan setelah berhasil. Kode TOTP dan recovery code tidak berubah; untuk mengganti perangkat autentikator, matikan lalu nyalakan lagi 2FA di bawah.</p>

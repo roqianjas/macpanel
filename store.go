@@ -51,19 +51,21 @@ type Session struct {
 	StepUp   int64
 	Role     string
 	// sesi token API (tanpa cookie): Via="token", Scope read|operate|full
-	Via       string
-	Scope     string
-	TokenName string
+	MustChange bool
+	Via        string
+	Scope      string
+	TokenName  string
 }
 
 type User struct {
-	ID       int64
-	Name     string
-	PassHash string
-	TOTPEnc  []byte
-	TOTPLast int64
-	Disabled bool
-	TOTPOn   bool
+	ID         int64
+	Name       string
+	PassHash   string
+	TOTPEnc    []byte
+	TOTPLast   int64
+	Disabled   bool
+	TOTPOn     bool
+	MustChange bool
 }
 
 func openStore(path string) (*Store, error) {
@@ -89,6 +91,7 @@ func openStore(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, err
 	}
+	db.Exec("ALTER TABLE users ADD COLUMN must_change INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE users ADD COLUMN totp_on INTEGER NOT NULL DEFAULT 1")
 	db.Exec("ALTER TABLE users ADD COLUMN totp_pending BLOB")
 	db.Exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'") // migrasi; gagal bila kolom sudah ada (aman diabaikan)
@@ -118,14 +121,15 @@ func (s *Store) CreateUser(name, passHash string, totpEnc []byte, recoveryHashes
 
 func (s *Store) GetUser(name string) *User {
 	u := &User{}
-	var dis, on int
-	err := s.db.QueryRow("SELECT id,name,pass_hash,totp_enc,totp_last,disabled,totp_on FROM users WHERE name=?", name).
-		Scan(&u.ID, &u.Name, &u.PassHash, &u.TOTPEnc, &u.TOTPLast, &dis, &on)
+	var dis, on, mc int
+	err := s.db.QueryRow("SELECT id,name,pass_hash,totp_enc,totp_last,disabled,totp_on,must_change FROM users WHERE name=?", name).
+		Scan(&u.ID, &u.Name, &u.PassHash, &u.TOTPEnc, &u.TOTPLast, &dis, &on, &mc)
 	if err != nil {
 		return nil
 	}
 	u.Disabled = dis == 1
 	u.TOTPOn = on == 1
+	u.MustChange = mc == 1
 	return u
 }
 
@@ -223,8 +227,8 @@ func (s *Store) GetSession(tok string, now time.Time) *Session {
 	}
 	id := sha256hex(tok)
 	ss := &Session{ID: id}
-	err := s.db.QueryRow(`SELECT s.user_id,u.name,s.stage,s.csrf,s.last_seen,s.expires,s.stepup,u.role FROM sessions s JOIN users u ON u.id=s.user_id
-	  WHERE s.id=? AND u.disabled=0`, id).Scan(&ss.UserID, &ss.User, &ss.Stage, &ss.CSRF, &ss.LastSeen, &ss.Expires, &ss.StepUp, &ss.Role)
+	err := s.db.QueryRow(`SELECT s.user_id,u.name,s.stage,s.csrf,s.last_seen,s.expires,s.stepup,u.role,u.must_change FROM sessions s JOIN users u ON u.id=s.user_id
+	  WHERE s.id=? AND u.disabled=0`, id).Scan(&ss.UserID, &ss.User, &ss.Stage, &ss.CSRF, &ss.LastSeen, &ss.Expires, &ss.StepUp, &ss.Role, &ss.MustChange)
 	if err != nil {
 		return nil
 	}
@@ -389,7 +393,7 @@ func (s *Store) SetPassword(uid int64, hash, keepSession string) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec("UPDATE users SET pass_hash=? WHERE id=?", hash, uid); err != nil {
+	if _, err := tx.Exec("UPDATE users SET pass_hash=?, must_change=0 WHERE id=?", hash, uid); err != nil {
 		return err
 	}
 	if _, err := tx.Exec("DELETE FROM sessions WHERE user_id=? AND id<>?", uid, keepSession); err != nil {

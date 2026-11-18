@@ -28,6 +28,7 @@ MacPanel adalah panel web untuk mengelola Mac sebagai server pengembangan: websi
 | Sistem | Pembaruan | Pembaruan paket Homebrew |
 | Sistem | Aktivitas | Riwayat aksi |
 | Sistem | Pengaturan | Nama dan tema panel, kata sandi, 2FA, perangkat tepercaya, token API |
+| Sistem | Pengguna | Akun panel: tambah, peran, nonaktifkan, reset, hapus (admin) |
 | Sistem | Dokumentasi | Halaman ini |
 
 ## Tata letak folder
@@ -114,8 +115,24 @@ Driver `mysql` dipakai untuk MariaDB maupun MySQL.
 ## Aksi per database
 - **Dump**: menyimpan `<nama>-<mesin>-<waktu>.sql.gz` di `backup/db`.
 - **Pulihkan**: memulihkan dari dump database itu atau dari berkas yang Anda unggah. Perintah klien berbahaya di dalam dump ditolak.
-- **Akses**: melihat nama pengguna, mengganti kata sandi, atau menampilkan kredensial (membutuhkan verifikasi ulang).
+- **Akses**: melihat kredensial (membutuhkan verifikasi ulang), mengganti kata sandi user proyek (acak, atau pilihan sendiri), dan mengelola user database tambahan (lihat di bawah).
 - **Hapus**: menghapus database dan penggunanya; dump terakhir dibuat dulu. Anda harus mengetik ulang nama.
+
+## User database tambahan
+Di dialog **Akses**, bagian *User database*, Anda dapat membuat user lain selain user proyek, misalnya untuk laporan baca-saja atau aplikasi kedua.
+- **Hak** per database: *Baca-saja* (SELECT), *Baca-tulis* (SELECT, INSERT, UPDATE, DELETE), atau *Penuh* (termasuk mengubah struktur). Tidak ada hak global.
+- **Host** hanya `127.0.0.1` dan `localhost`; tidak ada user yang dapat terhubung dari mesin lain.
+- Kata sandi **acak** (tampil sekali) atau **pilihan sendiri** (12-100 karakter dari huruf, angka, dan `. _ + = : , @ % ^ -`).
+- Ganti kata sandi, ubah hak, dan hapus butuh verifikasi ulang; hapus juga meminta mengetik nama user. Hanya user yang dibuat dari panel yang dapat diubah atau dihapus di sini; akun lain tidak disentuh.
+- Menghapus database ikut menghapus user tambahannya.
+- Tidak tersedia lewat token API (hanya membaca daftar).
+
+## Kata sandi root server database
+Kartu *Kata sandi root server database* mengganti akun administrator MariaDB, MySQL (`root`), dan PostgreSQL (`dev`).
+- Pilih acak atau sendiri, lalu ketik nama mesin untuk konfirmasi (butuh verifikasi ulang).
+- Panel memeriksa kata sandi lama masih cocok, mengganti, menyimpan ke berkas rahasia pemilik mesin, lalu memverifikasi login dengan kata sandi baru. Bila verifikasi gagal, berkas dikembalikan.
+- Perbarui koneksi di klien yang memakai akun root (mis. DBeaver). Proyek memakai user sendiri sehingga tidak terpengaruh.
+- Tidak tersedia lewat token API.
 
 ## Pengaturan server
 Bagian **Pengaturan server** mengubah nilai penting MariaDB, MySQL (`max_connections`, `innodb_buffer_pool_size`, `max_allowed_packet`, slow query log) dan Redis (`maxmemory`, kebijakan eviction, AOF, save). Nilai disimpan di berkas khusus panel, server dimulai ulang sebentar, dan bila gagal naik, perubahan dikembalikan otomatis.
@@ -287,7 +304,16 @@ Aksi seperti menghapus situs atau database, melihat kredensial, mengubah konfigu
 
 ## Peran
 - **Admin**: semua aksi.
-- **Viewer**: hanya melihat; tidak dapat mengubah apa pun dan tidak melihat kredensial.
+- **Viewer** (hanya-baca): hanya melihat; tidak dapat mengubah apa pun dan tidak melihat kredensial. Viewer tetap dapat mengelola akunnya sendiri: kata sandi, 2FA, dan perangkat tepercaya.
+
+## Mengelola pengguna
+Menu **Pengguna** (khusus admin):
+- **Tambah pengguna**: pilih nama dan peran. Panel membuat **kata sandi sementara** (tampil sekali). Berikan lewat jalur aman.
+- Saat masuk pertama, akun baru hanya dapat **mengganti kata sandi** (dan menyiapkan 2FA); semua menu lain terkunci sampai kata sandi diganti. Akun baru belum memakai 2FA; pemiliknya menyalakannya sendiri di Pengaturan.
+- **Kelola** akun: ubah peran, nonaktifkan atau aktifkan, reset kata sandi (sementara, wajib diganti), matikan 2FA (mis. ponsel hilang), dan hapus (ketik ulang nama).
+- Mengubah peran, mereset, atau menonaktifkan mengeluarkan semua sesi dan mencabut token dan perangkat tepercaya akun itu.
+- Penjagaan: tidak dapat dilakukan pada akun sendiri, dan harus selalu tersisa minimal satu admin aktif.
+- Semua aksi butuh verifikasi ulang, tercatat di Aktivitas (tanpa kata sandi), dan tidak tersedia lewat token API.
 
 ## Mengelola akun (dari Terminal mesin ini)
 ```
@@ -295,6 +321,8 @@ panel user add [--role admin|viewer] <nama>
 panel user list
 panel user role <nama> admin|viewer
 panel user rename <lama> <baru>
+panel user disable|enable <nama>
+panel user reset <nama>        # kata sandi sementara, tampil sekali
 panel user remove <nama>
 panel audit verify
 ```
@@ -334,9 +362,14 @@ lab db restore <nama> [--engine ...] [--file <dump>]
 lab db users <nama> [--engine ...]
 lab db passwd <nama> [--engine ...]
 lab db drop <nama> [--engine ...]
+lab db passwd <nama> [--engine ...] [--password-stdin]   # sandi user proyek
+lab db user list <db> [--engine ...]
+lab db user add <db> <user> --privs ro|rw|all [--engine ...] [--password-stdin]
+lab db user passwd|privs|remove <db> <user> [--engine ...]
+lab db root-passwd --engine mariadb|mysql|pgsql [--password-stdin]
 lab dbcfg get|set|slow mariadb|mysql|redis ...
 ```
-Bawaan `--engine` adalah `mariadb`. Port: MariaDB 3306, MySQL 3307, PostgreSQL 5432.
+Kata sandi pilihan sendiri dibaca dari stdin (`--password-stdin`), tidak pernah lewat argumen. Tanpa itu, kata sandi acak dibuat dan dicetak sekali. Bawaan `--engine` adalah `mariadb`. Port: MariaDB 3306, MySQL 3307, PostgreSQL 5432.
 
 ## PHP dan runtime
 ```
@@ -400,6 +433,12 @@ Cocokkan `DB_PORT` di `.env` dengan mesinnya: 3306 untuk MariaDB, 3307 untuk MyS
 ## Lupa kata sandi atau kehilangan perangkat 2FA
 Gunakan satu recovery code saat login. Bila tidak ada, di Terminal mesin ini jalankan `panel user 2fa off <nama>` lalu masuk dengan kata sandi dan nyalakan 2FA lagi di Pengaturan. Kata sandi dapat diganti dengan `panel user passwd <nama>`.
 
+## Akun baru tidak bisa membuka menu
+Akun dengan kata sandi sementara hanya dapat mengganti kata sandi dulu. Setelah diganti, semua menu terbuka. Bila kata sandi sementara hilang, admin dapat mereset dari menu Pengguna.
+
+## Kata sandi root database diganti tetapi aplikasi gagal konek
+Hanya klien yang memakai akun root yang terpengaruh. Perbarui koneksi di klien tersebut. Proyek memakai user sendiri dan tidak berubah.
+
 ## Disk penuh
 Menu Sistem, tab Disk menunjukkan folder terbesar. Bersihkan backup lama dari halaman Backup, dan cache paket dengan `brew cleanup`.
 
@@ -430,7 +469,7 @@ Token tampil **sekali** dan hanya hash-nya yang disimpan. Berlaku 1 sampai 365 h
 | `operate` | Membaca, menambah, dan mengubah: situs, database, deploy, pengaturan. Tidak termasuk aksi yang butuh verifikasi ulang |
 | `full` | Semua di atas, plus aksi yang butuh verifikasi ulang: hapus, ubah config, pasang aplikasi, jalankan backup. Penghapusan wajib menyertakan `confirm` berisi nama target |
 
-Akun hanya-baca selalu mendapat tingkat `read`. **Tidak pernah tersedia lewat token**, apa pun tingkatnya: login dan 2FA, ganti kata sandi, perangkat tepercaya, manajemen token, kredensial database (`creds`), dan isi `.env` situs.
+Akun hanya-baca selalu mendapat tingkat `read`. **Tidak pernah tersedia lewat token**, apa pun tingkatnya: login dan 2FA, ganti kata sandi, perangkat tepercaya, manajemen token, kredensial database (`creds`), isi `.env` situs, manajemen pengguna panel (`/api/accounts`), kata sandi root database (`/api/dbroot`), serta membuat, mengubah, atau menghapus user database (token hanya boleh membaca daftarnya).
 
 Perlakukan token seperti kata sandi: jangan ditempel ke chat atau repo, simpan di pengelola rahasia, dan cabut bila bocor.
 

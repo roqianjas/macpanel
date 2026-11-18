@@ -64,7 +64,7 @@ func fatal(m string) { fmt.Fprintln(os.Stderr, "panel:", m); os.Exit(1) }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("pakai: panel serve | init-key | user add|remove|list|role|rename|passwd|2fa | token create|list|revoke | settings get|set | audit verify")
+		fmt.Println("pakai: panel serve | init-key | user add|remove|list|role|rename|passwd|2fa|disable|enable|reset | token create|list|revoke | settings get|set | audit verify")
 		os.Exit(2)
 	}
 	fs := flag.NewFlagSet("panel", flag.ExitOnError)
@@ -224,7 +224,7 @@ func main() {
 			fatal(fmt.Sprintf("%v (baris valid sebelumnya: %d)", err, n))
 		}
 		fmt.Printf("OK: rantai audit utuh (%d baris)\n", n)
-	case cmd == "token" || cmd == "settings" || (cmd == "user" && (sub == "passwd" || sub == "2fa")):
+	case cmd == "token" || cmd == "settings" || (cmd == "user" && (sub == "passwd" || sub == "2fa" || sub == "disable" || sub == "enable" || sub == "reset")):
 		st, err := openStore(*dbPath)
 		if err != nil {
 			fatal(err.Error())

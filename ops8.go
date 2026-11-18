@@ -35,8 +35,8 @@ func hDBPasswd(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	if !ok {
 		return
 	}
-	var in struct{ Confirm string }
-	if !decode(w, r, &in) {
+	var in struct{ Confirm, Password string }
+	if !decode(w, r, &in) || !validDBPw(w, in.Password) {
 		return
 	}
 	if in.Confirm != name {
@@ -46,7 +46,11 @@ func hDBPasswd(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	if !a.requireStepUp(w, ss) {
 		return
 	}
-	a.record(w, ss, a.clientIP(r), "db_passwd", engine+"/"+name, a.mutate([]string{"db", "passwd", name, "--engine", engine}, ""))
+	args, stdin := []string{"db", "passwd", name, "--engine", engine}, ""
+	if in.Password != "" {
+		args, stdin = append(args, "--password-stdin"), in.Password+"\n"
+	}
+	a.record(w, ss, a.clientIP(r), "db_passwd", engine+"/"+name, a.mutate(args, stdin))
 }
 
 // hDBCreds menampilkan kredensial proyek (rahasia). Hanya admin, selalu step-up, dicatat di audit tanpa isi.

@@ -1,0 +1,211 @@
+import { useState } from "react";
+import { errText, fmtTime, get, post } from "../api";
+import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
+import { SecretDialog } from "./DbUsers";
+
+interface Acc {
+  name: string;
+  role: string;
+  disabled: boolean;
+  totp_on: boolean;
+  must_change: boolean;
+  created: number;
+  self: boolean;
+}
+type Secret = { title: string; label: string; value: string; note?: string } | null;
+
+export default function Users() {
+  const q = useLoad(() => get<{ accounts: Acc[] }>("/api/accounts"));
+  const [adding, setAdding] = useState(false);
+  const [sel, setSel] = useState<Acc | null>(null);
+  const [secret, setSecret] = useState<Secret>(null);
+  const [note, setNote] = useState("");
+  const list = q.data?.accounts ?? [];
+  return (
+    <>
+      <PageHead
+        title="Pengguna"
+        desc="Akun yang dapat masuk ke panel. Akun baru mendapat kata sandi sementara yang wajib diganti saat masuk pertama; 2FA dinyalakan sendiri oleh pemiliknya di Pengaturan."
+        action={
+          <button className="btn btn-primary" onClick={() => setAdding(true)}>
+            Tambah pengguna
+          </button>
+        }
+      />
+      {note && <Alert tone="ok">{note}</Alert>}
+      <Card title="Daftar pengguna">
+        <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && list.length === 0} emptyText="Belum ada pengguna." onRetry={q.reload}>
+          <ul className="list">
+            {list.map((u) => (
+              <li key={u.name} className="list-row">
+                <div>
+                  <p className="mono">
+                    {u.name}
+                    {u.self ? " (Anda)" : ""}
+                  </p>
+                  <p className="small muted">Dibuat {fmtTime(u.created)}</p>
+                  <div className="row" style={{ flexWrap: "wrap" }}>
+                    <Chip tone={u.role === "admin" ? "info" : "mute"}>{u.role === "admin" ? "Admin" : "Hanya-baca"}</Chip>
+                    <Chip tone={u.totp_on ? "ok" : "warn"}>{u.totp_on ? "2FA aktif" : "2FA mati"}</Chip>
+                    {u.disabled && <Chip tone="bad">Nonaktif</Chip>}
+                    {u.must_change && <Chip tone="warn">Belum ganti sandi sementara</Chip>}
+                  </div>
+                </div>
+                {!u.self && (
+                  <button className="btn" onClick={() => setSel(u)}>
+                    Kelola<span className="sr"> {u.name}</span>
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </State>
+      </Card>
+      {adding && (
+        <AddAccount
+          onClose={() => setAdding(false)}
+          onDone={(r) => {
+            setAdding(false);
+            q.reload();
+            setSecret({ title: `Akun ${r.name} dibuat`, label: "Kata sandi sementara", value: r.temp_password, note: "Berikan kepada pemiliknya lewat jalur aman. Ia wajib menggantinya saat masuk pertama." });
+          }}
+        />
+      )}
+      {sel && (
+        <Manage
+          acc={sel}
+          onClose={() => setSel(null)}
+          onChanged={(msg, sec) => {
+            setSel(null);
+            q.reload();
+            if (sec) setSecret(sec);
+            else setNote(msg);
+          }}
+        />
+      )}
+      {secret && <SecretDialog {...secret} onClose={() => setSecret(null)} />}
+    </>
+  );
+}
+
+function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { name: string; temp_password: string }) => void }) {
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("viewer");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  return (
+    <Modal title="Tambah pengguna" onClose={onClose}>
+      <form
+        className="stack"
+        autoComplete="off"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setErr("");
+          try {
+            onDone(await post("/api/accounts", { name, role }));
+          } catch (x) {
+            setErr(errText(x));
+            setBusy(false);
+          }
+        }}
+      >
+        <Field label="Nama pengguna" hint="Huruf kecil, angka, _ atau -; 3-32 karakter; diawali huruf.">
+          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_-]{2,31}" required autoFocus spellCheck={false} />}
+        </Field>
+        <Field label="Peran" hint="Hanya-baca: melihat saja, tidak dapat mengubah apa pun dan tidak melihat kredensial.">
+          {(id, dd) => (
+            <select id={id} aria-describedby={dd} value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="viewer">Hanya-baca</option>
+              <option value="admin">Admin (semua aksi)</option>
+            </select>
+          )}
+        </Field>
+        {err && <Alert>{err}</Alert>}
+        <div className="row-end">
+          <button type="button" className="btn" onClick={onClose}>
+            Batal
+          </button>
+          <button className="btn btn-primary" disabled={busy || !name}>
+            {busy ? "Membuat…" : "Buat akun"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; onChanged: (msg: string, secret?: Secret) => void }) {
+  const [role, setRole] = useState(acc.role);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [del, setDel] = useState(false);
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    setErr("");
+    try {
+      await fn();
+    } catch (x) {
+      setErr(errText(x));
+      setBusy(false);
+    }
+  };
+  const base = `/api/accounts/${acc.name}`;
+  return (
+    <Modal title={`Kelola ${acc.name}`} onClose={onClose}>
+      <div className="stack">
+        {err && <Alert>{err}</Alert>}
+        <Field label="Peran" hint="Mengubah peran mengeluarkan semua sesi dan mencabut token akun itu.">
+          {(id, dd) => (
+            <div className="row">
+              <select id={id} aria-describedby={dd} value={role} onChange={(e) => setRole(e.target.value)}>
+                <option value="viewer">Hanya-baca</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button className="btn" disabled={busy || role === acc.role} onClick={() => run(async () => { await post(`${base}/role`, { role }); onChanged(`Peran ${acc.name} diubah.`); })}>
+                Simpan peran
+              </button>
+            </div>
+          )}
+        </Field>
+        <div className="stack">
+          <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/${acc.disabled ? "enable" : "disable"}`, {}); onChanged(`${acc.name} ${acc.disabled ? "diaktifkan" : "dinonaktifkan"}.`); })}>
+            {acc.disabled ? "Aktifkan akun" : "Nonaktifkan akun (keluarkan semua sesi)"}
+          </button>
+          <button
+            className="btn"
+            disabled={busy}
+            onClick={() => run(async () => {
+              const r = await post<{ temp_password: string }>(`${base}/reset`, {});
+              onChanged("", { title: `Kata sandi ${acc.name} direset`, label: "Kata sandi sementara", value: r.temp_password, note: "Semua sesi, perangkat tepercaya, dan token akun itu dicabut. Ia wajib menggantinya saat masuk." });
+            })}
+          >
+            Reset kata sandi
+          </button>
+          {acc.totp_on && (
+            <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/2fa-off`, {}); onChanged(`2FA ${acc.name} dimatikan; ia dapat menyalakannya lagi di Pengaturan.`); })}>
+              Matikan 2FA (mis. ponsel hilang)
+            </button>
+          )}
+          <button className="btn btn-danger-ghost" disabled={busy} onClick={() => setDel(true)}>
+            Hapus akun
+          </button>
+        </div>
+      </div>
+      {del && (
+        <ConfirmDialog
+          title={`Hapus akun ${acc.name}`}
+          word={acc.name}
+          verb="Hapus akun"
+          body={<p>Akun, sesi, perangkat tepercaya, dan tokennya dihapus permanen. Riwayat di Aktivitas tetap ada.</p>}
+          onClose={() => setDel(false)}
+          onConfirm={async () => {
+            await post(`${base}/remove`, { confirm: acc.name });
+            setDel(false);
+            onChanged(`Akun ${acc.name} dihapus.`);
+          }}
+        />
+      )}
+    </Modal>
+  );
+}

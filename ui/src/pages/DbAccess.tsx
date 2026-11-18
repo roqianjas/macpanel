@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Copy, Eye, KeyRound } from "lucide-react";
 import { errText, fmtTime, get, post } from "../api";
-import { Alert, ConfirmDialog, Modal, State, useLoad } from "../ui";
+import { Alert, Modal, State, useLoad } from "../ui";
+import { DbUsersSection, PasswordDialog } from "./DbUsers";
 
 type Creds = Record<string, string>;
 
@@ -78,21 +79,23 @@ export default function DbAccess({ engine, name, onClose }: { engine: string; na
           </button>
         </div>
         <p className="small muted">Melihat kredensial dan mengganti sandi meminta kata sandi ulang dan dicatat di audit (tanpa isi). Setelah sandi diganti, perbarui <span className="mono">.env</span> aplikasi yang memakainya.</p>
+        <hr className="sep" />
+        <DbUsersSection engine={engine} name={name} />
       </div>
       {rotate && (
-        <ConfirmDialog
+        <PasswordDialog
           title={`Ganti kata sandi ${name}`}
           word={name}
-          verb="Ganti kata sandi"
-          body={<p>Kata sandi lama langsung tidak berlaku; aplikasi yang memakainya akan gagal konek sampai .env diperbarui.</p>}
-          onConfirm={async () => {
-            await post(`/api/db/${engine}/${name}/passwd`, { confirm: name });
+          hint="Kata sandi lama langsung tidak berlaku; aplikasi yang memakainya akan gagal konek sampai .env diperbarui. Kata sandi baru disimpan di berkas kredensial proyek."
+          onClose={() => setRotate(false)}
+          onSubmit={async (p) => {
+            await post(`/api/db/${engine}/${name}/passwd`, { confirm: name, ...(p ? { password: p } : {}) });
+            setRotate(false);
             setCreds(null);
             setShow(false);
             q.reload();
             setNote("Kata sandi diganti. Klik Lihat kredensial untuk melihat yang baru.");
           }}
-          onClose={() => setRotate(false)}
         />
       )}
     </Modal>

@@ -7,6 +7,7 @@ import DbAccess from "./DbAccess";
 import RedisBrowser from "./RedisBrowser";
 import { fmtBytes } from "../lib";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
+import { RootPasswords } from "./DbUsers";
 
 type Engine = "mariadb" | "mysql" | "pgsql";
 const ENGINE_LABEL: Record<Engine, string> = { mariadb: "MariaDB 11.8 (port 3306)", mysql: "MySQL 8.4 (port 3307)", pgsql: "PostgreSQL 17 (port 5432)" };
@@ -93,6 +94,7 @@ export default function Databases() {
         ))}
         <p className="small muted">Untuk melihat isi tabel pakai Adminer di db.lab atau DBeaver lewat tailnet. Kata sandi proyek ada di berkas ~/.config/macminiops/projects di Mac mini.</p>
       </State>
+      <RootPasswords />
       <DbConfig />
       <RedisBrowser />
       {access && <DbAccess engine={access.engine} name={access.name} onClose={() => setAccess(null)} />}

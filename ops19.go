@@ -218,6 +218,10 @@ func tokenAllowed(method, path string) bool {
 		return false
 	case strings.HasSuffix(path, "/creds"), strings.HasSuffix(path, "/env"):
 		return false
+	case strings.HasPrefix(path, "/api/accounts"), strings.HasPrefix(path, "/api/dbroot"):
+		return false
+	case method != "GET" && method != "HEAD" && strings.Contains(path, "/dbusers"):
+		return false
 	}
 	return true
 }

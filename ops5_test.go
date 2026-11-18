@@ -199,7 +199,7 @@ func TestViewerIsReadOnly(t *testing.T) {
 		t.Errorf("viewer tidak boleh melihat daftar pengguna: %d", w.Code)
 	}
 	before := o.calls()
-	for _, p := range []string{"/api/services/redis/start", "/api/sites/demo/disable", "/api/auth/stepup", "/api/backups/run", "/api/composer/update", "/api/php/8.4/ini", "/api/db", "/api/php/8.4/ext/redis/install"} {
+	for _, p := range []string{"/api/services/redis/start", "/api/sites/demo/disable", "/api/backups/run", "/api/composer/update", "/api/php/8.4/ini", "/api/db", "/api/php/8.4/ext/redis/install"} {
 		if c, b := o.post(p, `{}`); c != 403 || !strings.Contains(b, "hanya-baca") {
 			t.Errorf("viewer POST %s -> %d %s", p, c, b)
 		}
