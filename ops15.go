@@ -33,10 +33,10 @@ type TrustRow struct {
 // AddTrusted membuat token perangkat baru (hanya hash yang disimpan). Perangkat terlama dibuang bila melebihi batas.
 func (s *Store) AddTrusted(uid int64, label string, now time.Time) string {
 	tok := randToken()
-	s.db.Exec("DELETE FROM trusted WHERE expires<=?", now.Unix())
-	s.db.Exec("INSERT INTO trusted(user_id,hash,label,created,last_used,expires) VALUES(?,?,?,?,?,?)",
+	_, _ = s.db.Exec("DELETE FROM trusted WHERE expires<=?", now.Unix())
+	_, _ = s.db.Exec("INSERT INTO trusted(user_id,hash,label,created,last_used,expires) VALUES(?,?,?,?,?,?)",
 		uid, sha256hex(tok), label, now.Unix(), now.Unix(), now.Add(trustTTL).Unix())
-	s.db.Exec("DELETE FROM trusted WHERE user_id=? AND id NOT IN (SELECT id FROM trusted WHERE user_id=? ORDER BY id DESC LIMIT ?)", uid, uid, maxTrusted)
+	_, _ = s.db.Exec("DELETE FROM trusted WHERE user_id=? AND id NOT IN (SELECT id FROM trusted WHERE user_id=? ORDER BY id DESC LIMIT ?)", uid, uid, maxTrusted)
 	return tok
 }
 
@@ -85,7 +85,9 @@ func (s *Store) RevokeTrusted(uid, id int64) bool {
 	return n == 1
 }
 
-func (s *Store) RevokeAllTrusted(uid int64) { s.db.Exec("DELETE FROM trusted WHERE user_id=?", uid) }
+func (s *Store) RevokeAllTrusted(uid int64) {
+	_, _ = s.db.Exec("DELETE FROM trusted WHERE user_id=?", uid)
+}
 
 func (a *App) setTrust(w http.ResponseWriter, tok string, maxAge int) {
 	http.SetCookie(w, &http.Cookie{Name: trustCookie, Value: tok, Path: "/", MaxAge: maxAge, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})

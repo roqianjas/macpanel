@@ -1,0 +1,40 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  go:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with: { go-version-file: go.mod }
+      - name: UI build (embedded dist dibutuhkan beberapa tes)
+        uses: actions/setup-node@v5
+        with: { node-version: 24 }
+      - run: corepack enable && cd ui && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && pnpm run build
+      - run: test -z "$(gofmt -l . | grep -v node_modules)" || (gofmt -l .; exit 1)
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 24 }
+      - run: corepack enable && cd ui && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile
+      - run: cd ui && pnpm exec tsc --noEmit && pnpm run test
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx ruff check cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl
+      - run: for f in cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl; do python3 -m py_compile $f; done
+      - run: bash -n cli/addsite.sh cli/backup.sh cli/logrotate.sh install.sh scripts/*.sh
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: bash scripts/check-secrets.sh

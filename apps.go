@@ -184,7 +184,7 @@ func (a *App) probeSite(host string) (int, int) {
 		return 0, 0
 	}
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(3 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
 	tc := tls.Client(conn, &tls.Config{InsecureSkipVerify: true, ServerName: host, NextProtos: []string{"http/1.1"}})
 	if tc.Handshake() != nil {
 		return 0, 0

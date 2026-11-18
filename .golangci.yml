@@ -1,0 +1,30 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: standard   # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - misspell
+  settings:
+    staticcheck:
+      checks: ["all", "-ST1000", "-ST1003", "-ST1005", "-ST1016", "-ST1020", "-ST1021", "-ST1022", "-QF1001", "-QF1002", "-QF1003", "-QF1008"]
+    misspell:
+      locale: US
+      ignore-rules: [variabel]   # kata Indonesia pada pesan/komentar
+    errcheck:
+      exclude-functions:
+        - (*database/sql.Rows).Close
+        - (*database/sql.Tx).Rollback
+        - (*os.File).Close
+        - (net.Conn).Close
+        - (*encoding/json.Encoder).Encode   # penulisan respons HTTP; klien yang putus tidak bisa ditangani
+        - os.Remove
+  exclusions:
+    generated: lax
+    rules:
+      - path: _test\.go
+        linters: [errcheck]
+formatters:
+  enable:
+    - gofmt

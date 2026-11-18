@@ -12,12 +12,12 @@ import (
 // ---------- job asinkron ----------
 
 func (s *Store) FinishJob(id int64, status string, code int, out string) {
-	s.db.Exec("UPDATE jobs SET status=?, code=?, output=? WHERE id=?", status, code, out, id)
+	_, _ = s.db.Exec("UPDATE jobs SET status=?, code=?, output=? WHERE id=?", status, code, out, id)
 }
 
 // MarkStaleJobs menandai job yang masih "berjalan" saat panel baru start (prosesnya sudah mati bersama panel).
 func (s *Store) MarkStaleJobs() {
-	s.db.Exec("UPDATE jobs SET status='terputus' WHERE status='berjalan'")
+	_, _ = s.db.Exec("UPDATE jobs SET status='terputus' WHERE status='berjalan'")
 }
 
 func (s *Store) GetJob(id int64) *JobRow {

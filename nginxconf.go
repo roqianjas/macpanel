@@ -160,8 +160,7 @@ func parseNginx(src string) ([]*Dir, error) {
 var (
 	phpSockOK   = regexp.MustCompile(`^unix:/opt/homebrew/var/run/php-fpm-dev-8\.[2-5]\.sock$`)
 	proxyPassOK = regexp.MustCompile(`^http://127\.0\.0\.1:([0-9]{1,5})(/[A-Za-z0-9._~/%-]*)?$`)
-	rewriteOK   = regexp.MustCompile("^[A-Za-z0-9_\\-./^$()*+?|\\[\\]:%=&~,@!]+$")
-	httpURL     = regexp.MustCompile(`^https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$`)
+	rewriteOK   = regexp.MustCompile(`^[A-Za-z0-9_\-./^$()*+?|\[\]:%=&~,@!]+$`)
 )
 
 type policy struct {

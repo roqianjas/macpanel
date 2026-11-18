@@ -8,7 +8,14 @@
 Perintah dipecah dengan shlex dan dijalankan langsung (tanpa shell), jadi tidak ada pipe/&&/$().
 Log: ~/Library/Logs/lab/<nama>.log. Label launchd: com.lab.<jenis>.<nama>.
 """
-import argparse, os, plistlib, re, shlex, shutil, subprocess, sys
+import argparse
+import os
+import plistlib
+import re
+import shlex
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 HOME = Path.home()

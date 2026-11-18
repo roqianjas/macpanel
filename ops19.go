@@ -50,24 +50,24 @@ func (s *Store) Setting(k, def string) string {
 }
 
 func (s *Store) SetSetting(k, v string) {
-	s.db.Exec("INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", k, v)
+	_, _ = s.db.Exec("INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", k, v)
 }
 
 // ---------- store: 2FA ----------
 
 func (s *Store) SetTOTPPending(uid int64, enc []byte) {
-	s.db.Exec("UPDATE users SET totp_pending=? WHERE id=?", enc, uid)
+	_, _ = s.db.Exec("UPDATE users SET totp_pending=? WHERE id=?", enc, uid)
 }
 
 func (s *Store) GetTOTPPending(uid int64) []byte {
 	var b []byte
-	s.db.QueryRow("SELECT totp_pending FROM users WHERE id=?", uid).Scan(&b)
+	_ = s.db.QueryRow("SELECT totp_pending FROM users WHERE id=?", uid).Scan(&b)
 	return b
 }
 
 func (s *Store) RecoveryLeft(uid int64) int {
 	var n int
-	s.db.QueryRow("SELECT COUNT(*) FROM recovery WHERE user_id=? AND used IS NULL", uid).Scan(&n)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM recovery WHERE user_id=? AND used IS NULL", uid).Scan(&n)
 	return n
 }
 
@@ -89,8 +89,12 @@ func (s *Store) EnableTOTP(uid int64, enc []byte, recHashes []string, step int64
 			return err
 		}
 	}
-	tx.Exec("DELETE FROM sessions WHERE user_id=? AND id<>?", uid, keepSession)
-	tx.Exec("DELETE FROM trusted WHERE user_id=?", uid)
+	if _, err := tx.Exec("DELETE FROM sessions WHERE user_id=? AND id<>?", uid, keepSession); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM trusted WHERE user_id=?", uid); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -103,9 +107,15 @@ func (s *Store) DisableTOTP(uid int64, keepSession string) error {
 	if _, err := tx.Exec("UPDATE users SET totp_on=0, totp_pending=NULL WHERE id=?", uid); err != nil {
 		return err
 	}
-	tx.Exec("DELETE FROM recovery WHERE user_id=?", uid)
-	tx.Exec("DELETE FROM sessions WHERE user_id=? AND id<>?", uid, keepSession)
-	tx.Exec("DELETE FROM trusted WHERE user_id=?", uid)
+	if _, err := tx.Exec("DELETE FROM recovery WHERE user_id=?", uid); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM sessions WHERE user_id=? AND id<>?", uid, keepSession); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM trusted WHERE user_id=?", uid); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -125,9 +135,9 @@ type TokenRow struct {
 
 // AddToken membuat token acak; hanya hash yang disimpan. Mengembalikan token utuh (tampil sekali) dan id.
 func (s *Store) AddToken(uid int64, name, scope string, days int, now time.Time) (string, int64, bool) {
-	s.db.Exec("DELETE FROM tokens WHERE expires<=?", now.Unix())
+	_, _ = s.db.Exec("DELETE FROM tokens WHERE expires<=?", now.Unix())
 	var n int
-	s.db.QueryRow("SELECT COUNT(*) FROM tokens WHERE user_id=?", uid).Scan(&n)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM tokens WHERE user_id=?", uid).Scan(&n)
 	if n >= maxTokens {
 		return "", 0, false
 	}
@@ -150,7 +160,9 @@ func (s *Store) ListTokens(uid int64, now time.Time) []TokenRow {
 	defer rows.Close()
 	for rows.Next() {
 		var t TokenRow
-		rows.Scan(&t.ID, &t.Name, &t.Prefix, &t.Scope, &t.Created, &t.Expires, &t.LastUsed, &t.LastIP)
+		if rows.Scan(&t.ID, &t.Name, &t.Prefix, &t.Scope, &t.Created, &t.Expires, &t.LastUsed, &t.LastIP) != nil {
+			continue
+		}
 		out = append(out, t)
 	}
 	return out
@@ -165,7 +177,9 @@ func (s *Store) AllTokens(now time.Time) []TokenRow {
 	defer rows.Close()
 	for rows.Next() {
 		var t TokenRow
-		rows.Scan(&t.ID, &t.Name, &t.Prefix, &t.Scope, &t.Created, &t.Expires, &t.LastUsed, &t.LastIP, &t.Owner)
+		if rows.Scan(&t.ID, &t.Name, &t.Prefix, &t.Scope, &t.Created, &t.Expires, &t.LastUsed, &t.LastIP, &t.Owner) != nil {
+			continue
+		}
 		out = append(out, t)
 	}
 	return out
@@ -207,7 +221,7 @@ func (s *Store) TokenSession(tok, ip string, now time.Time) *Session {
 	if role == "viewer" {
 		scope = "read" // akun hanya-baca tidak pernah naik lewat token
 	}
-	s.db.Exec("UPDATE tokens SET last_used=?, last_ip=? WHERE id=?", now.Unix(), ip, id)
+	_, _ = s.db.Exec("UPDATE tokens SET last_used=?, last_ip=? WHERE id=?", now.Unix(), ip, id)
 	return &Session{ID: fmt.Sprintf("token:%d", id), UserID: uid, User: user, Stage: "full", Role: role, Via: "token", Scope: scope, TokenName: name}
 }
 

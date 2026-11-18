@@ -249,13 +249,13 @@ func (a *App) applyConf(user, name, content, note string) Result {
 	if oldErr == nil {
 		a.st.AddVersion(name, user, string(old), "sebelum: "+note, a.now())
 	}
-	os.MkdirAll(a.logDir, 0o755)
+	_ = os.MkdirAll(a.logDir, 0o755)
 	if err := atomicWrite(path, content); err != nil {
 		return Result{Code: 1, Out: "gagal menulis config: " + err.Error()}
 	}
 	revert := func() {
 		if oldErr == nil {
-			atomicWrite(path, string(old))
+			_ = atomicWrite(path, string(old))
 		} else {
 			os.Remove(path)
 		}
@@ -278,12 +278,12 @@ func (a *App) applyConf(user, name, content, note string) Result {
 func (s *Store) AddVersion(site, user, content, note string, now time.Time) {
 	sha := sha256hex(content)
 	var last string
-	s.db.QueryRow("SELECT sha FROM conf_versions WHERE site=? ORDER BY id DESC LIMIT 1", site).Scan(&last)
+	_ = s.db.QueryRow("SELECT sha FROM conf_versions WHERE site=? ORDER BY id DESC LIMIT 1", site).Scan(&last)
 	if last == sha {
 		return
 	}
-	s.db.Exec("INSERT INTO conf_versions(site,at,usr,sha,note,content) VALUES(?,?,?,?,?,?)", site, now.Unix(), user, sha, clean(note, 120), content)
-	s.db.Exec("DELETE FROM conf_versions WHERE site=? AND id NOT IN (SELECT id FROM conf_versions WHERE site=? ORDER BY id DESC LIMIT 20)", site, site)
+	_, _ = s.db.Exec("INSERT INTO conf_versions(site,at,usr,sha,note,content) VALUES(?,?,?,?,?,?)", site, now.Unix(), user, sha, clean(note, 120), content)
+	_, _ = s.db.Exec("DELETE FROM conf_versions WHERE site=? AND id NOT IN (SELECT id FROM conf_versions WHERE site=? ORDER BY id DESC LIMIT 20)", site, site)
 }
 
 type VersionRow struct {
@@ -302,7 +302,9 @@ func (s *Store) Versions(site string) []VersionRow {
 	defer rows.Close()
 	for rows.Next() {
 		var v VersionRow
-		rows.Scan(&v.ID, &v.At, &v.User, &v.Note)
+		if rows.Scan(&v.ID, &v.At, &v.User, &v.Note) != nil {
+			continue
+		}
 		out = append(out, v)
 	}
 	return out
@@ -517,7 +519,7 @@ func tailLines(path string, n int) ([]string, error) {
 	if st.Size() > win {
 		off = st.Size() - win
 	}
-	f.Seek(off, io.SeekStart)
+	_, _ = f.Seek(off, io.SeekStart)
 	b, _ := io.ReadAll(f)
 	if off > 0 {
 		if i := bytes.IndexByte(b, '\n'); i >= 0 {

@@ -142,7 +142,8 @@ func TestPasswordHash(t *testing.T) {
 	if !verifyPassword(h, "rahasia-panjang-1") || verifyPassword(h, "rahasia-panjang-2") || verifyPassword("rusak", "x") {
 		t.Fatal("verifikasi password salah")
 	}
-	if hashPassword("a") == hashPassword("a") {
+	h1, h2 := hashPassword("a"), hashPassword("a")
+	if h1 == h2 {
 		t.Fatal("salt tidak acak")
 	}
 }

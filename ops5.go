@@ -45,7 +45,7 @@ func hDBUpload(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		return
 	}
 	defer os.Remove(tmp.Name())
-	tmp.Chmod(0o600)
+	_ = tmp.Chmod(0o600)
 	var cerr error
 	if isGz {
 		_, cerr = io.Copy(tmp, br)
@@ -160,7 +160,7 @@ func hAlerts(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
 		a.sysMu.Unlock()
 		var svcs []ServiceInfo
 		if res := a.runLabT([]string{"service", "list", "--json"}, "", 40*time.Second); res.Code == 0 {
-			json.Unmarshal([]byte(res.Out), &svcs)
+			_ = json.Unmarshal([]byte(res.Out), &svcs)
 		}
 		for i := range svcs {
 			if !svcStates[svcs[i].State] {

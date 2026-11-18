@@ -26,7 +26,7 @@ func TestApr1MatchesOpenSSL(t *testing.T) {
 }
 
 func TestInTailnet(t *testing.T) {
-	ok := []string{"100.64.0.1", "100.110.21.93", "100.64.0.0/10", "100.100.0.0/16", "127.0.0.1", "127.0.0.0/8", "::1", "fd7a:115c:a1e0::1", "fd7a:115c:a1e0::/48", "fd7a:115c:a1e0:1::/64"}
+	ok := []string{"100.64.0.1", "100.64.0.10", "100.64.0.0/10", "100.100.0.0/16", "127.0.0.1", "127.0.0.0/8", "::1", "fd7a:115c:a1e0::1", "fd7a:115c:a1e0::/48", "fd7a:115c:a1e0:1::/64"}
 	bad := []string{"", "all", "0.0.0.0/0", "0.0.0.0", "8.8.8.8", "192.168.0.1", "100.63.255.255", "100.128.0.0", "100.64.0.0/9", "100.0.0.0/8", "127.0.0.0/7", "::/0", "::", "fd7a::/16", "fd7a:115c:a1e0::/47", "100.64.0.1/10", "unix:/tmp/x", "100.64.0.1;", "100.64.0.1 8.8.8.8", "2001:db8::1", "1.2.3.4/33", "::ffff:8.8.8.8"}
 	for _, s := range ok {
 		if !inTailnet(s) {
@@ -58,12 +58,12 @@ func TestSiteExtrasGenerateAndRoundTrip(t *testing.T) {
 	if c, b := o.post("/api/sites/demo/auth/users", `{"user":"tim","password":"kata-sandi-1"}`); c != 200 {
 		t.Fatalf("tambah user: %d %s", c, b)
 	}
-	m := withExtra(o.goodModel("php"), `"aliases":["www.lab","api2.lab"],"auth":true,"allow_ips":["100.110.21.93","100.64.0.0/16"]`)
+	m := withExtra(o.goodModel("php"), `"aliases":["www.lab","api2.lab"],"auth":true,"allow_ips":["100.64.0.10","100.64.0.0/16"]`)
 	if c, b := o.settings("demo", m); c != 200 {
 		t.Fatalf("simpan: %d %s", c, b)
 	}
 	conf := o.siteConf("demo")
-	for _, want := range []string{"server_name demo.lab www.lab api2.lab;", "allow 100.110.21.93;", "allow 100.64.0.0/16;", "deny all;", "auth_basic \"Restricted\";", "auth_basic_user_file " + o.app.authFile("demo") + ";"} {
+	for _, want := range []string{"server_name demo.lab www.lab api2.lab;", "allow 100.64.0.10;", "allow 100.64.0.0/16;", "deny all;", "auth_basic \"Restricted\";", "auth_basic_user_file " + o.app.authFile("demo") + ";"} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("config tak memuat %q", want)
 		}
@@ -72,7 +72,7 @@ func TestSiteExtrasGenerateAndRoundTrip(t *testing.T) {
 		t.Errorf("acl harus ada di kedua blok server: %d", strings.Count(conf, "deny all;"))
 	}
 	for _, blk := range strings.Split(conf, "\nserver {")[1:] {
-		if strings.Index(blk, "allow 100.110.21.93;") > strings.Index(blk, "tailnet_only.conf") {
+		if strings.Index(blk, "allow 100.64.0.10;") > strings.Index(blk, "tailnet_only.conf") {
 			t.Error("acl harus sebelum include tailnet_only")
 		}
 	}

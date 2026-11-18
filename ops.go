@@ -83,10 +83,6 @@ func (a *App) mutate(args []string, stdin string) Result {
 
 // ---------- Website ----------
 
-func hSitesList(a *App, w http.ResponseWriter, r *http.Request, _ *Session) {
-	jsonOut(w, 200, map[string]any{"sites": a.listSites()})
-}
-
 func hSiteAdd(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 	var in struct{ Name, Target, PHP string }
 	if !decode(w, r, &in) {

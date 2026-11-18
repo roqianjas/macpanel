@@ -14,7 +14,16 @@
   lab backup run
 Tanpa shell: semua argumen list; nama, versi, kunci, dan nilai divalidasi.
 """
-import argparse, secrets, json, os, re, shutil, socket, subprocess, sys, time
+import argparse
+import json
+import os
+import re
+import secrets
+import shutil
+import socket
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 HOME = Path.home()

@@ -37,7 +37,9 @@ func (s *Store) AccountRows(self string) []AccountRow {
 	for rows.Next() {
 		var r AccountRow
 		var d, t, m int
-		rows.Scan(&r.Name, &r.Role, &d, &t, &m, &r.Created)
+		if rows.Scan(&r.Name, &r.Role, &d, &t, &m, &r.Created) != nil {
+			continue
+		}
 		r.Disabled, r.TOTPOn, r.MustChange, r.Self = d == 1, t == 1, m == 1, r.Name == self
 		out = append(out, r)
 	}
@@ -59,9 +61,11 @@ func (s *Store) SetTempPassword(uid int64, hash string) error {
 	if _, err := tx.Exec("UPDATE users SET pass_hash=?, must_change=1 WHERE id=?", hash, uid); err != nil {
 		return err
 	}
-	tx.Exec("DELETE FROM sessions WHERE user_id=?", uid)
-	tx.Exec("DELETE FROM trusted WHERE user_id=?", uid)
-	tx.Exec("DELETE FROM tokens WHERE user_id=?", uid)
+	for _, q := range []string{"DELETE FROM sessions WHERE user_id=?", "DELETE FROM trusted WHERE user_id=?", "DELETE FROM tokens WHERE user_id=?"} {
+		if _, err := tx.Exec(q, uid); err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 
@@ -76,15 +80,15 @@ func (s *Store) SetDisabled(name string, off bool) bool {
 	}
 	n, _ := r.RowsAffected()
 	if n == 1 && off {
-		s.db.Exec("DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE name=?)", name)
-		s.db.Exec("DELETE FROM trusted WHERE user_id=(SELECT id FROM users WHERE name=?)", name)
+		_, _ = s.db.Exec("DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE name=?)", name)
+		_, _ = s.db.Exec("DELETE FROM trusted WHERE user_id=(SELECT id FROM users WHERE name=?)", name)
 	}
 	return n == 1
 }
 
 func (s *Store) AdminsExcept(name string) int {
 	var n int
-	s.db.QueryRow("SELECT COUNT(*) FROM users WHERE role='admin' AND disabled=0 AND name<>?", name).Scan(&n)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE role='admin' AND disabled=0 AND name<>?", name).Scan(&n) // gagal baca = n 0 = dianggap tidak ada admin lain (aman: penjaga menolak)
 	return n
 }
 
@@ -198,7 +202,10 @@ func hAccountRole(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		jerr(w, 500, "gagal mengubah peran")
 		return
 	}
-	a.st.db.Exec("DELETE FROM tokens WHERE user_id=?", u.ID)
+	if _, err := a.st.db.Exec("DELETE FROM tokens WHERE user_id=?", u.ID); err != nil {
+		jerr(w, 500, "gagal mencabut token")
+		return
+	}
 	a.st.Audit(ss.User, "account_role", u.Name+" -> "+in.Role+" (sesi dan token dicabut)", a.clientIP(r), a.now())
 	jsonOut(w, 200, map[string]bool{"ok": true})
 }

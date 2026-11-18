@@ -419,7 +419,7 @@ func hEnvSet(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		baks, _ := filepath.Glob(p + ".bak.*")
 		sort.Strings(baks)
 		for len(baks) > 3 {
-			os.Remove(baks[0])
+			_ = os.Remove(baks[0])
 			baks = baks[1:]
 		}
 	}
@@ -429,7 +429,7 @@ func hEnvSet(a *App, w http.ResponseWriter, r *http.Request, ss *Session) {
 		return
 	}
 	if err := os.Rename(tmp, p); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		jerr(w, 500, "gagal menyimpan")
 		return
 	}

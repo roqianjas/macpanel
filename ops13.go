@@ -52,7 +52,7 @@ func (s *Store) PutHook(h *Hook) error {
 }
 
 func (s *Store) SetHookLast(site string, at int64, res string) {
-	s.db.Exec("UPDATE hooks SET last_at=?, last_result=? WHERE site=?", at, clean(res, 80), site)
+	_, _ = s.db.Exec("UPDATE hooks SET last_at=?, last_result=? WHERE site=?", at, clean(res, 80), site)
 }
 
 func (s *Store) DeleteHook(site string) bool {

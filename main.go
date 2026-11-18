@@ -89,7 +89,7 @@ func main() {
 	for len(rest) > 0 && !strings.HasPrefix(rest[0], "-") {
 		pos, rest = append(pos, rest[0]), rest[1:]
 	}
-	fs.Parse(rest)
+	_ = fs.Parse(rest)
 
 	switch {
 	case cmd == "init-key":

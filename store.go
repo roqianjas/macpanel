@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,7 +80,7 @@ func openStore(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Close()
+	_ = f.Close()
 	db, err := sql.Open("sqlite", "file:"+path+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)")
 	if err != nil {
 		return nil, err
@@ -91,10 +92,16 @@ func openStore(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, err
 	}
-	db.Exec("ALTER TABLE users ADD COLUMN must_change INTEGER NOT NULL DEFAULT 0")
-	db.Exec("ALTER TABLE users ADD COLUMN totp_on INTEGER NOT NULL DEFAULT 1")
-	db.Exec("ALTER TABLE users ADD COLUMN totp_pending BLOB")
-	db.Exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'") // migrasi; gagal bila kolom sudah ada (aman diabaikan)
+	for _, m := range []string{
+		"ALTER TABLE users ADD COLUMN must_change INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE users ADD COLUMN totp_on INTEGER NOT NULL DEFAULT 1",
+		"ALTER TABLE users ADD COLUMN totp_pending BLOB",
+		"ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'",
+	} {
+		if _, err := db.Exec(m); err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return nil, err
+		}
+	}
 	return &Store{db}, nil
 }
 
@@ -150,7 +157,9 @@ func (s *Store) UserRows() []UserRow {
 	for rows.Next() {
 		var u UserRow
 		var dis int
-		rows.Scan(&u.Name, &u.Role, &dis, &u.Created)
+		if rows.Scan(&u.Name, &u.Role, &dis, &u.Created) != nil {
+			continue
+		}
 		u.Disabled = dis == 1
 		out = append(out, u)
 	}
@@ -169,7 +178,7 @@ func (s *Store) SetRole(name, role string) bool {
 	if n, _ := r.RowsAffected(); n != 1 {
 		return false
 	}
-	s.db.Exec("DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE name=?)", name)
+	_, _ = s.db.Exec("DELETE FROM sessions WHERE user_id=(SELECT id FROM users WHERE name=?)", name)
 	return true
 }
 
@@ -182,7 +191,9 @@ func (s *Store) ListUsers() []string {
 	var out []string
 	for rows.Next() {
 		var n string
-		rows.Scan(&n)
+		if rows.Scan(&n) != nil {
+			continue
+		}
 		out = append(out, n)
 	}
 	return out
@@ -216,7 +227,7 @@ func (s *Store) NewSession(uid int64, stage string, now time.Time) (string, *Ses
 		ttl = pwdTTL
 	}
 	ss := &Session{ID: sha256hex(tok), UserID: uid, Stage: stage, CSRF: randToken(), LastSeen: now.Unix(), Expires: now.Add(ttl).Unix()}
-	s.db.Exec("INSERT INTO sessions(id,user_id,stage,csrf,created,last_seen,expires) VALUES(?,?,?,?,?,?,?)",
+	_, _ = s.db.Exec("INSERT INTO sessions(id,user_id,stage,csrf,created,last_seen,expires) VALUES(?,?,?,?,?,?,?)",
 		ss.ID, uid, stage, ss.CSRF, now.Unix(), now.Unix(), ss.Expires)
 	return tok, ss
 }
@@ -237,30 +248,30 @@ func (s *Store) GetSession(tok string, now time.Time) *Session {
 		s.DelSession(id)
 		return nil
 	}
-	s.db.Exec("UPDATE sessions SET last_seen=? WHERE id=?", n, id)
+	_, _ = s.db.Exec("UPDATE sessions SET last_seen=? WHERE id=?", n, id)
 	return ss
 }
 
-func (s *Store) DelSession(id string) { s.db.Exec("DELETE FROM sessions WHERE id=?", id) }
+func (s *Store) DelSession(id string) { _, _ = s.db.Exec("DELETE FROM sessions WHERE id=?", id) }
 
 func (s *Store) SetStepUp(id string, until time.Time) {
-	s.db.Exec("UPDATE sessions SET stepup=? WHERE id=?", until.Unix(), id)
+	_, _ = s.db.Exec("UPDATE sessions SET stepup=? WHERE id=?", until.Unix(), id)
 }
 
 // ---------- percobaan login (rate limit / lockout) ----------
 
 func (s *Store) AddAttempt(k string, now time.Time) {
-	s.db.Exec("DELETE FROM attempts WHERE at<?", now.Add(-time.Hour).Unix())
-	s.db.Exec("INSERT INTO attempts(k,at) VALUES(?,?)", k, now.Unix())
+	_, _ = s.db.Exec("DELETE FROM attempts WHERE at<?", now.Add(-time.Hour).Unix())
+	_, _ = s.db.Exec("INSERT INTO attempts(k,at) VALUES(?,?)", k, now.Unix())
 }
 
 func (s *Store) CountAttempts(k string, since time.Time) int {
 	var n int
-	s.db.QueryRow("SELECT COUNT(*) FROM attempts WHERE k=? AND at>=?", k, since.Unix()).Scan(&n)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM attempts WHERE k=? AND at>=?", k, since.Unix()).Scan(&n)
 	return n
 }
 
-func (s *Store) ClearAttempts(k string) { s.db.Exec("DELETE FROM attempts WHERE k=?", k) }
+func (s *Store) ClearAttempts(k string) { _, _ = s.db.Exec("DELETE FROM attempts WHERE k=?", k) }
 
 // ---------- audit berantai ----------
 
@@ -294,8 +305,13 @@ func (s *Store) Audit(usr, action, detail, ip string, now time.Time) {
 	}
 	usr, action, detail, ip = clean(usr, 40), clean(action, 40), clean(detail, 200), clean(ip, 45)
 	at := now.Unix()
-	tx.Exec("INSERT INTO audit(at,usr,action,detail,ip,prev,hash) VALUES(?,?,?,?,?,?,?)", at, usr, action, detail, ip, prev, auditHash(prev, at, usr, action, detail, ip))
-	tx.Commit()
+	if _, err := tx.Exec("INSERT INTO audit(at,usr,action,detail,ip,prev,hash) VALUES(?,?,?,?,?,?,?)", at, usr, action, detail, ip, prev, auditHash(prev, at, usr, action, detail, ip)); err != nil {
+		log.Printf("audit gagal ditulis: %v", err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		log.Printf("audit gagal di-commit: %v", err)
+	}
 }
 
 // VerifyAudit memeriksa rantai; mengembalikan jumlah baris valid dan galat bila ada yang diubah/dihapus.
@@ -309,7 +325,9 @@ func (s *Store) VerifyAudit() (int, error) {
 	for rows.Next() {
 		var id, at int64
 		var usr, action, detail, ip, p, h string
-		rows.Scan(&id, &at, &usr, &action, &detail, &ip, &p, &h)
+		if rows.Scan(&id, &at, &usr, &action, &detail, &ip, &p, &h) != nil {
+			continue
+		}
 		if p != prev || h != auditHash(p, at, usr, action, detail, ip) {
 			return n, fmt.Errorf("rantai audit rusak di baris id=%d", id)
 		}
@@ -336,7 +354,9 @@ func (s *Store) RecentAudit(n int) []AuditRow {
 	defer rows.Close()
 	for rows.Next() {
 		var r AuditRow
-		rows.Scan(&r.At, &r.User, &r.Action, &r.Detail, &r.IP)
+		if rows.Scan(&r.At, &r.User, &r.Action, &r.Detail, &r.IP) != nil {
+			continue
+		}
 		out = append(out, r)
 	}
 	return out
@@ -380,7 +400,9 @@ func (s *Store) ListJobs(n int) []JobRow {
 	defer rows.Close()
 	for rows.Next() {
 		var j JobRow
-		rows.Scan(&j.ID, &j.At, &j.User, &j.Action, &j.Status, &j.Code, &j.Output)
+		if rows.Scan(&j.ID, &j.At, &j.User, &j.Action, &j.Status, &j.Code, &j.Output) != nil {
+			continue
+		}
 		out = append(out, j)
 	}
 	return out

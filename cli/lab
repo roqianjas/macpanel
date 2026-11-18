@@ -9,7 +9,15 @@
 Aturan: satu database + satu user per proyek (nama sama), password acak tidak pernah dicetak,
 disimpan di ~/.config/macminiops/projects/<nama>.<engine>.env (0600). Tanpa shell, argumen berupa list.
 """
-import argparse, gzip, json, os, re, secrets, shutil, subprocess, sys, time
+import argparse
+import gzip
+import json
+import os
+import re
+import secrets
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 HOME = Path.home()

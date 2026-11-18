@@ -1,0 +1,21 @@
+# Pasang: make hooks. Hanya pemeriksaan cepat; gerbang penuh tetap make check.
+repos:
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: bash -c 'out=$(gofmt -l . 2>/dev/null | grep -v node_modules); [ -z "$out" ] || { echo "$out"; exit 1; }'
+        language: system
+        pass_filenames: false
+        files: '\.go$'
+      - id: secrets
+        name: cek rahasia dan data pribadi
+        entry: bash scripts/check-secrets.sh
+        language: system
+        pass_filenames: false
+      - id: ruff
+        name: ruff (CLI)
+        entry: bash -c 'command -v ruff >/dev/null && ruff check cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl || true'
+        language: system
+        pass_filenames: false
+        files: '^cli/'

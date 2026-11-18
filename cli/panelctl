@@ -10,7 +10,15 @@ Token dibuat di panel (Pengaturan > Token API) atau di Mac: panel token create <
 Tingkat token: read (GET saja), operate (ubah, tanpa aksi yang butuh verifikasi ulang), full (juga hapus/config/pasang;
 penghapusan wajib --confirm <nama>).
 """
-import argparse, json, os, ssl, subprocess, sys, time, urllib.error, urllib.request
+import argparse
+import json
+import os
+import ssl
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 

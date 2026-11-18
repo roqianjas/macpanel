@@ -23,16 +23,16 @@ func (s *Store) AddSample(t int64, cpu, mem, disk, load float64, cpuOK, memOK bo
 	if memOK {
 		m = mem
 	}
-	s.db.Exec("INSERT OR REPLACE INTO metrics(t,cpu,mem,disk,load1) VALUES(?,?,?,?,?)", t, c, m, disk, load)
+	_, _ = s.db.Exec("INSERT OR REPLACE INTO metrics(t,cpu,mem,disk,load1) VALUES(?,?,?,?,?)", t, c, m, disk, load)
 }
 
 func (s *Store) AddNet(t int64, iface, label string, rxBps, txBps float64, rxB, txB int64) {
-	s.db.Exec("INSERT OR REPLACE INTO netm(t,iface,label,rx_bps,tx_bps,rx_b,tx_b) VALUES(?,?,?,?,?,?,?)", t, iface, label, rxBps, txBps, rxB, txB)
+	_, _ = s.db.Exec("INSERT OR REPLACE INTO netm(t,iface,label,rx_bps,tx_bps,rx_b,tx_b) VALUES(?,?,?,?,?,?,?)", t, iface, label, rxBps, txBps, rxB, txB)
 }
 
 func (s *Store) PruneMetrics(before int64) {
-	s.db.Exec("DELETE FROM metrics WHERE t<?", before)
-	s.db.Exec("DELETE FROM netm WHERE t<?", before)
+	_, _ = s.db.Exec("DELETE FROM metrics WHERE t<?", before)
+	_, _ = s.db.Exec("DELETE FROM netm WHERE t<?", before)
 }
 
 func (s *Store) Series(since, bucket int64) (cpu, mem, disk, load [][2]float64) {
@@ -96,6 +96,6 @@ func (s *Store) NetSeries(since, bucket int64) []NetSeries {
 }
 
 func (s *Store) LastRate(iface string) (rx, tx float64) {
-	s.db.QueryRow("SELECT rx_bps, tx_bps FROM netm WHERE iface=? ORDER BY t DESC LIMIT 1", iface).Scan(&rx, &tx)
+	_ = s.db.QueryRow("SELECT rx_bps, tx_bps FROM netm WHERE iface=? ORDER BY t DESC LIMIT 1", iface).Scan(&rx, &tx)
 	return
 }
