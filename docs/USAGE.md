@@ -27,6 +27,7 @@ MacPanel adalah panel web untuk mengelola Mac sebagai server pengembangan: websi
 | Sistem | Backup | Jadwal, daftar arsip, pemulihan, pembersihan |
 | Sistem | Pembaruan | Pembaruan paket Homebrew |
 | Sistem | Aktivitas | Riwayat aksi |
+| Kelola | Docker | Container, image, dan proyek Compose (opsional, dipasang dari Aplikasi) |
 | Sistem | Pengaturan | Nama dan tema panel, kata sandi, 2FA, perangkat tepercaya, token API |
 | Sistem | Pengguna | Akun panel: tambah, peran, nonaktifkan, reset, hapus (admin) |
 | Sistem | Dokumentasi | Halaman ini |
@@ -54,12 +55,24 @@ Setiap situs dilayani nginx dan dapat diakses di `https://<nama>.lab` dengan ser
 Menu **Website** lalu **Tambah situs**. Pilih jenis:
 - **PHP**: Laravel, WordPress, atau PHP biasa; pilih versi PHP.
 - **Statis**: HTML, CSS, JS.
-- **Proxy**: meneruskan ke aplikasi lokal (Node, Go, Python) pada port tertentu.
+- **Proxy**: meneruskan ke aplikasi lokal (Node, Go, Python, container) pada port tertentu.
 
 Nama situs hanya huruf kecil, angka, dan tanda hubung. Nama sistem (misalnya `panel`, `db`) tidak dapat dipakai.
 
 ## Pasang cepat
 Tombol **Pasang cepat** membuat proyek Laravel atau WordPress lengkap: folder, database baru, berkas `.env` atau `wp-config.php`, dan situsnya. Anda dapat memilih MariaDB atau MySQL. Bila gagal di tengah, semua yang baru dibuat dibersihkan otomatis.
+
+## Proyek Go, Python, dan Next.js
+Di **Pasang cepat**, pilih **Go**, **Python**, atau **Next.js**. Panel membuat:
+1. Folder proyek berisi kerangka aplikasi yang langsung jalan (Go: `net/http`; Python: virtualenv `.venv` dan `app.py`; Next.js: `create-next-app` dengan TypeScript, App Router, dan pnpm).
+2. **Worker** (proses latar belakang di launchd) yang menjalankan aplikasi di `127.0.0.1` pada port yang dipilih otomatis (3100-3999) atau port yang Anda tentukan, dan hidup kembali bila mati atau setelah restart.
+3. Situs proxy `https://<nama>.lab` yang meneruskan ke port itu.
+
+Versi runtime (Go, Python, Node) dapat dipilih; kosong berarti versi bawaan dari menu **PHP dan runtime**. Aplikasi hanya mendengarkan `127.0.0.1`; satu-satunya jalur masuk adalah nginx. Bila langkah mana pun gagal (mis. build atau aplikasi tidak menjawab), folder, worker, dan situs yang baru dibuat dibersihkan otomatis.
+
+Tab **Deploy** mengenali proyek ini: Go menjalankan `go build`, Python `pip install -r requirements.txt`, Next.js install dan build dengan pnpm atau npm, lalu **Mulai ulang aplikasi** me-restart workernya. Menghapus situs ikut menghentikan dan menghapus workernya. Log aplikasi ada di menu **Worker dan cron**.
+
+Untuk proyek yang sudah ada, gunakan **Tambah situs** jenis Proxy dan buat workernya sendiri di **Worker dan cron**.
 
 ## Pengaturan per situs
 Klik nama situs untuk membuka tab:
@@ -163,6 +176,7 @@ Menu **PHP dan runtime** menyediakan:
 - Pasang atau hapus versi PHP.
 - **Ekstensi**: saklar untuk ekstensi PECL (redis, apcu, xdebug, imagick, dan lain-lain). Ekstensi bawaan PHP Homebrew sudah terkompilasi dan tidak dapat dimatikan.
 - **php.ini**: ubah nilai umum seperti `memory_limit`, `upload_max_filesize`, `max_execution_time`.
+- **php.ini CLI**: `lab ini` hanya mengubah pool FPM. Untuk batas CLI (mis. `memory_limit` bagi test suite besar), buat file `.ini` di `/opt/homebrew/etc/php/<versi>/conf.d/` (mis. `zz-lab-memory.ini`). Nilai `php_admin_value` pada pool FPM tetap mengalahkannya.
 - **Pool FPM**: mode proses dan `pm.max_children` dengan validasi konsistensi.
 - **Composer**: lihat dan perbarui.
 
@@ -382,7 +396,12 @@ lab runtime list | install | use | remove <alat> <versi>
 
 ## Worker dan cron
 ```
-lab worker add <nama> --dir <folder> --cmd "<perintah>" [--php 8.4] [--procs 2]
+lab appinstall go|python|nextjs <nama> [--runtime <versi>] [--port <port>]
+lab docker status|overview|stats
+lab docker container start|stop|restart|remove|logs <nama>
+lab docker image pull|remove <ref> | prune
+lab docker compose list | up|down|ps|logs <proyek>
+lab worker add <nama> --dir <folder> --cmd "<perintah>" [--php 8.4] [--procs 2] [--env KUNCI=nilai]
 lab job add <nama> --dir <folder> --cmd "<perintah>" (--every 1m | --at 02:30)
 lab worker|job list | status | restart | remove | logs
 ```
@@ -511,3 +530,42 @@ curl --cacert rootCA.pem -H "Authorization: Bearer $PANEL_TOKEN" https://panel.l
 | 401 | Token tidak valid, kedaluwarsa, atau dicabut |
 | 403 | Tingkat token kurang, atau rute memang tidak tersedia lewat token |
 | 429 | Terlalu banyak percobaan dari satu alamat; tunggu beberapa menit |
+
+---
+
+# Docker
+
+Docker bersifat opsional dan tidak memakai sumber daya sampai dipasang dan dijalankan. Panel memakai **Colima**: mesin virtual ringan tanpa aplikasi GUI, berjalan di latar belakang lewat launchd.
+
+## Memasang dan menjalankan
+1. Menu **Aplikasi**, cari **Docker (Colima)**, lalu **Pasang**. Panel memasang Colima, Docker CLI, dan plugin Compose lewat Homebrew (butuh internet).
+2. Klik **Mulai**. Start pertama mengunduh image VM dan bisa beberapa menit.
+3. Menu **Docker** menampilkan container, proyek Compose, dan image.
+
+Mesin virtual dibatasi 2 CPU, 4 GB RAM, dan 40 GB disk. Dari komputer Anda, **hanya folder wwwroot** yang dibagikan ke VM, bukan seluruh folder rumah. Mencopot Docker menghapus VM beserta semua container, image, dan volume di dalamnya.
+
+## Container
+Tab **Container** menampilkan status, image, port, serta pemakaian CPU dan RAM. Anda dapat menjalankan, menghentikan, memulai ulang, melihat log, dan menghapus container (verifikasi ulang dan ketik ulang nama). Data di volume tidak ikut terhapus saat container dihapus.
+
+## Proyek Compose
+Taruh `compose.yaml` (atau `docker-compose.yml`) di folder situs, misalnya `wwwroot/<nama>`. Tab **Proyek Compose** menampilkannya; **Jalankan** menjalankan `docker compose up -d`, **Hentikan** menjalankan `down`.
+
+Agar tetap aman, berkas diperiksa sebelum dijalankan dan **ditolak** bila memuat:
+- `privileged`, `network_mode: host`, `pid: host`, `ipc: host`, `cap_add`, atau `devices`;
+- `security_opt` dengan `unconfined`;
+- mount di luar wwwroot atau yang memuat `docker.sock`;
+- port yang tidak diikat ke `127.0.0.1`. Tulis `"127.0.0.1:8080:80"`, bukan `"8080:80"`.
+
+Untuk membuka aplikasi container lewat HTTPS, buat situs **Proxy** ke port tersebut di menu Website.
+
+## Image
+Tab **Image**: tarik image (nama huruf kecil, mis. `nginx:1.27`), hapus image, dan bersihkan image yang tidak terpakai.
+
+## Yang sengaja tidak ada
+- Menjalankan `docker run` dengan argumen bebas, dan shell di dalam container. Akses ke Docker setara akses administrator di VM, jadi panel hanya menyediakan aksi yang sudah dibatasi di atas.
+- Memasang, membuat, atau menghapus volume dan network dari panel.
+
+## Pemecahan masalah
+- **Docker belum berjalan**: mulai dari menu Aplikasi; lihat log `~/Library/Logs/colima.log`.
+- **Compose ditolak kebijakan**: pesan menyebut layanan dan baris yang melanggar; ubah berkas sesuai daftar di atas.
+- **Disk VM penuh**: tab Image, **Bersihkan tak terpakai**.

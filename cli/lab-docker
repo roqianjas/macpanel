@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""lab docker: kelola Docker (Colima) tanpa 'docker run' bebas.
+
+  lab docker status                      -> JSON: terpasang, berjalan, versi, jumlah
+  lab docker overview                    -> JSON: status + container + image + proyek compose
+  lab docker container start|stop|restart|remove <nama|id>
+  lab docker container logs <nama|id> [-n 100]
+  lab docker image pull <ref> | remove <id|ref> | prune
+  lab docker stats                       -> JSON pemakaian CPU/RAM per container
+  lab docker compose list | up|down|ps|logs <proyek>
+
+Keamanan: argumen divalidasi dan tidak lewat shell. Compose hanya dari folder di ~/MacPanel/wwwroot, dan 'up' menolak
+proyek yang meminta hak berlebih (privileged, network/pid/ipc host, cap_add, devices, mount di luar wwwroot atau docker.sock,
+port yang tidak terikat ke 127.0.0.1). Akses socket Docker setara root di VM, jadi tidak ada jalur untuk perintah bebas.
+"""
+import argparse, json, os, re, subprocess, sys
+from pathlib import Path
+
+HOME = Path.home()
+ROOT = Path(os.environ.get("MACPANEL_HOME") or (HOME / "MacPanel"))
+WWW = (ROOT / "wwwroot").resolve()
+SOCK = HOME / ".colima/default/docker.sock"
+DOCKER = "/opt/homebrew/bin/docker"
+ENV = dict(os.environ, PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", DOCKER_HOST=f"unix://{SOCK}", HOME=str(HOME), DOCKER_CLI_HINTS="false", NO_COLOR="1")
+NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,100}$")
+ID_RE = re.compile(r"^[a-f0-9]{6,64}$")
+REF_RE = re.compile(r"^[a-z0-9][a-z0-9._/:@-]{0,200}$")
+PROJ_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,60}$")
+COMPOSE_FILES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml")
+
+
+def die(m, code=1):
+    print("lab:", m, file=sys.stderr); sys.exit(code)
+
+
+def dk(*args, timeout=120, check=False, stream=False):
+    if not Path(DOCKER).exists(): die("Docker belum terpasang (halaman Aplikasi: Docker)")
+    if stream: return subprocess.run([DOCKER, *args], env=ENV).returncode
+    r = subprocess.run([DOCKER, *args], env=ENV, text=True, capture_output=True, timeout=timeout)
+    if check and r.returncode: die((r.stderr or r.stdout).strip()[-300:] or "perintah docker gagal")
+    return r
+
+
+def running():
+    if not SOCK.exists(): return False
+    return dk("version", "--format", "{{.Server.Version}}", timeout=10).returncode == 0
+
+
+def need_running():
+    if not Path(DOCKER).exists(): die("Docker belum terpasang (halaman Aplikasi: Docker)")
+    if not running(): die("Docker belum berjalan (jalankan dari halaman Aplikasi atau menu Docker)")
+
+
+def jlines(out):
+    res = []
+    for ln in out.splitlines():
+        ln = ln.strip()
+        if ln:
+            try: res.append(json.loads(ln))
+            except ValueError: pass
+    return res
+
+
+def status():
+    inst = Path(DOCKER).exists()
+    st = dict(installed=inst, running=False, version="", containers=0, running_containers=0, images=0)
+    if inst and running():
+        st["running"] = True
+        st["version"] = dk("version", "--format", "{{.Server.Version}}").stdout.strip()
+        cs = jlines(dk("ps", "-a", "--format", "{{json .}}").stdout)
+        st["containers"], st["running_containers"] = len(cs), sum(1 for c in cs if c.get("State") == "running")
+        st["images"] = len(jlines(dk("images", "--format", "{{json .}}").stdout))
+    return st
+
+
+def containers():
+    out = []
+    for c in jlines(dk("ps", "-a", "--format", "{{json .}}", check=True).stdout):
+        out.append(dict(id=c.get("ID", "")[:12], name=c.get("Names", ""), image=c.get("Image", ""), state=c.get("State", ""), status=c.get("Status", ""),
+                        ports=c.get("Ports", ""), project=(re.search(r"com\.docker\.compose\.project=([^,]+)", c.get("Labels", "")) or [None, ""])[1]))
+    return out
+
+
+def images():
+    return [dict(id=i.get("ID", "")[:12], repo=i.get("Repository", ""), tag=i.get("Tag", ""), size=i.get("Size", ""), created=i.get("CreatedSince", ""))
+            for i in jlines(dk("images", "--format", "{{json .}}", check=True).stdout)]
+
+
+def compose_file(d):
+    for f in COMPOSE_FILES:
+        if (d / f).is_file() and not (d / f).is_symlink(): return d / f
+    return None
+
+
+def projects():
+    res = []
+    if not WWW.is_dir(): return res
+    for d in sorted(p for p in WWW.iterdir() if p.is_dir() and not p.is_symlink()):
+        f = compose_file(d)
+        if f: res.append(dict(name=d.name, file=f.name))
+    return res
+
+
+def proj_dir(name):
+    if not PROJ_RE.match(name or ""): die("nama proyek tidak valid")
+    d = (WWW / name).resolve()
+    if d.parent != WWW or not d.is_dir() or (WWW / name).is_symlink(): die("proyek tidak ada di wwwroot")
+    f = compose_file(d)
+    if not f: die("tidak ada compose.yaml / docker-compose.yml di folder proyek")
+    return d, f
+
+
+def policy_errors(cfg):
+    """Periksa hasil `docker compose config` (sudah dinormalisasi) terhadap kebijakan keamanan."""
+    errs = []
+    for name, s in (cfg.get("services") or {}).items():
+        if s.get("privileged"): errs.append(f"{name}: privileged tidak diizinkan")
+        for k in ("network_mode", "pid", "ipc", "userns_mode", "cgroup"):
+            if str(s.get(k, "")).startswith("host"): errs.append(f"{name}: {k}=host tidak diizinkan")
+        if s.get("cap_add"): errs.append(f"{name}: cap_add tidak diizinkan")
+        if s.get("devices"): errs.append(f"{name}: devices tidak diizinkan")
+        for so in s.get("security_opt") or []:
+            if "unconfined" in str(so): errs.append(f"{name}: security_opt unconfined tidak diizinkan")
+        for p in s.get("ports") or []:
+            hip = p.get("host_ip") if isinstance(p, dict) else None
+            if isinstance(p, dict) and p.get("published") and hip != "127.0.0.1":
+                errs.append(f"{name}: port {p.get('published')} harus diikat ke 127.0.0.1 (tulis \"127.0.0.1:{p.get('published')}:{p.get('target')}\")")
+        for v in s.get("volumes") or []:
+            if not isinstance(v, dict) or v.get("type") != "bind": continue
+            src = str(v.get("source", ""))
+            try: rp = Path(src).resolve()
+            except OSError: rp = Path(src)
+            if "docker.sock" in src or not (rp == WWW or WWW in rp.parents): errs.append(f"{name}: mount {src} di luar wwwroot atau berisi docker.sock")
+    for vn, v in (cfg.get("volumes") or {}).items():
+        o = (v or {}).get("driver_opts") or {}
+        dev = str(o.get("device", ""))
+        if dev or "bind" in str(o.get("o", "")) or (v or {}).get("driver") not in (None, "", "local"):
+            try: rp = Path(dev).resolve()
+            except OSError: rp = Path(dev)
+            if not dev or not (rp == WWW or WWW in rp.parents): errs.append(f"volume {vn}: driver_opts/driver tidak diizinkan (hanya volume lokal biasa atau device di wwwroot)")
+    for name, s in (cfg.get("services") or {}).items():
+        b = s.get("build")
+        if b:
+            ctx = b.get("context") if isinstance(b, dict) else b
+            rp = Path(str(ctx)).resolve()
+            if not (rp == WWW or WWW in rp.parents): errs.append(f"{name}: build context {ctx} di luar wwwroot")
+            for k, v in ((b.get("additional_contexts") or {}).items() if isinstance(b, dict) else []):
+                if str(v).startswith(("/", ".", "~")) and not (Path(str(v)).resolve() == WWW or WWW in Path(str(v)).resolve().parents): errs.append(f"{name}: additional_contexts {k} di luar wwwroot")
+        if s.get("sysctls"): errs.append(f"{name}: sysctls tidak diizinkan")
+    return errs
+
+
+def compose_cfg(d, f):
+    r = dk("compose", "-f", str(f), "--project-directory", str(d), "-p", d.name, "config", "--format", "json", timeout=60)
+    if r.returncode: die("compose.yaml tidak valid: " + (r.stderr or r.stdout).strip()[-300:])
+    try: return json.loads(r.stdout)
+    except ValueError: die("keluaran compose tidak terbaca")
+
+
+def cmd_compose(a):
+    if a.act == "list":
+        print(json.dumps(dict(projects=projects()))); return
+    need_running(); d, f = proj_dir(a.project)
+    base = ["compose", "-f", str(f), "--project-directory", str(d), "-p", d.name]
+    if a.act == "up":
+        errs = policy_errors(compose_cfg(d, f))
+        if errs: die("ditolak oleh kebijakan keamanan: " + "; ".join(errs))
+        sys.exit(dk(*base, "up", "-d", "--remove-orphans", stream=True))
+    if a.act == "down": sys.exit(dk(*base, "down", stream=True))
+    if a.act == "ps":
+        print(json.dumps(dict(services=[dict(name=c.get("Service", ""), state=c.get("State", ""), status=c.get("Status", ""), ports=c.get("Publishers") and ",".join(f"{p.get('URL','')}:{p.get('PublishedPort')}->{p.get('TargetPort')}" for p in c.get("Publishers") if p.get("PublishedPort")) or "") for c in jlines(dk(*base, "ps", "-a", "--format", "json", check=True).stdout)]))); return
+    if a.act == "logs":
+        r = dk(*base, "logs", "--no-color", "--tail", str(max(1, min(a.n, 500))), check=True); print(r.stdout + r.stderr)
+
+
+def target(x):
+    if not (NAME_RE.match(x or "") or ID_RE.match(x or "")): die("nama/id container tidak valid")
+    return x
+
+
+def cmd_container(a):
+    need_running(); t = target(a.target)
+    if a.act == "logs":
+        r = dk("logs", "--tail", str(max(1, min(a.n, 500))), t, check=True); print(r.stdout + r.stderr); return
+    if a.act == "remove":
+        r = dk("rm", "-f", t, check=True); print("OK: container dihapus"); return
+    dk(a.act, t, check=True, timeout=60); print(f"OK: container {a.act}")
+
+
+def cmd_image(a):
+    need_running()
+    if a.act == "prune":
+        r = dk("image", "prune", "-f", check=True); print(r.stdout.strip() or "OK"); return
+    if not REF_RE.match(a.ref or ""): die("referensi image tidak valid")
+    if a.act == "pull": sys.exit(dk("pull", a.ref, stream=True))
+    r = dk("rmi", a.ref, check=True); print("OK: image dihapus")
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="lab"); top = ap.add_subparsers(dest="mod", required=True)
+    d = top.add_parser("docker").add_subparsers(dest="cmd", required=True)
+    d.add_parser("status"); d.add_parser("overview"); d.add_parser("stats")
+    c = d.add_parser("container").add_subparsers(dest="act", required=True)
+    for x in ("start", "stop", "restart", "remove"): c.add_parser(x).add_argument("target")
+    q = c.add_parser("logs"); q.add_argument("target"); q.add_argument("-n", type=int, default=100)
+    i = d.add_parser("image").add_subparsers(dest="act", required=True)
+    i.add_parser("pull").add_argument("ref"); i.add_parser("remove").add_argument("ref"); i.add_parser("prune")
+    m = d.add_parser("compose").add_subparsers(dest="act", required=True); m.add_parser("list")
+    for x in ("up", "down", "ps"): m.add_parser(x).add_argument("project")
+    q = m.add_parser("logs"); q.add_argument("project"); q.add_argument("-n", type=int, default=100)
+    a = ap.parse_args()
+    if a.cmd == "status": print(json.dumps(status())); return
+    if a.cmd == "overview":
+        st = status()
+        if st["running"]: print(json.dumps(dict(status=st, containers=containers(), images=images(), projects=projects())))
+        else: print(json.dumps(dict(status=st, containers=[], images=[], projects=projects())))
+        return
+    if a.cmd == "stats":
+        need_running()
+        print(json.dumps(dict(stats=[dict(name=s.get("Name", ""), cpu=s.get("CPUPerc", ""), mem=s.get("MemUsage", ""), memp=s.get("MemPerc", "")) for s in jlines(dk("stats", "--no-stream", "--format", "{{json .}}", check=True, timeout=30).stdout)]))); return
+    {"container": cmd_container, "image": cmd_image, "compose": cmd_compose}[a.cmd](a)
+
+
+if __name__ == "__main__":
+    main()

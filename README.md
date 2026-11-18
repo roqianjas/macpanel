@@ -27,6 +27,7 @@ Captured from a throwaway demo instance (fake sites, empty database list, no rea
 - **Deploy:** per-site git pull, composer, npm/pnpm, artisan, FPM restart.
 - **Monitoring:** CPU, memory, disk, load, per-interface bandwidth with 7-day history; alerts for disk, memory, services, site errors, SSL expiry, stale backups.
 - **Security:** loopback bind, TOTP at login, password step-up for destructive actions, hash-chained audit log, admin/viewer roles, no web shell.
+- **App projects and Docker:** one-click Go, Python, and Next.js projects (launchd worker on loopback + nginx proxy site), optional Docker via Colima with container/image/Compose management and a Compose security policy (no privileged, host network, extra capabilities, devices, or mounts outside wwwroot).
 - **Accounts and databases:** panel user management (temporary password, forced change on first login), extra database users per database (read-only / read-write / full, localhost only), root password rotation with verification and rollback.
 - **Settings and automation:** panel name and theme, password change, 2FA on/off per account, trusted devices, and scoped API tokens (read / operate / full) with a `panelctl` CLI so scripts and AI agents can drive the panel. Credentials, `.env` contents and login/2FA never go through a token.
 - UI: React + Vite, light/dark, responsive, accessible (keyboard, 44px targets, reduced motion). Backend: one Go binary with SQLite.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BookOpen, Bell, Boxes, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { Activity, BookOpen, Bell, Boxes, Container, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
@@ -16,6 +16,7 @@ import Sites from "./pages/Sites";
 import Apps from "./pages/Apps";
 import Databases from "./pages/Databases";
 import Runtimes from "./pages/Runtimes";
+import Docker from "./pages/Docker";
 import Tasks from "./pages/Tasks";
 import Updates from "./pages/Updates";
 import ActivityPage from "./pages/Activity";
@@ -181,7 +182,7 @@ interface NavItem {
 }
 const GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
-  { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
+  { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "docker", label: "Docker", icon: Container }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
   { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "pengaturan", label: "Pengaturan", icon: SettingsIcon }, { id: "pengguna", label: "Pengguna", icon: UsersIcon }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
 ];
 const ALL = GROUPS.flatMap((g) => g.items);
@@ -221,6 +222,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
       case "aplikasi": return <Apps />;
       case "database": return <Databases />;
       case "runtime": return <Runtimes />;
+      case "docker": return <Docker goto={(id) => { location.hash = `#/${id}`; }} />;
       case "tugas": return <Tasks />;
       case "sistem": return <System />;
       case "backup": return <Backups />;

@@ -71,7 +71,9 @@ def site(a):
     s = str(OPS / "scripts/addsite.sh")
     if a.act == "list": sys.exit(stream([s, "--list"]))
     if a.act == "remove":
-        if re.fullmatch(NAME_RE, a.name or ""): (SITES_DIR / f"{a.name}.conf.disabled").unlink(missing_ok=True)
+        if re.fullmatch(NAME_RE, a.name or ""):
+            (SITES_DIR / f"{a.name}.conf.disabled").unlink(missing_ok=True)
+            if (ROOT / "wwwroot" / a.name / ".macpanel.json").exists(): sh([str(OPS / "scripts/lab"), "worker", "remove", a.name])  # proyek Go/Python/Next.js: hentikan prosesnya juga
         sys.exit(stream([s, "--remove", a.name]))
     if a.act in ("enable", "disable"): site_toggle(a.name, a.act == "enable"); return
     if a.act == "cert": cert(a.name, a.aliases); return
@@ -262,6 +264,7 @@ CATALOG = [
     S("mysql", "MySQL 8.4", "Database", "brew", "mysql@8.4", port=3307, log="/opt/homebrew/var/mysql/*.err", desc="127.0.0.1:3307"),
     S("redis", "Redis", "Cache dan antrean", "brew", "redis", port=6379, log=str(LOGD / "redis.log"), desc="127.0.0.1:6379"),
     S("memcached", "Memcached", "Cache dan antrean", "brew", "memcached", port=11211, optional=True, desc="Cache memori, opsional (port 11211)"),
+    S("docker", "Docker (Colima)", "Alat pengembangan", "launchd", "com.macminiops.colima", sock=str(HOME / ".colima/default/docker.sock"), optional=True, log=str(HOME / "Library/Logs/colima.log"), desc="Runtime Docker tanpa GUI (VM 2 CPU / 4 GB, hanya wwwroot dibagikan). Dikelola di menu Docker"),
     S("9router", "9Router", "Alat pengembangan", "launchd", "com.macminiops.9router", port=20128, optional=True, log=str(HOME / "Library/Logs/9router.log"), desc="Router/proxy model AI lokal (127.0.0.1:20128, lewat 9router.lab di tailnet). Password bawaan hanya bisa diganti dari Mac ini sendiri di http://127.0.0.1:20128"),
     S("mailpit", "Mailpit", "Alat pengembangan", "brew", "mailpit", port=8025, optional=True, desc="Penangkap email dev: SMTP 1025, UI 127.0.0.1:8025"),
     S("netdata", "Netdata", "Monitoring", "brew", "netdata", port=19999, log=str(LOGD / "netdata/daemon.log"), desc="Metrik sistem real-time (stats.lab)"),
@@ -314,6 +317,8 @@ def snapshot():
             installed, ver = (LAUNCH / f"{c['name']}.plist").exists(), ""
             if installed and c["id"] == "mariadb":
                 ver = brew_versions().get("mariadb@11.8", "")
+            if installed and c["id"] == "docker":
+                ver = brew_versions().get("docker", "")
             if installed and c["id"] == "9router":
                 try: ver = json.loads((NR_DIR / "node_modules/9router/package.json").read_text()).get("version", "")
                 except (OSError, ValueError): pass
@@ -361,7 +366,7 @@ def service(a):
         else: r = sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist]) if not launchd_loaded(c["name"]) else sh(["/bin/true"])
     if r.returncode: die((r.stderr or r.stdout).strip()[-300:] or "gagal")
     want = a.act != "stop"
-    for _ in range(120 if c["id"] in ("9router", "mariadb") else 20):  # 9router menyiapkan runtime SQLite saat start pertama (±20 dtk)
+    for _ in range(600 if c["id"] == "docker" else 120 if c["id"] in ("9router", "mariadb") else 20):  # 9router menyiapkan runtime SQLite saat start pertama (±20 dtk)
         time.sleep(0.5)
         if probe(c) == want: break
     now = probe(c)
@@ -432,6 +437,54 @@ def nr_remove():
     print("OK: 9Router dihapus. Data akun di ~/.9router TIDAK dihapus (hapus sendiri bila tidak dipakai lagi).")
 
 
+# ---------- Docker (Colima, launchd) ----------
+DK_LABEL = "com.macminiops.colima"
+DK_SOCK = HOME / ".colima/default/docker.sock"
+DK_BREW = ("colima", "docker", "docker-compose")
+
+
+def dk_plist():
+    wwwroot = ROOT / "wwwroot"
+    # VM dibatasi 2 CPU / 4 GB; hanya wwwroot yang dibagikan (bukan seluruh home); runtime docker.
+    return {"Label": DK_LABEL, "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 30, "ProcessType": "Background",
+            "ProgramArguments": ["/opt/homebrew/bin/colima", "start", "--foreground", "--runtime", "docker", "--vm-type", "vz", "--cpu", "2", "--memory", "4", "--disk", "40",
+                                 "--mount-type", "virtiofs", "--mount", f"{wwwroot}:w"],
+            "EnvironmentVariables": {"HOME": str(HOME), "PATH": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"},
+            "StandardOutPath": str(HOME / "Library/Logs/colima.log"), "StandardErrorPath": str(HOME / "Library/Logs/colima.log")}
+
+
+def dk_install():
+    import plistlib
+    plist = LAUNCH / f"{DK_LABEL}.plist"
+    have = brew_versions()
+    missing = [f for f in DK_BREW if f not in have]
+    if not missing and plist.exists(): print("sudah terpasang: Docker (Colima)"); return
+    print(f"[1/3] brew install {' '.join(missing) or '(sudah ada)'}")
+    if missing and stream([BREW, "install", *missing]): die("brew install gagal")
+    print("[2/3] plugin compose untuk docker CLI")
+    cfg = HOME / ".docker/config.json"; cfg.parent.mkdir(exist_ok=True)
+    try: d = json.loads(cfg.read_text()) if cfg.exists() else {}
+    except ValueError: d = {}
+    dirs = d.setdefault("cliPluginsExtraDirs", [])
+    if "/opt/homebrew/lib/docker/cli-plugins" not in dirs:
+        if cfg.exists(): shutil.copy2(cfg, f"{cfg}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+        dirs.append("/opt/homebrew/lib/docker/cli-plugins"); cfg.write_text(json.dumps(d, indent=2)); cfg.chmod(0o600)
+    print("[3/3] LaunchAgent colima (VM 2 CPU / 4 GB, hanya wwwroot dibagikan)")
+    LAUNCH.mkdir(parents=True, exist_ok=True); plist.write_bytes(plistlib.dumps(dk_plist())); plist.chmod(0o644)
+    print("OK: Docker terpasang. Jalankan dari halaman Aplikasi atau menu Docker; start pertama mengunduh image VM (beberapa menit).")
+
+
+def dk_remove():
+    plist = LAUNCH / f"{DK_LABEL}.plist"
+    sh(["/bin/launchctl", "bootout", f"gui/{UID}/{DK_LABEL}"])
+    if Path("/opt/homebrew/bin/colima").exists():
+        sh(["/opt/homebrew/bin/colima", "stop"]); sh(["/opt/homebrew/bin/colima", "delete", "--force"])
+    plist.unlink(missing_ok=True)
+    have = brew_versions(); present = [f for f in DK_BREW if f in have]
+    if present and stream([BREW, "uninstall", *present]): die("brew uninstall gagal")
+    print("OK: Docker (Colima) dihapus, termasuk VM dan semua container/image di dalamnya.")
+
+
 def app(a):
     opt = {c["id"]: c for c in CATALOG if c["optional"]}
     if a.act == "list":
@@ -442,6 +495,8 @@ def app(a):
     if not c: die(f"aplikasi '{a.id}' tidak ada di katalog (opsional: {', '.join(opt)})")
     if c["id"] == "9router":
         nr_install() if a.act == "install" else nr_remove(); return
+    if c["id"] == "docker":
+        dk_install() if a.act == "install" else dk_remove(); return
     installed = c["name"] in brew_versions()
     if a.act == "install":
         if installed: print(f"sudah terpasang: {c['label']}"); return

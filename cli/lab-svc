@@ -42,6 +42,11 @@ def build(kind, n, a, idx=None):
     argv = shlex.split(a.cmd)
     if not argv: die("--cmd kosong")
     path = ([PHP[a.php]] if a.php else []) + BASE_PATH
+    extra = {}
+    for kv in (getattr(a, "env", None) or []):
+        k, _, v = kv.partition("=")
+        if not re.fullmatch(r"[A-Z][A-Z0-9_]{0,40}", k) or k in ("PATH", "HOME") or not re.fullmatch(r"[A-Za-z0-9_.:/@+-]{0,200}", v): die(f"--env tidak valid: {k!r} (KUNCI huruf besar, nilai sederhana)")
+        extra[k] = v
     exe = argv[0] if "/" in argv[0] else shutil.which(argv[0], path=":".join(path))
     if not exe or not os.access(exe, os.X_OK): die(f"program tidak ditemukan: {argv[0]}")
     argv[0] = exe
@@ -49,7 +54,7 @@ def build(kind, n, a, idx=None):
     LOGS.mkdir(parents=True, exist_ok=True)
     p = {
         "Label": label(kind, nm), "ProgramArguments": argv, "WorkingDirectory": str(d),
-        "EnvironmentVariables": {"PATH": ":".join(path), "HOME": str(HOME)},
+        "EnvironmentVariables": {"PATH": ":".join(path), "HOME": str(HOME), **extra},
         "StandardOutPath": str(LOGS / f"{nm}.log"), "StandardErrorPath": str(LOGS / f"{nm}.log"),
         "ProcessType": "Background", "Nice": 5,
     }
@@ -135,6 +140,7 @@ def main():
         s = top.add_parser(kind).add_subparsers(dest="act", required=True)
         s.add_parser("list")
         p = s.add_parser("add"); p.add_argument("name"); p.add_argument("--dir", required=True); p.add_argument("--cmd", required=True); p.add_argument("--php", choices=list(PHP))
+        p.add_argument("--env", action="append", default=[])
         if kind == "worker": p.add_argument("--procs", type=int, default=1)
         else: p.add_argument("--every"); p.add_argument("--at")
         for x in ("status", "restart", "remove", "logs"):
