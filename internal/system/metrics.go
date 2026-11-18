@@ -284,6 +284,7 @@ func (c *Collector) Run(ctx context.Context) {
 			c.Sample(now)
 			if n++; n%120 == 0 {
 				c.a.Store.PruneMetrics(now.Unix() - retainSeconds)
+				pruneHistory(c.a.Store, now)
 			}
 		}
 	}

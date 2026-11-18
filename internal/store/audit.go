@@ -52,12 +52,13 @@ func (s *Store) Audit(usr, action, detail, ip string, now time.Time) {
 
 // VerifyAudit memeriksa rantai; mengembalikan jumlah baris valid dan galat bila ada yang diubah/dihapus.
 func (s *Store) VerifyAudit() (int, error) {
+	anchor := s.Setting(auditAnchorKey, "") // dibaca sebelum query dibuka: koneksi database hanya satu
 	rows, err := s.DB.Query("SELECT id,at,usr,action,detail,ip,prev,hash FROM audit ORDER BY id")
 	if err != nil {
 		return 0, err
 	}
 	defer rows.Close()
-	prev, n := "", 0
+	prev, n := anchor, 0
 	for rows.Next() {
 		var id, at int64
 		var usr, action, detail, ip, p, h string
@@ -74,6 +75,7 @@ func (s *Store) VerifyAudit() (int, error) {
 }
 
 type AuditRow struct {
+	ID     int64  `json:"id"`
 	At     int64  `json:"at"`
 	User   string `json:"user"`
 	Action string `json:"action"`
@@ -81,19 +83,55 @@ type AuditRow struct {
 	IP     string `json:"ip"`
 }
 
+// RecentAudit mengembalikan n baris terbaru (dipakai tes dan ringkasan).
 func (s *Store) RecentAudit(n int) []AuditRow {
-	rows, err := s.DB.Query("SELECT at,usr,action,detail,ip FROM audit ORDER BY id DESC LIMIT ?", n)
-	out := []AuditRow{}
+	pg, _ := s.AuditPage(PageReq{Limit: n})
+	return pg.Rows
+}
+
+// AuditPage: halaman audit, terbaru dulu. Q mencari di user, aksi, detail, dan IP.
+func (s *Store) AuditPage(p PageReq) (Page[AuditRow], error) {
+	return paged(s, "audit", "id,at,usr,action,detail,ip", []string{"usr", "action", "detail", "ip"}, p,
+		func(r interface{ Scan(...any) error }) (AuditRow, int64, error) {
+			var a AuditRow
+			err := r.Scan(&a.ID, &a.At, &a.User, &a.Action, &a.Detail, &a.IP)
+			return a, a.ID, err
+		})
+}
+
+const auditAnchorKey = "audit_anchor"
+
+// PruneAudit membuang baris audit lebih tua dari before, tetapi selalu menyisakan keepMin baris terbaru.
+// Rantai hash tetap dapat diverifikasi: hash baris terakhir yang dibuang disimpan sebagai jangkar (audit_anchor)
+// dalam transaksi yang sama, dan VerifyAudit mulai dari jangkar itu. Mengembalikan jumlah baris yang dibuang.
+func (s *Store) PruneAudit(before int64, keepMin int) (int64, error) {
+	if keepMin < 1 {
+		keepMin = 1
+	}
+	tx, err := s.DB.Begin()
 	if err != nil {
-		return out
+		return 0, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var r AuditRow
-		if rows.Scan(&r.At, &r.User, &r.Action, &r.Detail, &r.IP) != nil {
-			continue
-		}
-		out = append(out, r)
+	defer func() { _ = tx.Rollback() }()
+	var cut sql.NullInt64
+	// kandidat: lebih tua dari before DAN di luar keepMin baris terbaru; cut = id kandidat terbesar (awalan yang berurutan)
+	if err := tx.QueryRow(`SELECT MAX(id) FROM audit WHERE at<? AND id NOT IN (SELECT id FROM audit ORDER BY id DESC LIMIT ?)`, before, keepMin).Scan(&cut); err != nil {
+		return 0, err
 	}
-	return out
+	if !cut.Valid {
+		return 0, nil
+	}
+	var anchor string
+	if err := tx.QueryRow("SELECT hash FROM audit WHERE id=?", cut.Int64).Scan(&anchor); err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec("INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", auditAnchorKey, anchor); err != nil {
+		return 0, err
+	}
+	r, err := tx.Exec("DELETE FROM audit WHERE id<=?", cut.Int64)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := r.RowsAffected()
+	return n, tx.Commit()
 }

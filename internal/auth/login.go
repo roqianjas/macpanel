@@ -178,5 +178,14 @@ func Me(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session) 
 }
 
 func Audit(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session) {
-	core.WriteJSON(w, 200, map[string]any{"rows": a.Store.RecentAudit(100)})
+	p, ok := core.PageParams(w, r)
+	if !ok {
+		return
+	}
+	pg, err := a.Store.AuditPage(p)
+	if err != nil {
+		core.WriteError(w, 500, "gagal membaca audit")
+		return
+	}
+	core.WriteJSON(w, 200, pg)
 }

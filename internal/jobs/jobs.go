@@ -9,7 +9,17 @@ import (
 )
 
 func Jobs(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Session) {
-	core.WriteJSON(w, 200, map[string]any{"jobs": a.Store.ListJobs(50)})
+	p, ok := core.PageParams(w, r)
+	if !ok {
+		return
+	}
+	pg, err := a.Store.JobsPage(p)
+	if err != nil {
+		core.WriteError(w, 500, "gagal membaca riwayat job")
+		return
+	}
+	// "jobs" dipertahankan untuk klien lama; "rows", "next", "total" adalah kontrak pagination baru
+	core.WriteJSON(w, 200, map[string]any{"jobs": pg.Rows, "rows": pg.Rows, "next": pg.Next, "total": pg.Total})
 }
 
 func Job(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Session) {

@@ -66,6 +66,23 @@ Aturan, dijaga otomatis oleh `internal/archtest` (gagal di `make check` bila dil
 6. Perintah baru di CLI: lihat aturan CLI di bawah. UI: halaman di `ui/src/features/<domain>`.
 7. `make check` harus lulus. Perbarui CHANGELOG.
 
+## Pagination dan retensi
+
+Daftar yang tersimpan di database (audit, jobs) dipaginasi di server dengan cursor:
+
+```
+GET /api/audit?limit=25&cursor=<next>&q=<teks>
+-> {"rows": [...], "next": <id atau 0>, "total": <jumlah yang cocok q>}
+```
+
+- `limit` 1-200 (bawaan 25); di luar itu ditolak 400, bukan diam-diam diganti. `cursor` adalah `next` dari halaman sebelumnya; 0 berarti tidak ada halaman lagi.
+- Cursor (bukan offset) dipakai karena baris baru terus masuk di depan; offset akan menggeser isi halaman saat dibaca.
+- `q` mencari tanpa membedakan huruf besar/kecil; `%`, `_`, `\` dan tanda kutip diperlakukan sebagai huruf biasa.
+- Implementasi generik: `store.paged` dan `core.PageParams`. Daftar baru memakai keduanya, tidak menulis ulang.
+- `/api/jobs` tetap menyertakan kunci lama `jobs` di samping `rows`.
+- Retensi (`internal/system/retention.go`): audit 365 hari (sisa minimal 1000 baris), jobs 90 hari (sisa minimal 200, job berjalan tidak disentuh). Pemangkasan audit menyimpan hash baris terakhir yang dibuang sebagai jangkar (`audit_anchor`) dalam transaksi yang sama; `VerifyAudit` mulai dari jangkar itu, jadi rantai tetap dapat diverifikasi.
+- Jebakan: koneksi SQLite hanya satu (`SetMaxOpenConns(1)`). Jangan memanggil `Setting()` atau query lain saat `rows` masih terbuka; itu deadlock.
+
 ## CLI `lab` (Python)
 
 ```

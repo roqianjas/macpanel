@@ -10,8 +10,8 @@ interface Row {
 }
 
 export default function Activity() {
-  const audit = useLoad(() => get<{ rows: Row[] }>("/api/audit"));
-  const jobs = useLoad(() => get<{ jobs: { id: number; at: number; action: string; status: string }[] }>("/api/jobs"));
+  const audit = useLoad(() => get<{ rows: Row[] }>("/api/audit?limit=100"));
+  const jobs = useLoad(() => get<{ jobs: { id: number; at: number; action: string; status: string }[] }>("/api/jobs?limit=50"));
   return (
     <>
       <PageHead title="Aktivitas" desc="Jejak audit berantai: setiap login, percobaan gagal, dan perubahan tercatat. Verifikasi integritas dengan: panel audit verify." />

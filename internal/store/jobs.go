@@ -40,19 +40,30 @@ type JobRow struct {
 	Output string `json:"output"`
 }
 
+// ListJobs mengembalikan n job terbaru.
 func (s *Store) ListJobs(n int) []JobRow {
-	out := []JobRow{}
-	rows, err := s.DB.Query("SELECT id,at,usr,action,status,code,output FROM jobs ORDER BY id DESC LIMIT ?", n)
+	pg, _ := s.JobsPage(PageReq{Limit: n})
+	return pg.Rows
+}
+
+// JobsPage: halaman riwayat job, terbaru dulu. Q mencari di user, aksi, dan status (bukan di keluaran).
+func (s *Store) JobsPage(p PageReq) (Page[JobRow], error) {
+	return paged(s, "jobs", "id,at,usr,action,status,code,output", []string{"usr", "action", "status"}, p,
+		func(r interface{ Scan(...any) error }) (JobRow, int64, error) {
+			var j JobRow
+			err := r.Scan(&j.ID, &j.At, &j.User, &j.Action, &j.Status, &j.Code, &j.Output)
+			return j, j.ID, err
+		})
+}
+
+// PruneJobs membuang job selesai yang lebih tua dari before, menyisakan keepMin terbaru. Job "berjalan" tidak disentuh.
+func (s *Store) PruneJobs(before int64, keepMin int) (int64, error) {
+	if keepMin < 1 {
+		keepMin = 1
+	}
+	r, err := s.DB.Exec(`DELETE FROM jobs WHERE at<? AND status<>'berjalan' AND id NOT IN (SELECT id FROM jobs ORDER BY id DESC LIMIT ?)`, before, keepMin)
 	if err != nil {
-		return out
+		return 0, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var j JobRow
-		if rows.Scan(&j.ID, &j.At, &j.User, &j.Action, &j.Status, &j.Code, &j.Output) != nil {
-			continue
-		}
-		out = append(out, j)
-	}
-	return out
+	return r.RowsAffected()
 }

@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -158,7 +159,11 @@ def main():
     a = sp.add_parser("set", help="ubah pengaturan panel")
     a.add_argument("--name")
     a.add_argument("--theme", choices=["system", "light", "dark"])
-    a = sp.add_parser("audit", help="100 aksi terakhir")
+    for nm, hp in (("audit", "riwayat aksi (terbaru dulu)"), ("jobs", "riwayat job (terbaru dulu)")):
+        a = sp.add_parser(nm, help=hp)
+        a.add_argument("--limit", type=int, default=25, help="baris per halaman, 1-200 (bawaan 25)")
+        a.add_argument("--cursor", type=int, help="nilai 'next' dari halaman sebelumnya")
+        a.add_argument("-q", "--query", help="cari teks")
     args = ap.parse_args()
 
     c = Client(args.url, load_token(args.token), find_ca())
@@ -223,8 +228,13 @@ def main():
         if not body:
             die("beri --name dan/atau --theme", 2)
         emit(*c.run("POST", "/api/settings", body))
-    if cmd == "audit":
-        emit(*c.run("GET", "/api/audit"))
+    if cmd in ("audit", "jobs"):
+        qs = {"limit": args.limit}
+        if args.cursor:
+            qs["cursor"] = args.cursor
+        if args.query:
+            qs["q"] = args.query
+        emit(*c.run("GET", f"/api/{cmd}?" + urllib.parse.urlencode(qs)))
 
 
 if __name__ == "__main__":
