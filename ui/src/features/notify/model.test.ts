@@ -14,7 +14,7 @@ describe("serverError", () => {
   it("menerima https publik", () => {
     expect(serverError("https://ntfy.sh")).toBe("");
     expect(serverError(" https://ntfy.example.com:8443/sub ")).toBe("");
-    expect(serverError("https://100.77.70.34")).toBe("");
+    expect(serverError("https://100.64.0.10")).toBe("");
   });
   it.each([
     "", "ntfy.sh", "http://ntfy.sh", "https://user:pw@ntfy.sh", "https://ntfy.sh?x=1", "https://ntfy.sh#a",

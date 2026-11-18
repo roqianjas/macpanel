@@ -14,7 +14,7 @@ func TestValidServer(t *testing.T) {
 		"  https://ntfy.example.com  ":  "https://ntfy.example.com",
 		"https://ntfy.example.com/sub":  "https://ntfy.example.com/sub",
 		"https://ntfy.example.com:8443": "https://ntfy.example.com:8443",
-		"https://100.77.70.34":          "https://100.77.70.34", // alamat tailnet (bukan privat) boleh untuk ntfy milik sendiri
+		"https://100.64.0.10":           "https://100.64.0.10", // alamat tailnet (bukan privat) boleh untuk ntfy milik sendiri
 	}
 	for in, want := range ok {
 		got, err := ValidServer(in, false)

@@ -404,7 +404,7 @@ function SettingsForm({ name, kind, initial, system, section, onSaved }: { name:
         ) : section === "akses" ? (
           <Card title="Pembatasan akses">
             <p className="small muted">Akses ke semua situs sudah dibatasi ke jaringan tailnet. Di sini Anda bisa mempersempitnya lagi. Aturan hanya boleh berisi alamat di dalam tailnet atau loopback; alamat publik ditolak.</p>
-            <Field label="Hanya izinkan IP berikut (opsional)" hint="Satu IP atau CIDR per baris, mis. 100.110.21.93 atau 100.64.0.0/16. Kosong = semua perangkat tailnet.">
+            <Field label="Hanya izinkan IP berikut (opsional)" hint="Satu IP atau CIDR per baris, mis. 100.64.0.10 atau 100.64.0.0/16. Kosong = semua perangkat tailnet.">
               {(id, dd) => (
                 <textarea id={id} aria-describedby={dd} className="mono" rows={3} value={(m.allow_ips ?? []).join("\n")} onChange={(e) => set("allow_ips", e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))} spellCheck={false} />
               )}
