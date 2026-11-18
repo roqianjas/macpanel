@@ -1,4 +1,4 @@
-panel
+/panel
 *.db
 *.db-wal
 *.db-shm

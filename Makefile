@@ -9,7 +9,7 @@ MISE  := $(shell command -v mise 2>/dev/null)
 GO    := $(if $(MISE),mise exec -- go,go)
 PNPM  := $(if $(MISE),mise exec -- pnpm,pnpm)
 PY    := python3
-PKG   := .
+PKG   := ./cmd/panel
 PYFILES := cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl
 
 .PHONY: check quick fmt fmt-check vet lint test race ui-check ui-build cli-check build deploy hooks secrets clean

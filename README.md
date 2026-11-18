@@ -39,7 +39,7 @@ browser -> nginx (TLS, private-network only) -> panel (Go, 127.0.0.1:9100)
                                                    v   fixed subcommands, validated args, no shell
                                                   lab  (cli/: Python wrappers around brew, nginx, launchd, mise, mysql, psql)
 ```
-- `*.go`, `ui/` panel. `cli/` the `lab` command. `nginx/` reference config. `docs/` design and usage.
+- `cmd/panel`, `internal/` the Go panel (one package per domain, see `docs/architecture/`). `ui/` the React UI. `cli/` the `lab` command. `nginx/` reference config. `docs/` design, usage, architecture decisions.
 - Docs: [docs/DESIGN.md](docs/DESIGN.md) (threat model), [docs/USAGE.md](docs/USAGE.md).
 
 ## Install

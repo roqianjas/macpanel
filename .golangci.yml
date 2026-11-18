@@ -23,7 +23,7 @@ linters:
   exclusions:
     generated: lax
     rules:
-      - path: _test\.go
+      - path: _test\.go|internal/testenv/
         linters: [errcheck]
 formatters:
   enable:

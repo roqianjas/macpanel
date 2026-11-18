@@ -71,7 +71,7 @@ if [ ! -f "$WEB/nginx/nginx.conf" ]; then mv "$WEB/nginx/nginx.conf.new" "$WEB/n
 say "Membangun panel"
 tool() { if command -v "$1" >/dev/null 2>&1; then "$@"; else mise exec -- "$@"; fi; }
 ( cd "$PANEL/ui" && tool pnpm install --frozen-lockfile && tool pnpm run build )
-( cd "$PANEL" && tool go build -o panel . )
+( cd "$PANEL" && tool go build -o panel ./cmd/panel )
 [ -x "$PANEL/panel" ] && echo "  biner: $PANEL/panel"
 
 if [ "$SYSTEM" = 1 ]; then

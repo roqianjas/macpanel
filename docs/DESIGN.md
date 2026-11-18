@@ -99,14 +99,14 @@ Semua `POST/DELETE` butuh CSRF; mutasi destruktif butuh step-up.
 - Let's Encrypt tidak berlaku untuk `.lab`; hanya relevan bila kelak ada domain publik (Cloudflare Tunnel).
 
 ## 11. Status P1 (2026-11-16): auth, TOTP, sesi, audit, tes
-Kode: `crypto.go`, `store.go`, `server.go`, `main.go`, `panel_test.go` (Go 1.27, SQLite `modernc.org/sqlite`, `x/crypto`, `x/term`).
+Kode: `internal/crypto`, `internal/store`, `internal/core`, `internal/auth`, `cmd/panel`; tes HTTP di `internal/server` (Go 1.27, SQLite `modernc.org/sqlite`, `x/crypto`, `x/term`).
 CLI: `panel init-key | user add <nama> [--password-stdin] | user list | audit verify | serve`.
 - Teruji: 22 tes unit (`go test -race` lulus), 5 uji mutasi (rute dijadikan publik, penjaga replay atomik, CSRF, lockout, XFF palsu: semuanya membuat tes GAGAL, lalu kode dipulihkan), dan 17 skenario ujung-ke-ujung pada binary + Keychain + server sungguhan (item uji dihapus). Vektor RFC 6238 lulus. Port hanya di loopback. Secret TOTP tidak ada polos di file database. Rantai audit utuh dan terdeteksi bila diubah.
 - **Penyimpangan dari desain:** (1) lockout memakai jendela tetap 15 menit (5 gagal per akun, 10 per IP), **bukan** eksponensial; (2) enrol TOTP lewat setup key teks/URI, **belum QR**; (3) item Keychain dibuat dengan `security -w <nilai>`, sehingga kunci terlihat di argumen proses sesaat saat `init-key` (sekali, mesin satu pengguna); (4) kode TOTP yang dipakai login tidak bisa langsung dipakai step-up, tunggu langkah 30 detik berikutnya.
 - **Belum teruji:** `govulncheck` (gagal dipasang: jaringan ke sum.golang.org), `serve` di bawah launchd membaca Keychain (sesi non-interaktif), akses lewat nginx `panel.lab`, dan semua rute selain auth (belum ada).
 
 ## 12. Status P2a (2026-11-16): eksekutor + Website + Database (API)
-Kode: `executor.go` (runLab, validator, scrub), `ops.go` (handler), `ops_test.go`, `real_test.go`.
+Kode: `internal/core/runner.go` (RunLab, validator, scrub); handler di paket domain `internal/<domain>`; tes di `internal/server`.
 - **Rute baru** (semua Full + CSRF): `GET/POST /api/sites`, `POST /api/sites/{name}/remove` (step-up + ketik nama), `GET/POST /api/db`, `POST /api/db/{engine}/{name}/dump`, `.../drop` (step-up + ketik nama), `GET /api/jobs`.
 - **Eksekutor:** biner `/opt/homebrew/bin/lab` (path tetap), argv list tanpa shell, env dibersihkan (hanya PATH/HOME/LANG), timeout 120 dtk dengan pembunuhan grup proses, output maks 256 KB dan disaring (`scrub`), satu aksi mutasi pada satu waktu, tiap aksi masuk tabel `jobs` dan audit.
 - **Validasi:** nama situs/db ketat; folder harus di bawah `~/MacPanel/wwwroot` setelah `EvalSymlinks`; port 1024-65535 minus 22/3306/5432/6379/9100; PHP 8.2-8.5; file env harus `.env`/`.env.*`. Situs sistem (`home, nginx, db, kuma, stats, hello, panel`) tidak bisa dihapus dari panel.
@@ -115,7 +115,7 @@ Kode: `executor.go` (runLab, validator, scrub), `ops.go` (handler), `ops_test.go
 - Catatan: password database tidak pernah ada di respons API; hanya jalur file kredensial.
 
 ## 13. Status P2b (2026-11-16): pengaturan situs, rewrite, SSL, editor config berpagar, log
-Kode: `nginxconf.go` (parser + kebijakan), `siteconf.go` (model, template, pipeline, handler), `siteconf_test.go`, `real_test.go`. Perintah `lab` baru: `lab nginx test|reload`, `lab site cert <nama>`.
+Kode: `internal/sites/nginxconf.go` (parser + kebijakan), `internal/sites/siteconf.go` (model, template, pipeline); handler di `internal/sites`; tes di `internal/server`. Perintah `lab` baru: `lab nginx test|reload`, `lab site cert <nama>`.
 - **Rute baru** (Full + CSRF): `GET/POST /api/sites/{name}/settings`, `GET/POST /api/sites/{name}/config` (step-up), `POST .../restore` (step-up), `GET .../ssl`, `POST .../ssl/renew` (step-up), `GET .../logs?kind=access|error&n=`.
 - **Tiga mode config:** `template` (dibuat panel dari model, ada header `# panel-model:`), `legacy` (buatan addsite.sh, disimpan pertama kali = versi lama dicadangkan), `custom` (diedit manual; menimpa dengan template butuh `replace=true`), `kustom` (tak dikenali; hanya editor).
 - **Pengaturan terstruktur:** mode (php/proxy/statis), target, versi PHP, preset (laravel, wordpress, static, spa), aturan rewrite (from/to/flag dengan karakter dibatasi, maks 50), batas upload, timeout, paksa HTTPS, gzip. Config dihasilkan dari model, lalu **diperiksa kebijakan yang sama** dengan editor mentah (sabuk pengaman).
@@ -134,7 +134,7 @@ Kode: `nginxconf.go` (parser + kebijakan), `siteconf.go` (model, template, pipel
 - Belum teruji: reboot penuh + Keychain di bawah launchd, upgrade paket nyata lewat panel, cron `--at`, browser selain Chromium, pembaca layar.
 
 ## 15. Status P5 (2026-11-16): Pantau, Aplikasi, jeda situs, desain Konsol Ramah
-- Pantau: pengumpul di `metrics.go` (sampel 30 dtk) membaca `top`, `memory_pressure`, `sysctl`, `netstat -ibn`, `ps`, `statfs` (path mutlak, env bersih, tanpa masukan pengguna). Penyimpanan `metrics`/`netm` di SQLite, 7 hari. Rute `/api/metrics?range=1h|24h|7d` dan `/api/system`.
+- Pantau: pengumpul di `internal/system/metrics.go` (sampel 30 dtk) membaca `top`, `memory_pressure`, `sysctl`, `netstat -ibn`, `ps`, `statfs` (path mutlak, env bersih, tanpa masukan pengguna). Penyimpanan `metrics`/`netm` di SQLite, 7 hari. Rute `/api/metrics?range=1h|24h|7d` dan `/api/system`.
 - Aplikasi: `/api/services`, `/api/services/{id}/{start|stop|restart}` (stop/restart butuh step-up), `/api/services/{id}/logs`, `/api/apps/{id}/install|remove` (katalog tetap memcached, mailpit). id divalidasi regex di panel dan lagi di `lab`.
 - Website: `GET /api/sites` kini memuat status HTTP (GET lewat loopback), latensi, umur sertifikat, dan situs dijeda; `POST /api/sites/{name}/{enable|disable}`.
 - Risiko sisa: bandwidth hanya interface ber-IPv4; laju dirata-rata per 30 dtk; probe situs menyambung ke 127.0.0.1:443 dengan SNI situs (hanya baca status baris pertama).
