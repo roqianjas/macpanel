@@ -60,7 +60,7 @@ if [ "$SRC" != "$PANEL" ]; then
   if [ -e "$PANEL" ] && [ ! -L "$PANEL" ]; then echo "$PANEL sudah ada dan bukan symlink; pindahkan dulu atau jalankan installer dari sana."; exit 1; fi
   ln -sfn "$SRC" "$PANEL"; echo "  $PANEL -> $SRC"
 fi
-for f in lab panelctl lab-svc lab-sys lab-dev addsite.sh backup.sh logrotate.sh; do ln -sfn "../panel/cli/$f" "$OPS/scripts/$f"; done
+for f in lab panelctl addsite.sh backup.sh logrotate.sh; do ln -sfn "../panel/cli/$f" "$OPS/scripts/$f"; done
 chmod +x "$SRC"/cli/*
 echo "$TLD" > "$WEB/tld"
 for f in "$SRC"/nginx/snippets/*; do sed "s#__HOME__#$HOME#g" "$f" > "$WEB/nginx/snippets/$(basename "$f")"; done

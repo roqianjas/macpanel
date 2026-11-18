@@ -7,5 +7,5 @@ select = ["E", "F", "W", "I", "B", "UP"]
 ignore = [
   "E701", "E702", "E401", "E741",  # gaya ringkas yang sudah dipakai (satu baris, ; , nama l)
   "B008", "B904", "UP015", "E501", "UP031", "E731", "B905",
-  "F841", "B023",  # sementara: dibereskan saat CLI dipecah per domain (fase 3), lalu baris ini dihapus
+  "B023",
 ]

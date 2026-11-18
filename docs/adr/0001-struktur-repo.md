@@ -17,3 +17,9 @@ Repo tumbuh cepat dengan satu paket Go datar (`package main`, 58 berkas), berkas
 - Biaya awal tinggi (memindahkan dan mengganti nama seluruh kode), tetapi riwayat git tetap terlacak lewat `git mv`.
 - Simbol yang tadinya privat satu paket harus diekspor di batas domain. Batas itu sengaja dibuat sempit.
 - Aturan ketergantungan: `domain/*` boleh memakai `core`, `store`, `runner`, `httpx`, `auth`; domain tidak saling mengimpor. `server` (akar komposisi) satu-satunya yang mengimpor semua domain.
+
+## Status pelaksanaan
+- Fase 1 (jaring pengaman): selesai. Makefile, CI, lint, pre-commit, pemeriksaan rahasia.
+- Fase 2 (Go): selesai. Paket per domain di `internal/`, aturan lapisan dijaga `internal/archtest`.
+- Fase 3 (CLI): selesai. Paket `cli/labcli`, 127 halaman bantuan identik dengan CLI lama (diverifikasi terhadap keluaran asli), pytest termasuk tes live.
+- Fase 4 (UI): berikutnya. Fase 5 (dokumen dan tata letak `~/MacPanel`): sebagian (cadangan `.bak` dipindah ke `~/MacPanel/backup/config-bak`).

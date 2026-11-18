@@ -15,7 +15,7 @@ repos:
         pass_filenames: false
       - id: ruff
         name: ruff (CLI)
-        entry: bash -c 'command -v ruff >/dev/null && ruff check cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl || true'
+        entry: bash -c 'command -v ruff >/dev/null && ruff check cli cli/lab cli/panelctl && ruff format --check cli cli/lab cli/panelctl || true'
         language: system
         pass_filenames: false
         files: '^cli/'

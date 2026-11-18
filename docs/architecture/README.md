@@ -63,8 +63,30 @@ Aturan, dijaga otomatis oleh `internal/archtest` (gagal di `make check` bila dil
 3. Daftarkan rute di `internal/server/server.go` dengan `Level` yang tepat (aksi destruktif: `core.Full` + `RequireStepUp` + ketik ulang nama).
 4. Tabel atau kolom baru: tambahkan di `internal/store` (skema + migrasi, tanpa mengabaikan galat).
 5. Tes HTTP di `internal/server/<domain>_test.go` memakai `testenv` (fake `lab`); tes fungsi murni di paket domain itu sendiri.
-6. Perintah baru di CLI: modul di `cli/`, lalu sebut di `docs/guide`. UI: halaman di `ui/src/features/<domain>`.
+6. Perintah baru di CLI: lihat aturan CLI di bawah. UI: halaman di `ui/src/features/<domain>`.
 7. `make check` harus lulus. Perbarui CHANGELOG.
+
+## CLI `lab` (Python)
+
+```
+cli/lab              entri tipis (menaruh cli/ di sys.path lalu memanggil labcli.cli.main)
+cli/labcli/
+  core.py            fondasi: jalur, lingkungan, die/sh/stream/lab, validator situs (tidak mengimpor domain)
+  cli.py             SATU-SATUNYA tabel perintah: build_parser() dan HANDLERS
+  db.py dbcore.py dbusers.py dbcfg.py     database, user dan hak, pengaturan server
+  site.py nginx.py php.py phpenv.py ext.py ini.py composer.py runtime.py update.py
+  deploy.py install.py projects.py        deploy, pasang cepat/kloning, proyek Go/Python/Next.js
+  worker.py backup.py redis.py sysinfo.py services.py docker.py
+cli/tests/           pytest: golden bantuan, core, kebijakan Compose, worker, validator; tes live (MACPANEL_LIVE=1)
+cli/panelctl         klien API panel untuk agen AI
+cli/*.sh             skrip yang dipanggil launchd (backup, logrotate) dan addsite
+```
+
+Aturan CLI:
+1. Modul domain hanya mengimpor `core` dan, bila perlu, modul dasar sejenis (mis. `dbcore`, `phpenv`); tidak ada siklus impor.
+2. Perintah dijalankan dengan list argumen lewat `core.sh` / `core.stream` (tanpa shell). Rahasia hanya lewat stdin atau berkas 0600, tidak pernah argumen.
+3. Bentuk perintah adalah kontrak dengan panel (Go) dan agen AI. `cli/tests/test_help_golden.py` membandingkan seluruh pohon bantuan dengan snapshot; ubah snapshot (`python3 cli/tests/update_golden.py`) hanya untuk perubahan yang disengaja.
+4. Perintah baru: fungsi di modul domain, parser di fungsi `reg_*` pada `cli.py`, entri di `HANDLERS`, tes, lalu dokumentasi.
 
 ## Peta riwayat (nama lama ke domain)
 Sebelum refactor, berkas Go bernama menurut urutan pengerjaan. Untuk membaca riwayat git lama: `ops.go`, `ops7`, `ops11`, `siteconf`, `nginxconf`, `apps.go` (situs) menjadi `sites`; `ops3`, `ops5` (unggah DB), `ops6`, `ops8` (user DB), `ops20` (user DB), `ops10` (kata sandi saya diambil `auth`; Redis ke `redis`) menjadi `databases`; `ops12` dan bagian `ops4`/`ops8` menjadi `backup`; `ops2`/`ops4` menjadi `phpruntime`, `tasks`, `updates`; `ops13` menjadi `deploy`; `ops15`, `ops19` menjadi `auth`, `settings`, `store`; `ops20` (akun) menjadi `accounts`; `ops22` menjadi `docker`; `ops9`, `metrics` menjadi `system`; `ops16` menjadi `docs`. Tag git `pre-phase2` menandai keadaan sebelum refactor.

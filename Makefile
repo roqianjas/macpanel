@@ -1,6 +1,7 @@
 # MacPanel: satu pintu untuk gerbang kualitas, build, dan deploy.
 #   make check    gerbang penuh (format, vet, tes Go -race, UI, CLI)  ~5 menit
 #   make quick    gerbang cepat tanpa -race
+#   make cli-live tes CLI yang menyentuh mesin nyata (database sementara zz_*)
 #   make build    UI + biner panel
 #   make deploy   build lalu ganti proses panel di launchd (macOS)
 #   make hooks    pasang pre-commit
@@ -10,9 +11,9 @@ GO    := $(if $(MISE),mise exec -- go,go)
 PNPM  := $(if $(MISE),mise exec -- pnpm,pnpm)
 PY    := python3
 PKG   := ./cmd/panel
-PYFILES := cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl
+PYSRC := cli cli/lab cli/panelctl
 
-.PHONY: check quick fmt fmt-check vet lint test race ui-check ui-build cli-check build deploy hooks secrets clean
+.PHONY: check quick fmt fmt-check vet lint test race ui-check ui-build cli-check cli-test cli-live build deploy hooks secrets clean
 
 check: fmt-check vet lint race ui-check cli-check secrets
 	@echo "== make check: OK =="
@@ -46,9 +47,18 @@ ui-build:
 	cd ui && $(PNPM) run build
 
 cli-check:
-	@for f in $(PYFILES); do $(PY) -m py_compile $$f || exit 1; done; rm -rf cli/__pycache__
-	@if command -v ruff >/dev/null; then ruff check $(PYFILES); else echo "ruff tidak terpasang (uv tool install ruff), dilewati"; fi
+	@$(PY) -m compileall -q cli/labcli cli/lab cli/panelctl; find cli -name __pycache__ -prune -exec rm -rf {} +
+	@if command -v ruff >/dev/null; then ruff check $(PYSRC) && ruff format --check $(PYSRC); else echo "ruff tidak terpasang (uv tool install ruff), dilewati"; fi
 	@bash -n cli/addsite.sh cli/backup.sh cli/logrotate.sh install.sh scripts/*.sh
+	@$(MAKE) --no-print-directory cli-test
+
+cli-test:
+	@if command -v uv >/dev/null; then uv run --with pytest python -m pytest cli/tests -q; \
+	elif $(PY) -c 'import pytest' 2>/dev/null; then $(PY) -m pytest cli/tests -q; \
+	else echo "pytest tidak tersedia (brew install uv)"; exit 1; fi; find cli -name __pycache__ -prune -exec rm -rf {} +
+
+cli-live:
+	MACPANEL_LIVE=1 uv run --with pytest python -m pytest cli/tests -q -m live
 
 secrets:
 	@bash scripts/check-secrets.sh

@@ -30,8 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
-      - run: uvx ruff check cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl
-      - run: for f in cli/lab cli/lab-dev cli/lab-sys cli/lab-svc cli/lab-docker cli/panelctl; do python3 -m py_compile $f; done
+      - run: uvx ruff check cli cli/lab cli/panelctl && uvx ruff format --check cli cli/lab cli/panelctl
+      - run: uv run --with pytest python -m pytest cli/tests -q
       - run: bash -n cli/addsite.sh cli/backup.sh cli/logrotate.sh install.sh scripts/*.sh
   hygiene:
     runs-on: ubuntu-latest
