@@ -1,3 +1,4 @@
+import { t, type Key } from "./i18n";
 import { get } from "./api";
 import { usePoll } from "./ui";
 import type { Pt, RangeKey } from "./lib";
@@ -70,13 +71,13 @@ export const useSystem = () => usePoll(() => get<SystemInfo>("/api/system"), 150
 export const useMetrics = (range: RangeKey) => usePoll(() => get<MetricsData>(`/api/metrics?range=${range}`), 30000, [range]);
 export const useServices = () => usePoll(() => get<{ services: ServiceInfo[] }>("/api/services"), 30000);
 
-export const stateText: Record<ServiceInfo["state"], string> = { running: "Berjalan", stopped: "Berhenti", not_installed: "Belum terpasang", error: "Galat" };
+export const stateText: Record<ServiceInfo["state"], string> = { running: "svc.state.running", stopped: "svc.state.stopped", not_installed: "svc.state.not_installed", error: "svc.state.error" };
 export const stateTone = (s: ServiceInfo["state"]) => (s === "running" ? "ok" : s === "error" ? "bad" : s === "stopped" ? "warn" : "mute") as "ok" | "bad" | "warn" | "mute";
 
 /** Layanan opsional yang berhenti dianggap dimatikan sengaja (bukan masalah): nada netral, teks "Dimatikan". */
 export function serviceView(s: Pick<ServiceInfo, "state" | "optional">): { text: string; tone: "ok" | "bad" | "warn" | "mute" } {
-  if (s.optional && s.state === "stopped") return { text: "Dimatikan", tone: "mute" };
-  return { text: stateText[s.state], tone: stateTone(s.state) };
+  if (s.optional && s.state === "stopped") return { text: t("svc.state.off"), tone: "mute" };
+  return { text: t(stateText[s.state] as Key), tone: stateTone(s.state) };
 }
 
 export interface AlertItem {

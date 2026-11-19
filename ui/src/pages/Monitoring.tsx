@@ -7,6 +7,7 @@ import { Card, PageHead, State } from "../ui";
 import HardwareSection from "../features/hardware/HardwareSection";
 import NetSection from "../features/netmon/NetSection";
 import ExposureSection from "../features/exposure/ExposureSection";
+import { decimalSep } from "../i18n";
 
 export default function Monitoring() {
   const [range, setRange] = useState<RangeKey>("1h");
@@ -38,11 +39,11 @@ export default function Monitoring() {
             <div className="grid2">
               <Card title={<><Gauge size={18} className="icon" aria-hidden="true" /> Beban rata-rata 1 menit</>}>
                 <p className="small muted">Angka di atas jumlah inti ({sys.data?.cores ?? "?"}) berarti proses antre menunggu CPU.</p>
-                <LineChart title="Beban rata-rata" rangeKey={range} domain={[0, niceTop(loadMax, 4)]} tickFmt={(v) => String(Math.round(v * 10) / 10).replace(".", ",")} series={[{ key: "load", label: "Beban", pts: m.load, fmt: (v) => v.toFixed(2).replace(".", ",") }]} />
+                <LineChart title="Beban rata-rata" rangeKey={range} domain={[0, niceTop(loadMax, 4)]} tickFmt={(v) => String(Math.round(v * 10) / 10).replace(".", decimalSep())} series={[{ key: "load", label: "Beban", pts: m.load, fmt: (v) => v.toFixed(2).replace(".", decimalSep()) }]} />
               </Card>
               <Card title={<><HardDrive size={18} className="icon" aria-hidden="true" /> Pemakaian disk</>}>
                 <p className="small muted">{sys.data?.disk_total ? `${fmtBytes(sys.data.disk_free)} bebas dari ${fmtBytes(sys.data.disk_total)}.` : "Ukuran disk belum terbaca."}</p>
-                <LineChart title="Pemakaian disk" rangeKey={range} domain={[0, 100]} tickFmt={(v) => `${Math.round(v)}%`} series={[{ key: "disk", label: "Disk", pts: m.disk, fmt: (v) => `${v.toFixed(1).replace(".", ",")}%` }]} />
+                <LineChart title="Pemakaian disk" rangeKey={range} domain={[0, 100]} tickFmt={(v) => `${Math.round(v)}%`} series={[{ key: "disk", label: "Disk", pts: m.disk, fmt: (v) => `${v.toFixed(1).replace(".", decimalSep())}%` }]} />
               </Card>
             </div>
 
@@ -134,7 +135,7 @@ export default function Monitoring() {
                 {(sys.data?.top ?? []).map((p, i) => (
                   <tr key={`${p.name}-${i}`}>
                     <th scope="row" className="mono">{p.name}</th>
-                    <td className="num">{p.cpu.toFixed(1).replace(".", ",")}%</td>
+                    <td className="num">{p.cpu.toFixed(1).replace(".", decimalSep())}%</td>
                     <td className="num">{fmtBytes(p.rss_mb * 1024 * 1024)}</td>
                   </tr>
                 ))}

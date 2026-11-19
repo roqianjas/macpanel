@@ -6,6 +6,7 @@ import { fmtAgo, fmtBytes, fmtRate, fmtUptime, type RangeKey } from "../lib";
 import { Card, Chip, Mark, State, usePoll } from "../ui";
 import HealthCard from "../features/hardware/HealthCard";
 import { useState } from "react";
+import { decimalSep, useT } from "../i18n";
 
 interface Counts {
   sites: number;
@@ -32,6 +33,7 @@ async function loadCounts(): Promise<Counts> {
 }
 
 export default function Overview() {
+  const t = useT();
   const sys = useSystem();
   const svc = useServices();
   const [range, setRange] = useState<RangeKey>("1h");
@@ -67,109 +69,109 @@ export default function Overview() {
       </div>
     </section>
   ) : (
-    <section className={`hero ${bad.length ? "hero-bad" : ""}`} aria-label="Status keseluruhan">
+    <section className={`hero ${bad.length ? "hero-bad" : ""}`} aria-label={t("ov.hero.aria")}>
       <div>
         <h1 className="hero-title">
           <Mark tone={bad.length ? "bad" : "ok"} />
-          {svc.loading && !svc.data ? "Memeriksa layanan…" : bad.length ? `${bad.length} layanan perlu dicek` : "Semua layanan berjalan"}
+          {svc.loading && !svc.data ? t("ov.checking") : bad.length ? t("ov.attention", { n: bad.length }) : t("ov.allok")}
         </h1>
         <p className="hero-sub">
-          {bad.length ? `Tidak berjalan: ${bad.map((b) => b.label).join(", ")}. Buka Aplikasi untuk menyalakan atau melihat lognya.` : `${running} dari ${total} layanan terpasang berjalan di ${si?.host ?? "Mac mini"}.`}
+          {bad.length ? t("ov.down", { names: bad.map((b) => b.label).join(", ") }) : t("ov.running", { running, total, host: si?.host ?? "Mac mini" })}
         </p>
       </div>
       <dl className="hero-facts">
         <div>
-          <dt>Aktif sejak boot</dt>
-          <dd>{si?.boot ? fmtUptime(now - si.boot) : "n/a"}</dd>
+          <dt>{t("ov.uptime")}</dt>
+          <dd>{si?.boot ? fmtUptime(now - si.boot) : t("fmt.na")}</dd>
         </div>
         <div>
-          <dt>IP tailnet</dt>
-          <dd className="mono">{si?.tailnet_ip || "tidak tersambung"}</dd>
+          <dt>{t("ov.tailnet")}</dt>
+          <dd className="mono">{si?.tailnet_ip || t("ov.notconn")}</dd>
         </div>
         <div>
-          <dt>Beban (1 mnt)</dt>
-          <dd>{hasSample ? si!.load[0].toFixed(2).replace(".", ",") : "n/a"}</dd>
+          <dt>{t("ov.load")}</dt>
+          <dd>{hasSample ? si!.load[0].toFixed(2).replace(".", decimalSep()) : t("fmt.na")}</dd>
         </div>
       </dl>
     </section>
   );
 
   const tiles = [
-    { href: "#/website", icon: Globe, label: "Website", ds: "Situs .lab, rewrite, SSL, config nginx", chip: counts.data ? (counts.data.sites ? `${counts.data.sitesOn} dari ${counts.data.sites} situs aktif` : "Belum ada situs Anda") : "" },
-    { href: "#/aplikasi", icon: Server, label: "Aplikasi", ds: "nginx, PHP-FPM, database, cache", chip: svc.data ? `${running} dari ${total} berjalan` : "" },
-    { href: "#/database", icon: Database, label: "Database", ds: "MariaDB, MySQL dan PostgreSQL per proyek", chip: counts.data ? `${counts.data.db} proyek` : "" },
-    { href: "#/tugas", icon: Timer, label: "Worker dan cron", ds: "Pengganti Supervisor dan crontab", chip: counts.data ? `${counts.data.workers} worker, ${counts.data.jobs} cron` : "" },
-    { href: "#/runtime", icon: Boxes, label: "PHP dan runtime", ds: "Versi berdampingan, Node, Go, Python", chip: counts.data ? `${counts.data.php} PHP terpasang` : "" },
-    { href: "#/pembaruan", icon: Download, label: "Pembaruan", ds: "Upgrade aman dengan backup", chip: "" },
+    { href: "#/website", icon: Globe, label: t("nav.websites"), ds: t("ov.tile.web"), chip: counts.data ? (counts.data.sites ? t("ov.chip.sites", { on: counts.data.sitesOn, n: counts.data.sites }) : t("ov.chip.nosites")) : "" },
+    { href: "#/aplikasi", icon: Server, label: t("nav.apps"), ds: t("ov.tile.apps"), chip: svc.data ? t("ov.chip.running", { r: running, t: total }) : "" },
+    { href: "#/database", icon: Database, label: t("nav.databases"), ds: t("ov.tile.db"), chip: counts.data ? t("ov.chip.projects", { n: counts.data.db }) : "" },
+    { href: "#/tugas", icon: Timer, label: t("nav.tasks"), ds: t("ov.tile.tasks"), chip: counts.data ? t("ov.chip.tasks", { w: counts.data.workers, j: counts.data.jobs }) : "" },
+    { href: "#/runtime", icon: Boxes, label: t("nav.runtimes"), ds: t("ov.tile.rt"), chip: counts.data ? t("ov.chip.php", { n: counts.data.php }) : "" },
+    { href: "#/pembaruan", icon: Download, label: t("nav.updates"), ds: t("ov.tile.upd"), chip: "" },
   ];
 
   return (
     <>
       {hero}
       {alerts.data && alerts.data.alerts.length > 0 && (
-        <Card title={`Peringatan (${alerts.data.alerts.length})`}>
+        <Card title={t("ov.alerts", { n: alerts.data.alerts.length })}>
           <ul className="list">
             {alerts.data.alerts.map((a) => (
               <li key={a.id} className="list-row">
                 <div>
                   <p>
-                    <Chip tone={a.level === "bad" ? "bad" : "warn"}>{a.level === "bad" ? "Penting" : "Perhatian"}</Chip> <strong>{a.title}</strong>
+                    <Chip tone={a.level === "bad" ? "bad" : "warn"}>{a.level === "bad" ? t("ov.alert.bad") : t("ov.alert.warn")}</Chip> <strong>{a.title}</strong>
                   </p>
                   <p className="small muted">{a.detail}</p>
                 </div>
                 <a className="btn btn-sm" href={a.link}>
-                  Lihat<span className="sr"> {a.title}</span>
+                  {t("ov.alert.view")}<span className="sr"> {a.title}</span>
                 </a>
               </li>
             ))}
           </ul>
-          <p className="small muted">Peringatan {alerts.data.notify ?? "hanya ditampilkan di panel; tidak ada pesan keluar"}.</p>
+          <p className="small muted">{alerts.data.notify ? t("ov.alert.footerCustom", { x: alerts.data.notify }) : t("ov.alert.footer")}</p>
         </Card>
       )}
       <State loading={sys.loading && !sys.data} skeleton="cards" error={sys.error} onRetry={sys.reload}>
         {si && (
-          <ul className="kpis" aria-label="Sumber daya">
+          <ul className="kpis" aria-label={t("ov.res")}>
             <li className="card kpi">
               <h2 className="kpi-h"><Cpu size={16} aria-hidden="true" /> CPU</h2>
               <div className="kpi-body">
-                <Ring pct={hasSample ? si.cpu : null} label="CPU terpakai" tone={toneOf(hasSample ? si.cpu : null)} />
+                <Ring pct={hasSample ? si.cpu : null} label={t("ov.cpu.used")} tone={toneOf(hasSample ? si.cpu : null)} />
                 <div>
                   <p className="big">{hasSample ? <CountUp value={si.cpu} decimals={0} suffix="%" /> : "n/a"}</p>
-                  <p className="small muted">{si.cores} inti</p>
+                  <p className="small muted">{t("ov.cores", { n: si.cores })}</p>
                 </div>
               </div>
-              <Sparkline pts={spark.data?.cpu ?? []} label="CPU satu jam terakhir" />
+              <Sparkline pts={spark.data?.cpu ?? []} label={t("ov.cpu.hour")} />
             </li>
             <li className="card kpi">
               <h2 className="kpi-h"><MemoryStick size={16} aria-hidden="true" /> Memori</h2>
               <div className="kpi-body">
-                <Ring pct={hasSample ? si.mem : null} label="Memori terpakai" tone={toneOf(hasSample ? si.mem : null)} />
+                <Ring pct={hasSample ? si.mem : null} label={t("ov.mem.used")} tone={toneOf(hasSample ? si.mem : null)} />
                 <div>
                   <p className="big">{hasSample ? <CountUp value={si.mem} decimals={0} suffix="%" /> : "n/a"}</p>
-                  <p className="small muted">dari {fmtBytes(si.mem_total)}</p>
+                  <p className="small muted">{t("ov.mem.of", { size: fmtBytes(si.mem_total) })}</p>
                 </div>
               </div>
-              <Sparkline pts={spark.data?.mem ?? []} label="Memori satu jam terakhir" />
+              <Sparkline pts={spark.data?.mem ?? []} label={t("ov.mem.hour")} />
             </li>
             <li className="card kpi">
               <h2 className="kpi-h"><HardDrive size={16} aria-hidden="true" /> Disk</h2>
               <div className="kpi-body">
-                <Ring pct={si.disk_total ? si.disk : null} label="Disk terpakai" tone={toneOf(si.disk)} />
+                <Ring pct={si.disk_total ? si.disk : null} label={t("ov.disk.used")} tone={toneOf(si.disk)} />
                 <div>
                   <p className="big">{si.disk_total ? <CountUp value={si.disk} decimals={0} suffix="%" /> : "n/a"}</p>
-                  <p className="small muted">{fmtBytes(si.disk_free)} bebas</p>
+                  <p className="small muted">{t("ov.disk.free", { size: fmtBytes(si.disk_free) })}</p>
                 </div>
               </div>
               {si.disk >= 85 && <p className="callout">Disk hampir penuh. Bersihkan backup lama atau cache.</p>}
             </li>
             <li className="card kpi">
-              <h2 className="kpi-h"><Network size={16} aria-hidden="true" /> Jaringan</h2>
+              <h2 className="kpi-h"><Network size={16} aria-hidden="true" /> {t("ov.net")}</h2>
               {nets.length === 0 ? (
-                <p className="small muted">Belum ada laju terukur. Muncul setelah dua sampel (sekitar 30 detik).</p>
+                <p className="small muted">{t("ov.net.none")}</p>
               ) : (
                 <>
                   <p className="big">{fmtRate(rx)}</p>
-                  <p className="small muted">masuk sekarang, keluar {fmtRate(tx)} (kartu jaringan fisik)</p>
+                  <p className="small muted">{t("ov.net.now", { tx: fmtRate(tx) })}</p>
                   <ul className="kpi-rows">
                     {nets.map((n) => (
                       <li key={n.iface}>
@@ -180,7 +182,7 @@ export default function Overview() {
                   </ul>
                 </>
               )}
-              <a className="small" href="#/pantau">Lihat riwayat bandwidth</a>
+              <a className="small" href="#/pantau">{t("ov.net.hist")}</a>
             </li>
           </ul>
         )}
@@ -188,11 +190,11 @@ export default function Overview() {
 
       <div className="split">
         <div className="stackc">
-          <Card title={<><Activity size={18} className="icon" aria-hidden="true" /> Seberapa sibuk CPU dan memori?</>} action={<RangePicker value={range} onChange={setRange} />}>
+          <Card title={<><Activity size={18} className="icon" aria-hidden="true" /> {t("ov.busy")}</>} action={<RangePicker value={range} onChange={setRange} />}>
           <State loading={met.loading && !met.data} skeleton="chart" error={met.error} onRetry={met.reload}>
             {met.data && (
               <LineChart
-                title="CPU dan memori"
+                title={t("ov.chart.title")}
                 rangeKey={range}
                 domain={[0, 100]}
                 tickFmt={(v) => `${Math.round(v)}%`}
@@ -205,16 +207,16 @@ export default function Overview() {
           </State>
           </Card>
           {si && (
-            <Card title="Sistem">
+            <Card title={t("ov.sys")}>
               <dl className="sysinfo">
-                <div><dt>Host</dt><dd>{si.host}</dd></div>
-                <div><dt>Sistem</dt><dd>{si.os}</dd></div>
-                <div><dt>Prosesor</dt><dd>{si.cores} inti</dd></div>
-                <div><dt>Memori</dt><dd>{fmtBytes(si.mem_total)}</dd></div>
-                <div><dt>Disk</dt><dd>{fmtBytes(si.disk_total)}</dd></div>
+                <div><dt>{t("ov.sys.host")}</dt><dd>{si.host}</dd></div>
+                <div><dt>{t("ov.sys.os")}</dt><dd>{si.os}</dd></div>
+                <div><dt>{t("ov.sys.cpu")}</dt><dd>{t("ov.cores", { n: si.cores })}</dd></div>
+                <div><dt>{t("ov.mem")}</dt><dd>{fmtBytes(si.mem_total)}</dd></div>
+                <div><dt>{t("ov.disk")}</dt><dd>{fmtBytes(si.disk_total)}</dd></div>
                 <div>
-                  <dt>Backup terakhir</dt>
-                  <dd>{si.backup ? `${fmtAgo(now - si.backup.at)}${si.backup.local_only ? ", hanya lokal" : ""}` : "belum ada"}</dd>
+                  <dt>{t("ov.sys.backup")}</dt>
+                  <dd>{si.backup ? `${fmtAgo(now - si.backup.at)}${si.backup.local_only ? t("ov.sys.local") : ""}` : t("ov.sys.nobackup")}</dd>
                 </div>
               </dl>
               {si.backup?.local_only && <p className="callout">Backup masih di disk yang sama, belum offsite.</p>}
@@ -222,7 +224,7 @@ export default function Overview() {
           )}
         </div>
         <div className="stackc">
-          <Card title="Status layanan" action={<a className="btn btn-sm" href="#/aplikasi">Kelola</a>}>
+          <Card title={t("ov.svc")} action={<a className="btn btn-sm" href="#/aplikasi">{t("ov.svc.manage")}</a>}>
             <State loading={svc.loading && !svc.data} error={svc.error} onRetry={svc.reload}>
               <ul className="svc-list">
                 {services.filter((s) => s.installed).map((s) => (
@@ -238,16 +240,16 @@ export default function Overview() {
       </div>
 
       <HealthCard />
-      <ul className="tiles" aria-label="Akses cepat">
-        {tiles.map((t) => (
-          <li key={t.href}>
-            <a className="tile" href={t.href}>
+      <ul className="tiles" aria-label={t("ov.quick")}>
+        {tiles.map((tile) => (
+          <li key={tile.href}>
+            <a className="tile" href={tile.href}>
               <span className="tile-ic">
-                <t.icon size={22} aria-hidden="true" />
+                <tile.icon size={22} aria-hidden="true" />
               </span>
-              <b>{t.label}</b>
-              <span className="tile-ds">{t.ds}</span>
-              {t.chip && <span className="chip chip-mute">{t.chip}</span>}
+              <b>{tile.label}</b>
+              <span className="tile-ds">{tile.ds}</span>
+              {tile.chip && <span className="chip chip-mute">{tile.chip}</span>}
             </a>
           </li>
         ))}

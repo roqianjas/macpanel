@@ -1,5 +1,6 @@
 // Tipe dan logika murni untuk konektivitas (Tailscale, internet, DNS).
 import type { Pt, Status } from "../hardware/model";
+import { decimalSep } from "../../i18n";
 
 export interface NetSnapshot {
   at: number;
@@ -26,7 +27,7 @@ export interface NetData {
   thresholds: { slow_ms: number };
 }
 
-const ms = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? "n/a" : `${v.toFixed(v < 10 ? 1 : 0).replace(".", ",")} ms`);
+const ms = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? "n/a" : `${v.toFixed(v < 10 ? 1 : 0).replace(".", decimalSep())} ms`);
 export const fmtMs = ms;
 
 export function tailscaleStatus(t: NetSnapshot["tailscale"]): Status {
@@ -54,7 +55,7 @@ export function uptimePct(bad: number, total: number): string {
   const up = ((total - bad) / total) * 100;
   // 99,99 yang dibulatkan ke 100 menyesatkan bila masih ada kegagalan
   const r = bad > 0 && up > 99.9 ? 99.9 : Math.round(up * 10) / 10;
-  return `${String(r).replace(".", ",")}%`;
+  return `${String(r).replace(".", decimalSep())}%`;
 }
 
 export function netFreshness(d: NetData | null, nowSec: number): { tone: "ok" | "warn" | "mute"; text: string } {

@@ -1,3 +1,4 @@
+import { decimalSep } from "../../i18n";
 // Tipe dan logika murni untuk perangkat keras (suhu, kipas, daya, tekanan memori, SSD).
 // Ambang datang dari server (/api/hw "thresholds"), jadi label di layar dan peringatan di server tidak bisa berbeda.
 
@@ -58,7 +59,7 @@ export interface Status {
 /** Koma desimal Indonesia. null atau NaN tampil "n/a": tidak ada angka karangan. */
 export function num(v: number | null | undefined, digits = 0): string {
   if (v == null || !Number.isFinite(v)) return "n/a";
-  return v.toFixed(digits).replace(".", ",");
+  return v.toFixed(digits).replace(".", decimalSep());
 }
 
 export const fmtTemp = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? "n/a" : `${num(v, 0)} °C`);

@@ -1,3 +1,4 @@
+import { useT } from "./i18n";
 import { TabIcon, useScrollRow } from "./tabicons";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { LoaderCircle, TriangleAlert, X } from "lucide-react";
@@ -30,9 +31,10 @@ export type SkeletonKind = "rows" | "cards" | "chart";
 
 /** Kerangka isi saat memuat: bentuknya meniru isi (baris tabel, kartu angka, grafik) supaya tata letak tidak melompat. Muncul setelah jeda singkat agar muatan cepat tidak berkedip. */
 export function Skeleton({ kind = "rows" }: { kind?: SkeletonKind }) {
+  const t = useT();
   return (
     <div className={`sk-wrap sk-${kind}`} role="status" aria-busy="true">
-      <span className="sr">Memuat…</span>
+      <span className="sr">{t("state.loading")}</span>
       {kind === "rows" && [0, 1, 2, 3, 4].map((i) => (
         <div className="sk-row" key={i} aria-hidden="true">
           <span className="sk sk-dot" />
@@ -58,23 +60,24 @@ export function Skeleton({ kind = "rows" }: { kind?: SkeletonKind }) {
 }
 
 export function State({ loading, error, empty, emptyText, onRetry, skeleton, children }: { loading: boolean; error: string; empty?: boolean; emptyText?: string; onRetry?: () => void; skeleton?: SkeletonKind; children: ReactNode }) {
+  const t = useT();
   if (error)
     return (
       <div className="state state-bad" role="alert">
         <TriangleAlert className="icon" size={18} aria-hidden="true" />
         <div>
-          <p className="state-title">Gagal memuat</p>
+          <p className="state-title">{t("state.failed")}</p>
           <p className="small muted pre">{error}</p>
           {onRetry && (
             <button className="btn" onClick={onRetry}>
-              Coba lagi
+              {t("state.retry")}
             </button>
           )}
         </div>
       </div>
     );
   if (loading) return <Skeleton kind={skeleton} />;
-  if (empty) return <div className="state"><p className="muted">{emptyText ?? "Belum ada data."}</p></div>;
+  if (empty) return <div className="state"><p className="muted">{emptyText ?? t("state.nodata")}</p></div>;
   return <>{children}</>;
 }
 
@@ -232,6 +235,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
 
 /** Konfirmasi aksi merusak: pengguna mengetik ulang kata kunci. Kata sandi ulang diminta otomatis oleh api(). */
 export function ConfirmDialog({ title, body, word, verb, onConfirm, onClose }: { title: string; body: ReactNode; word: string; verb: string; onConfirm: () => Promise<void>; onClose: () => void }) {
+  const t = useT();
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -250,7 +254,7 @@ export function ConfirmDialog({ title, body, word, verb, onConfirm, onClose }: {
     <Modal title={title} onClose={onClose}>
       <div className="stack">
         <div>{body}</div>
-        <Field label={`Ketik “${word}” untuk melanjutkan`}>
+        <Field label={t("confirm.type", { word })}>
           {(id) => <input id={id} data-autofocus className="mono" placeholder={word} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} />}
         </Field>
         {err && (
@@ -260,10 +264,10 @@ export function ConfirmDialog({ title, body, word, verb, onConfirm, onClose }: {
         )}
         <div className="row-end">
           <button className="btn" onClick={onClose}>
-            Batal
+            {t("common.cancel")}
           </button>
           <button className="btn btn-danger" disabled={typed !== word || busy} onClick={submit}>
-            {busy ? "Memproses…" : verb}
+            {busy ? t("common.processing") : verb}
           </button>
         </div>
       </div>

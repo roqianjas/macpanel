@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { RANGES, fmtClock, fmtSpan, geometry, summarize, useCountUp, type Pt, type RangeKey } from "./lib";
+import { decimalSep, t } from "./i18n";
 
 export function CountUp({ value, decimals = 0, suffix = "" }: { value: number | null; decimals?: number; suffix?: string }) {
   const v = useCountUp(value);
   if (v == null) return <>n/a</>;
   return (
     <>
-      {v.toFixed(decimals).replace(".", ",")}
+      {v.toFixed(decimals).replace(".", decimalSep())}
       {suffix}
     </>
   );
@@ -186,8 +187,8 @@ export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series
           })}
         </span>
         <span className="small muted">
-          {cursor != null ? fmtClock(main[idx][0], withDate) : `${main.length} titik, ${fmtSpan(span)} data`}
-          {span < range.sec * 0.9 ? `, dari ${range.label} yang diminta` : ""}
+          {cursor != null ? fmtClock(main[idx][0], withDate) : t("chart.points", { n: main.length, span: fmtSpan(span) })}
+          {span < range.sec * 0.9 ? t("chart.requested", { label: range.label }) : ""}
         </span>
       </figcaption>
     </figure>

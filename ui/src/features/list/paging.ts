@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // Logika daftar: pencarian dan halaman untuk data yang sudah ada di browser, serta penggabungan halaman cursor dari server.
 // Murni (tanpa React) agar bisa diuji langsung.
 
@@ -32,7 +33,7 @@ export interface FacetCount {
 
 /** Jumlah item per facet, dihitung dari SELURUH daftar (bukan hasil pencarian) agar angka tab tidak melompat saat mengetik. "Semua" selalu ada di depan. */
 export function countFacets<T>(items: readonly T[], facets: readonly Facet<T>[]): FacetCount[] {
-  return [{ id: "all", label: "Semua", count: items.length }, ...facets.map((f) => ({ id: f.id, label: f.label, count: items.filter(f.test).length }))];
+  return [{ id: "all", label: t("list.all"), count: items.length }, ...facets.map((f) => ({ id: f.id, label: f.label, count: items.filter(f.test).length }))];
 }
 
 /** Terapkan facet terpilih. Id tak dikenal (mis. facet hilang setelah data berubah) diperlakukan sebagai "Semua", bukan daftar kosong. */
@@ -63,10 +64,10 @@ export function pageOf<T>(items: readonly T[], page: number, size: number = PAGE
 
 /** Kalimat ringkas untuk pembaca layar dan mata: "11 sampai 20 dari 47" / "3 dari 47 cocok dengan pencarian". */
 export function summary(v: { from: number; to: number; total: number }, allCount: number, searching: boolean): string {
-  if (v.total === 0) return searching ? `Tidak ada yang cocok dari ${allCount}.` : "Kosong.";
-  if (v.total <= v.to - v.from + 1) return searching ? `${v.total} dari ${allCount} cocok.` : `${v.total} item.`;
-  const base = `${v.from} sampai ${v.to} dari ${v.total}`;
-  return searching ? `${base} (cocok dari ${allCount})` : base;
+  if (v.total === 0) return searching ? t("list.none", { all: allCount }) : t("list.empty");
+  if (v.total <= v.to - v.from + 1) return searching ? t("list.matchOf", { total: v.total, all: allCount }) : t("list.items", { total: v.total });
+  const base = t("list.range", { from: v.from, to: v.to, total: v.total });
+  return searching ? t("list.rangeSearch", { base, all: allCount }) : base;
 }
 
 /** Nama item dengan `at` terbesar (yang terbaru). Seri: yang lebih dulu di daftar. Kosong: undefined. Dipakai agar aturan "yang terbaru tidak boleh dihapus" tidak bergantung pada posisi baris di halaman. */

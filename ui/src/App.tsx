@@ -38,6 +38,7 @@ function useTheme() {
 // ---------- masuk ----------
 
 function Login({ onDone }: { onDone: (user: string) => void }) {
+  const t = useT();
   const panelName = usePanelName();
   const [step, setStep] = useState<"pwd" | "totp">("pwd");
   const [name, setName] = useState("");
@@ -90,39 +91,40 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
           </span>
           <span>{panelName}</span>
         </div>
-        <h1>{step === "pwd" ? "Masuk" : "Verifikasi dua langkah"}</h1>
+        <h1>{step === "pwd" ? t("login.title") : t("login.title2")}</h1>
         {step === "pwd" ? (
           <form onSubmit={submitPwd} className="stack">
-            <Field label="Nama pengguna">{(id) => <input id={id} autoFocus autoComplete="username" placeholder="nama pengguna" value={name} onChange={(e) => setName(e.target.value)} required />}</Field>
-            <Field label="Kata sandi">{(id) => <input id={id} type="password" autoComplete="current-password" placeholder="kata sandi" value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
+            <Field label={t("login.user")}>{(id) => <input id={id} autoFocus autoComplete="username" placeholder={t("login.user.ph")} value={name} onChange={(e) => setName(e.target.value)} required />}</Field>
+            <Field label={t("login.pw")}>{(id) => <input id={id} type="password" autoComplete="current-password" placeholder={t("login.pw.ph")} value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
             {err && <Alert>{err}</Alert>}
             <button className="btn btn-primary" disabled={busy || !name || !pw}>
-              {busy ? "Memeriksa…" : "Lanjut ke kode"}
+              {busy ? t("login.checking") : t("login.next")}
             </button>
           </form>
         ) : (
           <form onSubmit={submitCode} className="stack">
-            <p className="muted small">Masukkan kode 6 digit dari Google Authenticator (atau aplikasi TOTP Anda). Satu kode recovery juga diterima.</p>
-            <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} autoFocus autoComplete="one-time-code" className="mono code-input" placeholder="6 digit atau kode recovery" value={code} onChange={(e) => setCode(e.target.value)} required spellCheck={false} />}</Field>
-            <label className="check"><input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />Percayai perangkat ini selama 30 hari (berikutnya cukup kata sandi). Jangan dicentang di komputer umum.</label>
+            <p className="muted small">{t("login.code.hint")}</p>
+            <Field label={t("login.code")}>{(id) => <input id={id} autoFocus autoComplete="one-time-code" className="mono code-input" placeholder={t("login.code.ph")} value={code} onChange={(e) => setCode(e.target.value)} required spellCheck={false} />}</Field>
+            <label className="check"><input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />{t("login.trust")}</label>
             {err && <Alert>{err}</Alert>}
             <div className="row-end">
               <button type="button" className="btn" onClick={() => { setStep("pwd"); setErr(""); }}>
-                Kembali
+                {t("login.back")}
               </button>
               <button className="btn btn-primary" disabled={busy || code.trim().length < 6}>
-                {busy ? "Memeriksa…" : "Masuk"}
+                {busy ? t("login.checking") : t("login.title")}
               </button>
             </div>
           </form>
         )}
-        <p className="small muted">Akses hanya dari jaringan tailnet. Percobaan gagal dicatat dan dibatasi.</p>
+        <p className="small muted">{t("login.tailnet")}</p>
       </div>
     </main>
   );
 }
 
 function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
+  const t = useT();
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -140,17 +142,17 @@ function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
     }
   };
   return (
-    <Modal title="Verifikasi ulang" onClose={() => resolve(false)}>
+    <Modal title={t("stepup.title")} onClose={() => resolve(false)}>
       <form onSubmit={submit} className="stack">
-        <p className="small">Aksi ini penting. Masukkan kata sandi Anda. Setelah benar, aksi penting lain tidak bertanya lagi selama 15 menit.</p>
-        <Field label="Kata sandi">{(id) => <input id={id} data-autofocus type="password" placeholder="kata sandi" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" maxLength={256} required />}</Field>
+        <p className="small">{t("stepup.body")}</p>
+        <Field label={t("login.pw")}>{(id) => <input id={id} data-autofocus type="password" placeholder={t("login.pw.ph")} value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" maxLength={256} required />}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={() => resolve(false)}>
-            Batal
+            {t("common.cancel")}
           </button>
           <button className="btn btn-primary" disabled={busy || !pw}>
-            {busy ? "Memeriksa…" : "Verifikasi"}
+            {busy ? t("login.checking") : t("stepup.verify")}
           </button>
         </div>
       </form>

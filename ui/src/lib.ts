@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { decimalSep, localeTag, t } from "./i18n";
 
 export type Pt = [number, number];
 
 export const RANGES = [
-  { key: "1h", label: "1 jam", sec: 3600 },
-  { key: "24h", label: "24 jam", sec: 86400 },
-  { key: "7d", label: "7 hari", sec: 604800 },
+  { key: "1h", get label() { return t("range.1h"); }, sec: 3600 },
+  { key: "24h", get label() { return t("range.24h"); }, sec: 86400 },
+  { key: "7d", get label() { return t("range.7d"); }, sec: 604800 },
 ] as const;
 export type RangeKey = (typeof RANGES)[number]["key"];
 
@@ -70,36 +71,34 @@ export function byteUnit(v: number): number {
 
 export function fmtClock(t: number, withDate: boolean): string {
   const d = new Date(t * 1000);
-  const hm = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(".", ":");
-  return withDate ? `${d.toLocaleDateString("id-ID", { day: "numeric", month: "short" })} ${hm}` : hm;
+  const hm = d.toLocaleTimeString(localeTag(), { hour: "2-digit", minute: "2-digit" }).replace(".", ":");
+  return withDate ? `${d.toLocaleDateString(localeTag(), { day: "numeric", month: "short" })} ${hm}` : hm;
 }
 
 export function fmtSpan(sec: number): string {
-  if (sec < 90) return `${Math.round(sec)} detik`;
-  if (sec < 5400) return `${Math.round(sec / 60)} menit`;
-  if (sec < 172800) return `${(sec / 3600).toFixed(1).replace(".", ",")} jam`;
-  return `${(sec / 86400).toFixed(1).replace(".", ",")} hari`;
+  if (sec < 90) return t("fmt.sec", { n: Math.round(sec) });
+  if (sec < 5400) return t("fmt.min", { n: Math.round(sec / 60) });
+  if (sec < 172800) return t("fmt.hour", { n: (sec / 3600).toFixed(1).replace(".", decimalSep()) });
+  return t("fmt.day", { n: (sec / 86400).toFixed(1).replace(".", decimalSep()) });
 }
 
 export function fmtUptime(s: number | null): string {
-  if (s == null || s < 0) return "tidak diketahui";
+  if (s == null || s < 0) return t("fmt.unknown");
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d} hari ${h} jam`;
-  if (h > 0) return `${h} jam ${m} menit`;
-  return `${m} menit`;
+  if (d > 0) return t("fmt.dayhour", { d, h });
+  if (h > 0) return t("fmt.hourmin", { h, m });
+  return t("fmt.min", { n: m });
 }
 
 export function fmtAgo(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
-  if (s < 60) return `${s} detik lalu`;
-  if (s < 3600) return `${Math.floor(s / 60)} menit lalu`;
-  if (s < 86400) return `${Math.floor(s / 3600)} jam lalu`;
-  return `${Math.floor(s / 86400)} hari lalu`;
+  const span = s < 60 ? t("fmt.sec", { n: s }) : s < 3600 ? t("fmt.min", { n: Math.floor(s / 60) }) : s < 86400 ? t("fmt.hour", { n: Math.floor(s / 3600) }) : t("fmt.day", { n: Math.floor(s / 86400) });
+  return t("fmt.ago", { span });
 }
 
-const num = (v: number, d: number) => v.toFixed(d).replace(".", ",");
+const num = (v: number, d: number) => v.toFixed(d).replace(".", decimalSep());
 
 /** Ukuran data (basis 1024). */
 export function fmtBytes(b: number | null | undefined): string {
@@ -111,7 +110,7 @@ export function fmtBytes(b: number | null | undefined): string {
     v /= 1024;
     i++;
   }
-  return `${num(v, i === 0 || v >= 100 ? 0 : v >= 10 ? 1 : 2).replace(/,(\d*?)0+$/, (_m, d: string) => (d ? `,${d}` : ""))} ${u[i]}`;
+  return `${num(v, i === 0 || v >= 100 ? 0 : v >= 10 ? 1 : 2).replace(new RegExp(`\\${decimalSep()}(\\d*?)0+$`), (_m, d: string) => (d ? `${decimalSep()}${d}` : ""))} ${u[i]}`;
 }
 
 /** Laju dalam byte per detik. */

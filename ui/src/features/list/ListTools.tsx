@@ -1,3 +1,4 @@
+import { useT } from "../../i18n";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { TabIcon, useScrollRow } from "../../tabicons";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -56,16 +57,17 @@ export function FilterTabs<T>({ lv, label }: { lv: ListView<T>; label: string })
 }
 
 /** Kolom cari dengan label terlihat (R-39) dan ringkasan hasil yang dibacakan pembaca layar. Tidak tampil bila daftar kecil dan belum dicari. */
-export function ListSearch<T>({ lv, label = "Cari", hint, minItems = 8 }: { lv: ListView<T>; label?: string; hint?: string; minItems?: number }) {
+export function ListSearch<T>({ lv, label, hint, minItems = 8 }: { lv: ListView<T>; label?: string; hint?: string; minItems?: number }) {
   const id = useId();
+  const t = useT();
   if (lv.allCount < minItems && !lv.searching) return null;
   return (
     <div className="list-tools">
       <div className="field list-search">
-        <label htmlFor={id}>{label}</label>
+        <label htmlFor={id}>{label ?? t("list.search")}</label>
         <div className="search-wrap">
           <Search size={18} className="icon" aria-hidden="true" />
-          <input id={id} type="search" value={lv.q} onChange={(e) => lv.setQ(e.target.value)} maxLength={80} autoComplete="off" placeholder={hint ?? "Ketik sebagian nama"} />
+          <input id={id} type="search" value={lv.q} onChange={(e) => lv.setQ(e.target.value)} maxLength={80} autoComplete="off" placeholder={hint ?? t("list.hint")} />
         </div>
       </div>
       <p className="small muted" role="status" aria-live="polite">
@@ -82,6 +84,7 @@ export function ListSearch<T>({ lv, label = "Cari", hint, minItems = 8 }: { lv: 
  */
 export function Pager<T>({ lv }: { lv: ListView<T> }) {
   const { page, pages } = lv.view;
+  const t = useT();
   const prev = useRef<HTMLButtonElement>(null);
   const next = useRef<HTMLButtonElement>(null);
   const refocus = useRef<typeof prev | null>(null);
@@ -98,15 +101,15 @@ export function Pager<T>({ lv }: { lv: ListView<T> }) {
     lv.setPage(to);
   };
   return (
-    <nav className="pager" aria-label="Halaman daftar">
+    <nav className="pager" aria-label={t("list.nav")}>
       <button type="button" ref={prev} className="btn btn-sm" disabled={page <= 1} onClick={() => go(page - 1, next)}>
-        <ChevronLeft size={16} aria-hidden="true" /> Sebelumnya
+        <ChevronLeft size={16} aria-hidden="true" /> {t("list.prev")}
       </button>
       <span className="small muted" aria-current="page">
-        Halaman {page} dari {pages}
+        {t("list.pages", { page, pages })}
       </span>
       <button type="button" ref={next} className="btn btn-sm" disabled={page >= pages} onClick={() => go(page + 1, prev)}>
-        Berikutnya <ChevronRight size={16} aria-hidden="true" />
+        {t("list.next")} <ChevronRight size={16} aria-hidden="true" />
       </button>
     </nav>
   );
@@ -115,9 +118,10 @@ export function Pager<T>({ lv }: { lv: ListView<T> }) {
 /** Daftar `<ul className="list">` dengan cari + halaman. `render` mengembalikan `<li>`. */
 export function PagedList<T>({ items, text, render, label, hint, size, facets, facetLabel }: { items: readonly T[]; text: (t: T) => string; render: (t: T) => ReactNode; label?: string; hint?: string; size?: number; facets?: readonly Facet<T>[]; facetLabel?: string }) {
   const lv = useListView(items, text, size, facets);
+  const t = useT();
   return (
     <>
-      <FilterTabs lv={lv} label={facetLabel ?? "Filter"} />
+      <FilterTabs lv={lv} label={facetLabel ?? t("list.filter")} />
       <ListSearch lv={lv} label={label} hint={hint} />
       <ul className="list">{lv.view.rows.map(render)}</ul>
       <Pager lv={lv} />
