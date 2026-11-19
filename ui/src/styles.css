@@ -453,3 +453,12 @@ textarea.mono { width: 100%; }
 .clean-pick input[type="checkbox"] { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--primary); }
 .clean-name { font-weight: 600; }
 .clean-row > .btn { flex: none; }
+
+/* Daftar bersih: kolom ukuran sejajar */
+.cgrid { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.crow { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: var(--s3); align-items: center; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+.crow:first-child { border-top: 0; }
+.crow-act { grid-template-columns: minmax(0, 1fr) 120px auto; }
+.csize { text-align: right; white-space: nowrap; }
+.sticky-bar { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s3); padding: var(--s3); background: var(--surface); border: 1px solid var(--line-soft); border-radius: 12px; }
+@media (max-width: 640px) { .crow, .crow-act { grid-template-columns: minmax(0, 1fr) auto; } .crow-act .btn { grid-column: 1 / -1; } }

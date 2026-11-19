@@ -132,3 +132,20 @@ func TestCleanRunNeedsStepUp(t *testing.T) {
 		t.Fatalf("lab dipanggil tanpa step-up: %q", o.Calls())
 	}
 }
+
+func TestCleanExtraCarefulPrefixNeedsTyping(t *testing.T) {
+	o := testenv.NewOpsEnv(t, testenv.FakeSys)
+	o.Stepup()
+	if code, _ := o.As(o.Cookie, o.Csrf, "POST", "/api/clean/run", `{"ids":["cx:hermes-backups"],"typed":"salah"}`); code != 400 {
+		t.Fatalf("harus 400, dapat %d", code)
+	}
+	if code, _ := o.As(o.Cookie, o.Csrf, "POST", "/api/clean/run", `{"ids":["cx:hermes-backups","go-build"],"typed":"hermes-backups"}`); code != 400 {
+		t.Fatal("careful tidak boleh digabung")
+	}
+	if code, _ := o.As(o.Cookie, o.Csrf, "POST", "/api/clean/run", `{"ids":["cx:hermes-backups"],"typed":"hermes-backups"}`); code != 202 {
+		t.Fatal("valid harus 202")
+	}
+	if !waitCall(t, o, "[cx:hermes-backups][--confirm-careful][--apply]") {
+		t.Fatalf("argumen salah: %q", o.Calls())
+	}
+}

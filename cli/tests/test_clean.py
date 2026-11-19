@@ -247,3 +247,21 @@ def test_mem_top_reads_service_list_as_json(monkeypatch, tmp_path):
     assert any(c[-3:] == ["service", "list", "--json"] for c in calls)
     assert [x["id"] for x in res["suggestions"]] == ["docker"]
     assert res["groups"][0]["label"] == "Docker (Colima VM)"
+
+
+def test_extra_caches_and_hermes_backups(env):
+    h, r, cat = env
+    (h / ".hermes/backups").mkdir(parents=True, exist_ok=True)
+    (h / ".hermes/backups/config.bak").write_text("x")
+    (h / ".hermes/cache/pnpm").mkdir(parents=True)
+    (h / ".hermes/cache/pnpm/a").write_text("x" * 100)
+    (h / "Library/Caches/Google").mkdir(parents=True)
+    cat = clean.catalog(h, r)
+    by = {e["id"]: e for e in cat}
+    assert by["chrome-cache"]["tier"] == "safe" and "Google Chrome" in by["chrome-cache"]["busy"]
+    assert by["hermes-pnpm"]["tier"] == "safe" and by["cx:hermes-backups"]["tier"] == "careful"
+    assert clean.run(["cx:hermes-backups"], True, False, cat)["skipped"], "careful butuh konfirmasi"
+    assert (h / ".hermes/backups/config.bak").exists()
+    clean.run(["hermes-pnpm"], True, False, cat)
+    assert not (h / ".hermes/cache/pnpm/a").exists() and (h / ".hermes/cache").is_dir()
+    assert (h / ".hermes/state.db").exists()

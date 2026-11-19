@@ -50,6 +50,34 @@ def catalog(home=None, root=None):
         E("golangci-lint", "Cache golangci-lint", "safe", [c / "golangci-lint"], "Cache analisis lint.", "Lint berikutnya lebih lambat.", ["golangci-lint"]),
         E("colima-cache", "Cache image Colima", "safe", [c / "colima"], "Image OS untuk VM Docker yang sudah diunduh.", "Colima mengunduh image lagi saat dinyalakan.", ["limactl", "colima"]),
         E("panel-cache", "Cache proxy npm panel", "safe", [h / ".cache/macpanel"], "Tarball yang disimpan proxy resume (lab proxy).", "Unduhan berikutnya mengulang dari registry.", []),
+        E(
+            "chrome-cache",
+            "Cache Google Chrome",
+            "safe",
+            [c / "Google"],
+            "Cache halaman dan profil peramban.",
+            "Situs dimuat lebih lambat sekali. Chrome harus ditutup.",
+            ["Google Chrome", "Google Chrome Helper"],
+        ),
+        E(
+            "puppeteer-cache",
+            "Chromium unduhan Puppeteer",
+            "safe",
+            [h / ".cache/puppeteer"],
+            "Peramban uji yang diunduh Puppeteer.",
+            "Puppeteer mengunduh ulang (±500 MB) saat dipakai lagi.",
+            ["node", "chrome-headless-shell"],
+        ),
+        E(
+            "hermes-pnpm",
+            "Cache pnpm milik Hermes",
+            "safe",
+            [h / ".hermes/cache/pnpm"],
+            "Cache unduhan paket untuk alat Hermes.",
+            "Pemasangan alat Hermes berikutnya mengunduh ulang.",
+            ["pnpm", "npm"],
+        ),
+        E("hermes-uv", "Cache uv milik Hermes", "safe", [h / ".hermes/cache/uv"], "Cache paket Python untuk alat Hermes.", "Pemasangan berikutnya mengunduh ulang.", ["uv"]),
         E("trash", "Tempat Sampah", "safe", [h / ".Trash"], "Berkas yang sudah Anda buang.", "Tidak bisa dikembalikan setelah dikosongkan.", []),
         E("logs-rotated", f"Log lama (>{LOG_AGE_DAYS} hari)", "safe", [h / "Library/Logs"], "Log berputar (.gz atau .log.N) di ~/Library/Logs.", "Riwayat log lama hilang.", [], kind="logs"),
     ]
@@ -70,6 +98,21 @@ def catalog(home=None, root=None):
                         items=True,
                     )
                 )
+    hb = h / ".hermes/backups"
+    if hb.is_dir() and not hb.is_symlink():
+        cat.append(
+            E(
+                "cx:hermes-backups",
+                "Backup Hermes",
+                "careful",
+                [hb],
+                "Salinan konfigurasi dan database Kanban Hermes sebelum perubahan.",
+                "Tidak bisa dikembalikan; bisa jadi satu-satunya salinan konfigurasi lama.",
+                [],
+                kind="contents",
+                items=True,
+            )
+        )
     show = [
         ("hermes", "Data Hermes (~/.hermes)", [h / ".hermes"], "Profil, sesi, dan cache Hermes serta agen lain. Kelola lewat Hermes."),
         ("documents", "Dokumen (~/Documents)", [h / "Documents"], "File pribadi Anda."),

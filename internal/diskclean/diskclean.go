@@ -15,7 +15,7 @@ import (
 const maxIDs = 20
 
 // Bentuk id katalog: "go-build" atau "bk:nama-folder". Tanpa garis miring, titik-titik, atau awalan "-".
-var idRE = regexp.MustCompile(`^(?:bk:)?[A-Za-z0-9][A-Za-z0-9._-]{0,89}$`)
+var idRE = regexp.MustCompile(`^(?:bk:|cx:)?[A-Za-z0-9][A-Za-z0-9._-]{0,89}$`)
 
 func validIDs(ids []string) (string, bool) {
 	if len(ids) < 1 || len(ids) > maxIDs {
@@ -37,7 +37,7 @@ func validIDs(ids []string) (string, bool) {
 func careful(ids []string) []string {
 	var out []string
 	for _, id := range ids {
-		if strings.HasPrefix(id, "bk:") {
+		if strings.HasPrefix(id, "bk:") || strings.HasPrefix(id, "cx:") {
 			out = append(out, id)
 		}
 	}
@@ -115,7 +115,7 @@ func Run(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session)
 			core.WriteError(w, 400, "folder tingkat Hati-hati dihapus satu per satu, tanpa digabung")
 			return
 		}
-		if in.Typed != strings.TrimPrefix(c[0], "bk:") {
+		if in.Typed != strings.TrimPrefix(strings.TrimPrefix(c[0], "bk:"), "cx:") {
 			core.WriteError(w, 400, "ketik ulang nama folder persis untuk melanjutkan")
 			return
 		}
