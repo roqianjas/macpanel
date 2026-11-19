@@ -11,6 +11,7 @@ export type GetPath =
   | "/api/backups/extras-preview"
   | "/api/backups/ls"
   | "/api/backups/prune-preview"
+  | "/api/clean"
   | "/api/composer"
   | "/api/db"
   | `/api/db/${string}/${string}/dbusers`
@@ -33,6 +34,7 @@ export type GetPath =
   | "/api/me/2fa"
   | "/api/me/devices"
   | "/api/me/tokens"
+  | "/api/mem"
   | "/api/metrics"
   | "/api/netmon"
   | "/api/notify"
@@ -89,6 +91,9 @@ export type PostPath =
   | "/api/backups/extras"
   | "/api/backups/prune"
   | "/api/backups/run"
+  | "/api/clean/preview"
+  | "/api/clean/run"
+  | "/api/clean/scan"
   | `/api/composer/${string}`
   | "/api/db"
   | `/api/db/${string}/${string}/creds`
@@ -170,6 +175,9 @@ export const TOKEN_BLOCKED: readonly string[] = [
   "POST /api/auth/logout",
   "POST /api/auth/stepup",
   "POST /api/auth/totp",
+  "POST /api/clean/preview",
+  "POST /api/clean/run",
+  "POST /api/clean/scan",
   "POST /api/db/{engine}/{name}/creds",
   "POST /api/db/{engine}/{name}/dbusers",
   "POST /api/db/{engine}/{name}/dbusers/{user}/passwd",

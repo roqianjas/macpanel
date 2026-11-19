@@ -9,6 +9,7 @@ import json
 import sys
 
 from labcli.backup import backup
+from labcli.clean import clean_cmd, mem_cmd
 from labcli.composer import composer
 from labcli.core import PHPS
 from labcli.db import cmd_create, cmd_drop, cmd_dump, cmd_list, cmd_restore
@@ -215,6 +216,15 @@ def reg_dev(top):
     un.add_argument("--yes", action="store_true", help="lewati pertanyaan tingkat 1-2 (tidak berlaku untuk tingkat 3)")
     un.add_argument("--with-docker-tools", action="store_true", help="tingkat 3: hapus juga colima, docker, docker-compose, lima")
     un.add_argument("--confirm-host", default="", help="tingkat 3 non-interaktif: nama mesin")
+    cl = top.add_parser("clean", help="analisis disk dan pembersihan aman (tanpa --apply hanya pratinjau)").add_subparsers(dest="cact", required=True)
+    cl.add_parser("scan", help="ukur katalog lokasi dan simpan hasilnya")
+    cl.add_parser("last", help="tampilkan hasil analisis terakhir")
+    q = cl.add_parser("run", help="bersihkan entri katalog (pratinjau bila tanpa --apply)")
+    q.add_argument("ids", nargs="+", help="id entri dari lab clean scan")
+    q.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya pratinjau")
+    q.add_argument("--confirm-careful", action="store_true", help="wajib untuk entri tingkat Hati-hati")
+    mm = top.add_parser("mem", help="ringkasan memori dan saran penghematan").add_subparsers(dest="mact", required=True)
+    mm.add_parser("top")
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
     for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd", "exposure"):
         sy.add_parser(x)
@@ -347,6 +357,8 @@ HANDLERS = {
     "redis": redis_cmd,
     "proxy": proxy_cmd,
     "firewall": firewall_cmd,
+    "clean": clean_cmd,
+    "mem": mem_cmd,
     "uninstall": uninstall_cmd,
     "appinstall": app_install,
     "siteclone": site_clone,

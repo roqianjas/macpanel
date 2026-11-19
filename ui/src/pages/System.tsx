@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Skull } from "lucide-react";
 import { get, post } from "../api";
 import { fmtBytes } from "../lib";
+import CleanSection from "../features/clean/CleanSection";
+import MemSection from "../features/clean/MemSection";
 import UninstallGuide from "../features/uninstall/UninstallGuide";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, Tabs, useLoad } from "../ui";
 
 const TABS = [
   { id: "keamanan", label: "Keamanan" },
   { id: "proses", label: "Proses" },
-  { id: "disk", label: "Disk" },
+  { id: "disk", label: "Ruang dan memori" },
   { id: "dns", label: "DNS" },
   { id: "docker", label: "Docker" },
   { id: "uninstall", label: "Uninstall" },
@@ -18,10 +20,10 @@ export default function System() {
   const [tab, setTab] = useState("keamanan");
   return (
     <>
-      <PageHead title="Sistem" desc="Status keamanan, proses, pemakaian disk, dan Docker. Halaman ini hanya membaca, kecuali menghentikan proses pengembangan." />
+      <PageHead title="Sistem" desc="Status keamanan, proses, ruang disk, memori, dan Docker. Yang mengubah sistem hanya pembersihan cache (dengan pratinjau dan verifikasi ulang), mematikan layanan opsional, dan menghentikan proses pengembangan." />
       <Tabs tabs={TABS} value={tab} onChange={setTab} label="Bagian sistem" />
       <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
-        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <Disk /> : tab === "dns" ? <Dns /> : tab === "uninstall" ? <UninstallGuide /> : <Docker />}
+        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <SpaceMemory /> : tab === "dns" ? <Dns /> : tab === "uninstall" ? <UninstallGuide /> : <Docker />}
       </div>
     </>
   );
@@ -138,6 +140,16 @@ function Procs() {
         />
       )}
     </Card>
+  );
+}
+
+function SpaceMemory() {
+  return (
+    <div className="stack">
+      <CleanSection />
+      <MemSection />
+      <Disk />
+    </div>
   );
 }
 

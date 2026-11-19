@@ -444,3 +444,12 @@ textarea.mono { width: 100%; }
 .health-hint { margin-top: var(--s1); }
 .stack > .h3 { margin: 0; }
 .bullets { list-style: disc; padding-left: var(--s4); margin: 0; display: flex; flex-direction: column; gap: var(--s1); }
+
+/* Ruang dan memori */
+.with-icon { display: inline-flex; align-items: center; gap: var(--s2); }
+.block { display: block; }
+.clean-row { gap: var(--s3); align-items: center; flex-wrap: wrap; }
+.clean-pick { display: flex; align-items: flex-start; gap: var(--s3); min-height: 44px; flex: 1 1 260px; cursor: pointer; padding: var(--s1) 0; }
+.clean-pick input[type="checkbox"] { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--primary); }
+.clean-name { font-weight: 600; }
+.clean-row > .btn { flex: none; }

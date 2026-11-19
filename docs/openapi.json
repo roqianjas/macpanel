@@ -416,6 +416,54 @@
         "x-token": true
       }
     },
+    "/api/clean": {
+      "get": {
+        "operationId": "get_api_clean",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/clean/preview": {
+      "post": {
+        "operationId": "post_api_clean_preview",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/clean/run": {
+      "post": {
+        "operationId": "post_api_clean_run",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/clean/scan": {
+      "post": {
+        "operationId": "post_api_clean_scan",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
     "/api/composer": {
       "get": {
         "operationId": "get_api_composer",
@@ -1412,6 +1460,18 @@
         },
         "x-level": "full",
         "x-token": false
+      }
+    },
+    "/api/mem": {
+      "get": {
+        "operationId": "get_api_mem",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
       }
     },
     "/api/metrics": {

@@ -14,6 +14,7 @@ import (
 	"github.com/roqianjas/macpanel/internal/crypto"
 	"github.com/roqianjas/macpanel/internal/databases"
 	"github.com/roqianjas/macpanel/internal/deploy"
+	"github.com/roqianjas/macpanel/internal/diskclean"
 	"github.com/roqianjas/macpanel/internal/docker"
 	"github.com/roqianjas/macpanel/internal/docs"
 	"github.com/roqianjas/macpanel/internal/exposure"
@@ -194,6 +195,11 @@ func Routes() []core.Route {
 		{Method: "GET", Path: "/api/hw", Level: core.Full, H: hardware.Hardware},
 		{Method: "GET", Path: "/api/hw/thresholds", Level: core.Full, H: hardware.ThresholdsGet},
 		{Method: "GET", Path: "/api/exposure", Level: core.Full, H: exposure.Handler},
+		{Method: "GET", Path: "/api/clean", Level: core.Full, H: diskclean.Last},
+		{Method: "POST", Path: "/api/clean/scan", Level: core.Full, H: diskclean.Scan},
+		{Method: "POST", Path: "/api/clean/preview", Level: core.Full, H: diskclean.Preview},
+		{Method: "POST", Path: "/api/clean/run", Level: core.Full, H: diskclean.Run},
+		{Method: "GET", Path: "/api/mem", Level: core.Full, H: diskclean.Mem},
 		{Method: "POST", Path: "/api/exposure/allow", Level: core.Full, H: exposure.Change(true)},
 		{Method: "POST", Path: "/api/exposure/revoke", Level: core.Full, H: exposure.Change(false)},
 		{Method: "POST", Path: "/api/hw/thresholds", Level: core.Full, H: hardware.ThresholdsSet},
