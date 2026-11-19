@@ -1,6 +1,4 @@
-import type { Messages } from "../index";
-
-const en: Messages = {
+const en: Record<string, string> = {
   "lang.label": "Language",
   "lang.hint": "Saved to your account and remembered in this browser.",
   "common.skip": "Skip to content",

@@ -1,5 +1,5 @@
 // Bahasa dasar. Kunci: <area>.<nama>. Placeholder: {nama}.
-const id = {
+const id: Record<string, string> = {
   "lang.label": "Bahasa",
   "lang.hint": "Disimpan untuk akun Anda dan diingat di browser ini.",
   "common.skip": "Lompat ke konten",
@@ -211,5 +211,5 @@ const id = {
   "err.body": "Terjadi kesalahan di tampilan, bukan di server Anda. Muat ulang halaman; bila berulang, laporkan pesan di bawah.",
   "err.reload": "Muat ulang",
   "err.search": "Pencarian gagal ditampilkan. Tutup lalu buka lagi.",
-} as const;
+};
 export default id;

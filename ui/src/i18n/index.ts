@@ -1,17 +1,23 @@
 import { useSyncExternalStore } from "react";
-import id from "./locales/id";
-import en from "./locales/en";
+import idBase from "./locales/id";
+import enBase from "./locales/en";
+
+// Kamus dibagi: berkas dasar (locales/id.ts, en.ts) + potongan per area (locales/parts/<area>.id.ts, <area>.en.ts) yang dimuat otomatis.
+// Satu area = satu berkas sehingga banyak orang bisa menerjemahkan bersamaan tanpa konflik. Kunci dijaga tes (i18n.test.ts), bukan tipe.
+const gather = (mods: Record<string, { default: Record<string, string> }>) => Object.assign({}, ...Object.values(mods).map((m) => m.default)) as Record<string, string>;
+const id: Record<string, string> = { ...idBase, ...gather(import.meta.glob("./locales/parts/*.id.ts", { eager: true })) };
+const en: Record<string, string> = { ...enBase, ...gather(import.meta.glob("./locales/parts/*.en.ts", { eager: true })) };
 
 // Menambah bahasa: salin locales/id.ts menjadi locales/<kode>.ts, terjemahkan nilainya, lalu daftarkan satu baris di LOCALES.
 // Tes i18n.test.ts menjaga setiap bahasa punya kunci yang sama dengan id (bahasa dasar) dan placeholder {x} yang sama.
-export type Messages = Record<keyof typeof id, string>;
+export type Messages = Record<string, string>;
 export const LOCALES: Record<string, { label: string; native: string; messages: Messages }> = {
   id: { label: "Indonesian", native: "Bahasa Indonesia", messages: id },
   en: { label: "English", native: "English", messages: en },
 };
 export const DEFAULT_LANG = "id";
 const KEY = "panel-lang";
-export type Key = keyof typeof id;
+export type Key = string;
 
 let mem: string | null = null; // cadangan bila penyimpanan terblokir
 const subs = new Set<() => void>();

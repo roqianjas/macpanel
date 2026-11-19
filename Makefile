@@ -13,9 +13,15 @@ PY    := python3
 PKG   := ./cmd/panel
 PYSRC := cli cli/lab cli/panelctl
 
-.PHONY: check quick fmt fmt-check vet lint test race gen-api api-check ui-check ui-build cli-check cli-test cli-live build deploy hooks secrets clean
+guide-check:
+	@bash scripts/guide.sh check
 
-check: fmt-check vet lint race api-check ui-check cli-check secrets
+usage:
+	@bash scripts/guide.sh usage
+
+.PHONY: guide-check usage check quick fmt fmt-check vet lint test race gen-api api-check ui-check ui-build cli-check cli-test cli-live build deploy hooks secrets clean
+
+check: fmt-check vet lint race api-check ui-check cli-check guide-check secrets
 	@echo "== make check: OK =="
 
 quick: fmt-check vet test api-check ui-check cli-check secrets
@@ -74,6 +80,7 @@ build: ui-build
 	$(GO) build -o panel $(PKG)
 
 deploy: build
+	@bash scripts/guide.sh install
 	@bash scripts/deploy.sh
 
 hooks:
