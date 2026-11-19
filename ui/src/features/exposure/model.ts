@@ -85,3 +85,10 @@ export function summary(v: Pick<ExView, "now" | "stale" | "findings" | "items">)
 export const entryOf = (i: Pick<ExItem, "key">): string => i.key;
 
 export const isDefaultEntry = (e: string, defaults: readonly string[]): boolean => defaults.includes(e);
+
+/** Perintah terminal untuk menutup port dari LAN lewat pf. Panel tidak menjalankannya (butuh sudo); null bila tidak masuk akal. */
+export function closeCommand(i: Pick<ExItem, "port" | "status">): string | null {
+  if (!Number.isInteger(i.port) || i.port < 1 || i.port > 65535 || i.port === 22) return null;
+  if (i.status !== "flagged" && i.status !== "unknown") return null;
+  return `lab firewall block ${i.port}`;
+}

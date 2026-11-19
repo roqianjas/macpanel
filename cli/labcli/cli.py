@@ -39,6 +39,7 @@ from labcli.docker import (
     status,
 )
 from labcli.ext import ext_act, ext_list
+from labcli.firewall import firewall_cmd
 from labcli.ini import ini_get, ini_set
 from labcli.install import app_install, site_clone
 from labcli.nginx import nginx
@@ -200,6 +201,11 @@ def reg_dev(top):
     rd.add_parser("password", help="kata sandi Redis: status | enable | disable").add_argument("mode", choices=["status", "enable", "disable"])
     px = top.add_parser("proxy", help="proxy registry npm lokal yang melanjutkan unduhan terputus")
     px.add_argument("mode", choices=["status", "enable", "disable", "purge", "serve"])
+    fw = top.add_parser("firewall", help="tutup port dari LAN lewat pf (sudo dijalankan di terminal Anda)")
+    fw.add_argument("mode", choices=["status", "block", "unblock", "verify"])
+    fw.add_argument("port", nargs="?", type=int, help="nomor port (block/unblock)")
+    fw.add_argument("--allow", choices=["tailnet", "none"], default="tailnet", help="block: tailnet tetap boleh (bawaan) atau hanya loopback")
+    fw.add_argument("--dry-run", action="store_true", help="tampilkan langkah tanpa menjalankan sudo")
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
     for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd", "exposure"):
         sy.add_parser(x)
@@ -329,6 +335,7 @@ HANDLERS = {
     "sys": sysx,
     "redis": redis_cmd,
     "proxy": proxy_cmd,
+    "firewall": firewall_cmd,
     "appinstall": app_install,
     "siteclone": site_clone,
     "docker": run_docker,

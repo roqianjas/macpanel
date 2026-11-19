@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayName, loopbackCount, sortItems, statusInfo, summary, visibleItems, type ExItem, type ExView, type Status } from "./model";
+import { closeCommand, displayName, loopbackCount, sortItems, statusInfo, summary, visibleItems, type ExItem, type ExView, type Status } from "./model";
 
 const it_ = (o: Partial<ExItem>): ExItem => ({ key: "x:1", proc: "x", pid: 1, port: 1, bind: "*", scope: "all", system: false, lan_reachable: true, service: "", hidden: false, status: "flagged", ...o });
 const view = (o: Partial<ExView> = {}): ExView => ({ now: { at: 1, lan_ip: "192.0.2.10", errors: [] }, stale: false, items: [], allowed: [], defaults: [], findings: 0, confirm_samples: 2, interval: 300, can_edit: true, ...o });
@@ -62,4 +62,17 @@ describe("summary", () => {
   it("menghitung yang perlu perhatian", () => expect(summary(view({ items: [it_({}), it_({ key: "y:2" })], findings: 2 }))).toBe("2 layanan terbuka ke jaringan rumah dan perlu perhatian."));
   it("terbuka tetapi menunggu konfirmasi", () => expect(summary(view({ items: [it_({ status: "allowed" })], findings: 1 }))).toContain("menunggu konfirmasi"));
   it("aman: hanya bila benar-benar tidak ada", () => expect(summary(view({ items: [it_({ status: "allowed" })] }))).toBe("Tidak ada layanan tak disengaja yang terbuka ke jaringan rumah."));
+});
+
+describe("closeCommand", () => {
+  it("hanya untuk port yang perlu ditutup dan masuk akal", () => {
+    expect(closeCommand({ port: 88, status: "flagged" })).toBe("lab firewall block 88");
+    expect(closeCommand({ port: 5000, status: "unknown" })).toBe("lab firewall block 5000");
+    expect(closeCommand({ port: 22, status: "flagged" })).toBeNull();
+    expect(closeCommand({ port: 0, status: "flagged" })).toBeNull();
+    expect(closeCommand({ port: 70000, status: "flagged" })).toBeNull();
+    expect(closeCommand({ port: 8.5, status: "flagged" })).toBeNull();
+    expect(closeCommand({ port: 88, status: "allowed" })).toBeNull();
+    expect(closeCommand({ port: 88, status: "guarded" })).toBeNull();
+  });
 });

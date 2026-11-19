@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ShieldAlert, ShieldCheck } from "lucide-react";
+import { Copy, ShieldAlert, ShieldCheck, Terminal } from "lucide-react";
 import { errText, fmtTime, get, post } from "../../api";
 import { Alert, Card, Chip, ConfirmDialog, State, usePoll } from "../../ui";
-import { displayName, isDefaultEntry, loopbackCount, statusInfo, summary, visibleItems, type ExItem, type ExView } from "./model";
+import { closeCommand, displayName, isDefaultEntry, loopbackCount, statusInfo, summary, visibleItems, type ExItem, type ExView } from "./model";
 
 // Ikon: ShieldAlert bila ada layanan yang perlu perhatian, ShieldCheck bila tidak. Keduanya menandai keadaan nyata (ada/tidak ada paparan),
 // bukan hiasan; bentuknya berbeda sehingga status tidak hanya bergantung pada warna.
@@ -15,6 +15,8 @@ export default function ExposureSection() {
   const [ask, setAsk] = useState<ExItem | null>(null);
   const [note, setNote] = useState<Note>(null);
   const [busy, setBusy] = useState("");
+  const [howto, setHowto] = useState<ExItem | null>(null);
+  const [copied, setCopied] = useState("");
   const v = q.data;
   const flagged = v ? v.items.filter((i) => i.status === "flagged").length : 0;
 
@@ -78,6 +80,11 @@ export default function ExposureSection() {
                             <span className="sr"> {s.hint}</span>
                           </td>
                           <td className="cell-end">
+                            {closeCommand(i) && (
+                              <button className="btn btn-sm" aria-expanded={howto?.key === i.key} onClick={() => setHowto(howto?.key === i.key ? null : i)}>
+                                <Terminal size={16} aria-hidden="true" /> Cara menutup<span className="sr"> {displayName(i)} port {i.port}</span>
+                              </button>
+                            )}
                             {i.status === "flagged" && v.can_edit && (
                               <button className="btn btn-sm" onClick={() => setAsk(i)}>
                                 Tandai disengaja<span className="sr"> {displayName(i)} port {i.port}</span>
@@ -89,6 +96,34 @@ export default function ExposureSection() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {howto && closeCommand(howto) && (
+              <div className="howto" role="region" aria-label={`Cara menutup port ${howto.port}`}>
+                <p className="small">
+                  <strong>Tutup port {howto.port} dari jaringan rumah.</strong> Jalankan di terminal Mac mini atau lewat SSH. Perintah ini meminta password{" "}
+                  <span className="mono">sudo</span> Anda; panel tidak menjalankannya.
+                </p>
+                <div className="howto-row">
+                  <code className="mono howto-cmd">{closeCommand(howto)}</code>
+                  <button
+                    className="btn btn-sm"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(closeCommand(howto) || "");
+                        setCopied("Perintah disalin.");
+                      } catch {
+                        setCopied("Clipboard tidak tersedia di koneksi ini; salin manual.");
+                      }
+                    }}
+                  >
+                    <Copy size={16} aria-hidden="true" /> Salin perintah
+                  </button>
+                </div>
+                <p className="small muted" role="status">
+                  {copied || "Tailnet tetap boleh mengakses port ini."} Cek aturan aktif dengan <span className="mono">lab firewall verify</span>; batalkan dengan{" "}
+                  <span className="mono">lab firewall unblock {howto.port}</span>.
+                </p>
               </div>
             )}
             <div>

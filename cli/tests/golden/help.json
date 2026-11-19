@@ -1,5 +1,5 @@
 {
- "(root)": "usage: lab [-h]\n           {db,worker,job,site,service,app,nginx,php,runtime,update,ext,ini,composer,deploy,appinstall,siteclone,redis,proxy,sys,dbcfg,backup,docker} ...\n\npositional arguments:\n  {db,worker,job,site,service,app,nginx,php,runtime,update,ext,ini,composer,deploy,appinstall,siteclone,redis,proxy,sys,dbcfg,backup,docker}\n    proxy               proxy registry npm lokal yang melanjutkan unduhan terputus\n\noptions:\n  -h, --help            show this help message and exit\n",
+ "(root)": "usage: lab [-h]\n           {db,worker,job,site,service,app,nginx,php,runtime,update,ext,ini,composer,deploy,appinstall,siteclone,redis,proxy,firewall,sys,dbcfg,backup,docker} ...\n\npositional arguments:\n  {db,worker,job,site,service,app,nginx,php,runtime,update,ext,ini,composer,deploy,appinstall,siteclone,redis,proxy,firewall,sys,dbcfg,backup,docker}\n    proxy               proxy registry npm lokal yang melanjutkan unduhan terputus\n    firewall            tutup port dari LAN lewat pf (sudo dijalankan di terminal Anda)\n\noptions:\n  -h, --help            show this help message and exit\n",
  "app": "usage: lab app [-h] {list,install,remove} ...\n\npositional arguments:\n  {list,install,remove}\n\noptions:\n  -h, --help            show this help message and exit\n",
  "app install": "usage: lab app install [-h] id\n\npositional arguments:\n  id\n\noptions:\n  -h, --help  show this help message and exit\n",
  "app list": "usage: lab app list [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
@@ -68,6 +68,7 @@
  "ext install": "usage: lab ext install [-h] php name\n\npositional arguments:\n  php\n  name\n\noptions:\n  -h, --help  show this help message and exit\n",
  "ext list": "usage: lab ext list [-h] php\n\npositional arguments:\n  php\n\noptions:\n  -h, --help  show this help message and exit\n",
  "ext remove": "usage: lab ext remove [-h] php name\n\npositional arguments:\n  php\n  name\n\noptions:\n  -h, --help  show this help message and exit\n",
+ "firewall": "usage: lab firewall [-h] [--allow {tailnet,none}] [--dry-run] {status,block,unblock,verify} [port]\n\npositional arguments:\n  {status,block,unblock,verify}\n  port                  nomor port (block/unblock)\n\noptions:\n  -h, --help            show this help message and exit\n  --allow {tailnet,none}\n                        block: tailnet tetap boleh (bawaan) atau hanya loopback\n  --dry-run             tampilkan langkah tanpa menjalankan sudo\n",
  "ini": "usage: lab ini [-h] {get,set} ...\n\npositional arguments:\n  {get,set}\n\noptions:\n  -h, --help  show this help message and exit\n",
  "ini get": "usage: lab ini get [-h] php\n\npositional arguments:\n  php\n\noptions:\n  -h, --help  show this help message and exit\n",
  "ini set": "usage: lab ini set [-h] php pairs [pairs ...]\n\npositional arguments:\n  php\n  pairs\n\noptions:\n  -h, --help  show this help message and exit\n",
