@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Skull } from "lucide-react";
 import { get, post } from "../api";
 import { fmtBytes } from "../lib";
+import UninstallGuide from "../features/uninstall/UninstallGuide";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, Tabs, useLoad } from "../ui";
 
 const TABS = [
@@ -10,6 +11,7 @@ const TABS = [
   { id: "disk", label: "Disk" },
   { id: "dns", label: "DNS" },
   { id: "docker", label: "Docker" },
+  { id: "uninstall", label: "Uninstall" },
 ];
 
 export default function System() {
@@ -19,7 +21,7 @@ export default function System() {
       <PageHead title="Sistem" desc="Status keamanan, proses, pemakaian disk, dan Docker. Halaman ini hanya membaca, kecuali menghentikan proses pengembangan." />
       <Tabs tabs={TABS} value={tab} onChange={setTab} label="Bagian sistem" />
       <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
-        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <Disk /> : tab === "dns" ? <Dns /> : <Docker />}
+        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <Disk /> : tab === "dns" ? <Dns /> : tab === "uninstall" ? <UninstallGuide /> : <Docker />}
       </div>
     </>
   );

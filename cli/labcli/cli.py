@@ -6,6 +6,7 @@ Menambah perintah: tulis fungsinya di modul domain, daftarkan parser di fungsi r
 
 import argparse
 import json
+import sys
 
 from labcli.backup import backup
 from labcli.composer import composer
@@ -50,6 +51,7 @@ from labcli.runtime import runtime
 from labcli.services import app, service
 from labcli.site import site
 from labcli.sysinfo import sysx
+from labcli.uninstall import uninstall_cmd
 from labcli.update import apply, check
 from labcli.worker import PHP, run
 
@@ -206,6 +208,12 @@ def reg_dev(top):
     fw.add_argument("port", nargs="?", type=int, help="nomor port (block/unblock)")
     fw.add_argument("--allow", choices=["tailnet", "none"], default="tailnet", help="block: tailnet tetap boleh (bawaan) atau hanya loopback")
     fw.add_argument("--dry-run", action="store_true", help="tampilkan langkah tanpa menjalankan sudo")
+    un = top.add_parser("uninstall", help="lepas MacPanel dan aplikasi bundelnya (tanpa --apply hanya rencana)")
+    un.add_argument("--level", type=int, choices=[1, 2, 3], default=1, help="1 panel; 2 + aplikasi dihentikan; 3 + paket, data, dan ~/MacPanel dihapus")
+    un.add_argument("--backup-dir", default="", help="tingkat 3: folder backup akhir di LUAR ~/MacPanel")
+    un.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya mencetak rencana")
+    un.add_argument("--yes", action="store_true", help="lewati pertanyaan tingkat 1-2 (tidak berlaku untuk tingkat 3)")
+    un.add_argument("--confirm-host", default="", help="tingkat 3 non-interaktif: nama mesin")
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
     for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd", "exposure"):
         sy.add_parser(x)
@@ -336,6 +344,7 @@ HANDLERS = {
     "redis": redis_cmd,
     "proxy": proxy_cmd,
     "firewall": firewall_cmd,
+    "uninstall": uninstall_cmd,
     "appinstall": app_install,
     "siteclone": site_clone,
     "docker": run_docker,
@@ -344,4 +353,7 @@ HANDLERS = {
 
 def main():
     a = build_parser().parse_args()
-    HANDLERS[a.mod](a)
+    rc = HANDLERS[a.mod](a)
+    # Kode keluar harus mencerminkan kegagalan: skrip dan panel membacanya. Handler yang tidak mengembalikan angka = sukses.
+    if isinstance(rc, int) and not isinstance(rc, bool) and rc:
+        sys.exit(rc)
