@@ -238,6 +238,11 @@ def service(a):
     else:
         plist = str(LAUNCH / f"{c['name']}.plist")
         tgt = f"gui/{UID}/{c['name']}"
+        # Docker (Colima) tidak boleh menyala sendiri setelah login/reboot: VM 4 GB RAM. `disable` bertahan melewati reboot,
+        # jadi start harus `enable` dulu dan stop `disable` lagi. Layanan launchd lain tidak diubah perilakunya.
+        manual = c["id"] == "docker"
+        if manual and a.act in ("start", "restart"):
+            sh(["/bin/launchctl", "enable", tgt])
         if a.act == "restart":
             # bootout (SIGTERM, shutdown bersih) lalu bootstrap; kickstart -k memakai SIGKILL dan membahayakan database
             if launchd_loaded(c["name"]):
@@ -249,9 +254,13 @@ def service(a):
             r = sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist])
         elif a.act == "stop":
             r = sh(["/bin/launchctl", "bootout", tgt])
+            if manual:
+                sh(["/bin/launchctl", "disable", tgt])
+                # bootout hanya melepas job `colima start --foreground`; VM (limactl/Virtualization) bisa tetap hidup dan memakai 4 GB
+                sh(["/opt/homebrew/bin/colima", "stop"], timeout=150)
         else:
-            r = sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist]) if not launchd_loaded(c["name"]) else sh(["/bin/true"])
-    if r.returncode:
+            r = sh(["/bin/launchctl", "bootstrap", f"gui/{UID}", plist]) if not launchd_loaded(c["name"]) else sh(["/usr/bin/true"])
+    if r.returncode and not (a.act == "stop" and "No such process" in (r.stderr or "")):  # stop pada layanan yang sudah mati = sudah tercapai
         die((r.stderr or r.stdout).strip()[-300:] or "gagal")
     want = a.act != "stop"
     for _ in range(600 if c["id"] == "docker" else 120 if c["id"] in ("9router", "mariadb") else 20):  # 9router menyiapkan runtime SQLite saat start pertama (±20 dtk)
