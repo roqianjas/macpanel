@@ -64,7 +64,7 @@ export default function ThresholdsCard() {
               {THR_FIELDS.map((f) => (
                 <Field key={f.key} label={`${f.label} (${f.unit})`} hint={`Bawaan: ${r.defaults[f.key]} ${f.unit}`}>
                   {(id, dd) => (
-                    <input id={id} aria-describedby={dd} inputMode="decimal" value={draft[f.key] ?? ""} disabled={!r.can_edit || busy} aria-invalid={!!err && !Number.isFinite(parsed[f.key])} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />
+                    <input id={id} aria-describedby={dd} placeholder={String(r.defaults[f.key])} inputMode="decimal" value={draft[f.key] ?? ""} disabled={!r.can_edit || busy} aria-invalid={!!err && !Number.isFinite(parsed[f.key])} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />
                   )}
                 </Field>
               ))}

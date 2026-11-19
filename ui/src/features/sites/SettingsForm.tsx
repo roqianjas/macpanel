@@ -53,7 +53,7 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
             </p>
             <Field label="Domain tambahan" hint={`Nama utama tetap ${name}.lab`}>
               {(id, dd) => (
-                <textarea id={id} aria-describedby={dd} className="mono" rows={4} value={(m.aliases ?? []).join("\n")} onChange={(e) => set("aliases", e.target.value.split("\n").map((x) => x.trim().toLowerCase()).filter(Boolean))} spellCheck={false} />
+                <textarea id={id} aria-describedby={dd} className="mono" rows={4} placeholder="www.contoh.lab" value={(m.aliases ?? []).join("\n")} onChange={(e) => set("aliases", e.target.value.split("\n").map((x) => x.trim().toLowerCase()).filter(Boolean))} spellCheck={false} />
               )}
             </Field>
           </Card>
@@ -62,7 +62,7 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
             <p className="small muted">Akses ke semua situs sudah dibatasi ke jaringan tailnet. Di sini Anda bisa mempersempitnya lagi. Aturan hanya boleh berisi alamat di dalam tailnet atau loopback; alamat publik ditolak.</p>
             <Field label="Hanya izinkan IP berikut (opsional)" hint="Satu IP atau CIDR per baris, mis. 100.64.0.10 atau 100.64.0.0/16. Kosong = semua perangkat tailnet.">
               {(id, dd) => (
-                <textarea id={id} aria-describedby={dd} className="mono" rows={3} value={(m.allow_ips ?? []).join("\n")} onChange={(e) => set("allow_ips", e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))} spellCheck={false} />
+                <textarea id={id} aria-describedby={dd} className="mono" rows={3} placeholder="100.64.0.10" value={(m.allow_ips ?? []).join("\n")} onChange={(e) => set("allow_ips", e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))} spellCheck={false} />
               )}
             </Field>
             <div className="checks">
@@ -85,7 +85,7 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
                 )}
               </Field>
               <Field label={m.mode === "proxy" ? "Port aplikasi" : "Folder"}>
-                {(id) => <input id={id} className="mono" value={m.target} onChange={(e) => set("target", e.target.value)} required />}
+                {(id) => <input id={id} className="mono" placeholder={m.mode === "proxy" ? "3000" : "wwwroot/nama-situs/public"} pattern={m.mode === "proxy" ? "[0-9]{4,5}" : undefined} title={m.mode === "proxy" ? "Port 1024-65535" : undefined} value={m.target} onChange={(e) => set("target", e.target.value)} required />}
               </Field>
               {m.mode === "php" && (
                 <Field label="Versi PHP" hint="Ganti versi tanpa membuat ulang situs. Versi harus terpasang.">
@@ -105,8 +105,8 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
                   )}
                 </Field>
               )}
-              <Field label="Batas unggah (MB)">{(id) => <input id={id} type="number" min={1} max={1024} value={m.max_body_mb} onChange={(e) => set("max_body_mb", Number(e.target.value))} required />}</Field>
-              <Field label="Timeout baca (detik)">{(id) => <input id={id} type="number" min={10} max={600} value={m.read_timeout_s} onChange={(e) => set("read_timeout_s", Number(e.target.value))} required />}</Field>
+              <Field label="Batas unggah (MB)">{(id) => <input id={id} type="number" min={1} max={1024} placeholder="50" value={m.max_body_mb} onChange={(e) => set("max_body_mb", Number(e.target.value))} required />}</Field>
+              <Field label="Timeout baca (detik)">{(id) => <input id={id} type="number" min={10} max={600} placeholder="60" value={m.read_timeout_s} onChange={(e) => set("read_timeout_s", Number(e.target.value))} required />}</Field>
             </div>
             <div className="checks">
               <label className="check"><input type="checkbox" checked={m.force_https} onChange={(e) => set("force_https", e.target.checked)} />Paksa HTTPS (alihkan port 80 ke 443)</label>
@@ -140,8 +140,8 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
                   <tbody>
                     {m.rewrites.map((r, i) => (
                       <tr key={i}>
-                        <td><input aria-label={`Aturan ${i + 1}: dari`} className="mono" value={r.from} onChange={(e) => editRule(i, "from", e.target.value)} required /></td>
-                        <td><input aria-label={`Aturan ${i + 1}: ke`} className="mono" value={r.to} onChange={(e) => editRule(i, "to", e.target.value)} required /></td>
+                        <td><input aria-label={`Aturan ${i + 1}: dari`} className="mono" placeholder="^/lama/(.*)$" maxLength={200} value={r.from} onChange={(e) => editRule(i, "from", e.target.value)} required /></td>
+                        <td><input aria-label={`Aturan ${i + 1}: ke`} className="mono" placeholder="/baru/$1" maxLength={200} value={r.to} onChange={(e) => editRule(i, "to", e.target.value)} required /></td>
                         <td>
                           <select aria-label={`Aturan ${i + 1}: flag`} value={r.flag} onChange={(e) => editRule(i, "flag", e.target.value)}>
                             <option value="">(tanpa)</option>

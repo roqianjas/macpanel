@@ -226,7 +226,7 @@ export function ConfirmDialog({ title, body, word, verb, onConfirm, onClose }: {
       <div className="stack">
         <div>{body}</div>
         <Field label={`Ketik “${word}” untuk melanjutkan`}>
-          {(id) => <input id={id} data-autofocus className="mono" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} />}
+          {(id) => <input id={id} data-autofocus className="mono" placeholder={word} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} />}
         </Field>
         {err && (
           <p className="alert alert-bad pre" role="alert">

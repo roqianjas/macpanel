@@ -114,22 +114,6 @@ export default function Overview() {
           <p className="small muted">Peringatan {alerts.data.notify ?? "hanya ditampilkan di panel; tidak ada pesan keluar"}.</p>
         </Card>
       )}
-      <HealthCard />
-      <ul className="tiles" aria-label="Akses cepat">
-        {tiles.map((t) => (
-          <li key={t.href}>
-            <a className="tile" href={t.href}>
-              <span className="tile-ic">
-                <t.icon size={22} aria-hidden="true" />
-              </span>
-              <b>{t.label}</b>
-              <span className="tile-ds">{t.ds}</span>
-              {t.chip && <span className="chip chip-mute">{t.chip}</span>}
-            </a>
-          </li>
-        ))}
-      </ul>
-
       <State loading={sys.loading && !sys.data} error={sys.error} onRetry={sys.reload}>
         {si && (
           <ul className="kpis" aria-label="Sumber daya">
@@ -240,6 +224,22 @@ export default function Overview() {
           </Card>
         </div>
       </div>
+
+      <HealthCard />
+      <ul className="tiles" aria-label="Akses cepat">
+        {tiles.map((t) => (
+          <li key={t.href}>
+            <a className="tile" href={t.href}>
+              <span className="tile-ic">
+                <t.icon size={22} aria-hidden="true" />
+              </span>
+              <b>{t.label}</b>
+              <span className="tile-ds">{t.ds}</span>
+              {t.chip && <span className="chip chip-mute">{t.chip}</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

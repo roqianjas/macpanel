@@ -80,6 +80,7 @@ export default function ExposureSection() {
                             <span className="sr"> {s.hint}</span>
                           </td>
                           <td className="cell-end">
+                            <div className="row">
                             {closeCommand(i) && (
                               <button className="btn btn-sm" aria-expanded={howto?.key === i.key} onClick={() => setHowto(howto?.key === i.key ? null : i)}>
                                 <Terminal size={16} aria-hidden="true" /> Cara menutup<span className="sr"> {displayName(i)} port {i.port}</span>
@@ -90,6 +91,7 @@ export default function ExposureSection() {
                                 Tandai disengaja<span className="sr"> {displayName(i)} port {i.port}</span>
                               </button>
                             )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -126,7 +128,7 @@ export default function ExposureSection() {
                 </p>
               </div>
             )}
-            <div>
+            <div className="stack">
               <h3 className="h3">Daftar izin</h3>
               <p className="small muted">Layanan yang Anda putuskan boleh terbuka. Mencabut entri membuat peringatan muncul lagi bila layanannya masih terbuka.</p>
               {v.allowed.length === 0 ? (

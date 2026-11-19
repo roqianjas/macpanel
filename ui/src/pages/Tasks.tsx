@@ -172,7 +172,7 @@ function AddTask({ kind, onClose, onDone }: { kind: "worker" | "job"; onClose: (
       <form onSubmit={submit} className="stack">
         <div className="grid2">
           <Field label="Nama" hint="Huruf kecil, angka, tanda hubung.">
-            {(id, d) => <input id={id} aria-describedby={d} data-autofocus className="mono" value={f.name} onChange={(e) => up("name", e.target.value.toLowerCase())} required pattern="[a-z][a-z0-9\-]{0,39}" />}
+            {(id, d) => <input id={id} aria-describedby={d} data-autofocus className="mono" placeholder="queue-default" maxLength={40} value={f.name} onChange={(e) => up("name", e.target.value.toLowerCase())} required pattern="[a-z][a-z0-9\-]{0,39}" />}
           </Field>
           <Field label="Folder kerja" hint="Di bawah ~/MacPanel/wwwroot.">
             {(id, d) => <input id={id} aria-describedby={d} className="mono" value={f.dir} onChange={(e) => up("dir", e.target.value)} required placeholder="~/MacPanel/wwwroot/org/proyek" />}
@@ -193,7 +193,7 @@ function AddTask({ kind, onClose, onDone }: { kind: "worker" | "job"; onClose: (
             )}
           </Field>
           {kind === "worker" ? (
-            <Field label="Jumlah proses">{(id) => <input id={id} type="number" min={1} max={8} value={f.procs} onChange={(e) => up("procs", e.target.value)} />}</Field>
+            <Field label="Jumlah proses">{(id) => <input id={id} type="number" min={1} max={8} placeholder="1" required value={f.procs} onChange={(e) => up("procs", e.target.value)} />}</Field>
           ) : (
             <>
               <Field label="Jadwal">
@@ -206,7 +206,7 @@ function AddTask({ kind, onClose, onDone }: { kind: "worker" | "job"; onClose: (
               </Field>
               {f.when === "every" ? (
                 <Field label="Interval" hint="Contoh: 5m (menit) atau 2h (jam).">
-                  {(id, d) => <input id={id} aria-describedby={d} className="mono" value={f.every} onChange={(e) => up("every", e.target.value)} required pattern="[1-9][0-9]{0,2}[mh]" />}
+                  {(id, d) => <input id={id} aria-describedby={d} className="mono" placeholder="5m" title="Angka lalu m (menit) atau h (jam), mis. 5m atau 2h" value={f.every} onChange={(e) => up("every", e.target.value)} required pattern="[1-9][0-9]{0,2}[mh]" />}
                 </Field>
               ) : (
                 <Field label="Jam (24 jam)" hint="Zona waktu Mac mini.">

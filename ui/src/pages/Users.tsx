@@ -111,7 +111,7 @@ function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { na
         }}
       >
         <Field label="Nama pengguna" hint="Huruf kecil, angka, _ atau -; 3-32 karakter; diawali huruf.">
-          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_-]{2,31}" required autoFocus spellCheck={false} />}
+          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="nama-pengguna" maxLength={32} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_-]{2,31}" required autoFocus spellCheck={false} />}
         </Field>
         <Field label="Peran" hint="Hanya-baca: melihat saja, tidak dapat mengubah apa pun dan tidak melihat kredensial.">
           {(id, dd) => (

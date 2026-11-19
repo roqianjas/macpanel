@@ -6,7 +6,7 @@
   --r-card: 16px; --r-ctl: 10px; --r-s: 6px;
   --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 32px;
   --t-xs: 11px; --t-s: 13px; --t-m: 15px; --t-l: 18px; --t-xl: 24px; --t-2xl: 30px;
-  --side-w: 232px; --side-w-c: 84px; --ctl: 38px;
+  --side-w: 232px; --side-w-c: 84px; --ctl: 36px;
 }
 html[data-theme="light"] {
   --bg: #f2f5fa; --surface: #ffffff; --raised: #e7eef8; --text: #14243b; --muted: #4d5f78;
@@ -77,7 +77,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--ctl); padding: 6px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); text-decoration: none; font-size: var(--t-s); font-weight: 600; line-height: 1.2; color: var(--text); white-space: nowrap; }
 .btn:hover:not(:disabled) { background: var(--raised); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
-.btn-sm { min-height: 32px; padding: 4px 10px; }
+.btn-sm { min-height: 36px; padding: 4px 10px; }
 .btn-icon { padding: 6px; min-width: var(--ctl); }
 .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 html[data-theme="dark"] .btn-primary { color: #06142b; }
@@ -103,11 +103,11 @@ select { padding-right: 8px; }
 .inline-form input { flex: 1 1 200px; width: auto; }
 .editor { min-height: 380px; font-size: var(--t-s); white-space: pre; overflow: auto; tab-size: 4; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-ctl); overflow: hidden; background: var(--surface); }
-.seg button { border: 0; background: none; padding: 6px 12px; font-size: var(--t-s); font-weight: 600; color: var(--muted); min-height: 34px; }
+.seg button { border: 0; background: none; padding: 6px 12px; font-size: var(--t-s); font-weight: 600; color: var(--muted); min-height: 36px; }
 .seg button:hover { background: var(--raised); color: var(--text); }
 .seg button.on { background: var(--tint); color: var(--on-tint); }
 .tabs { display: flex; gap: var(--s1); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--line); }
-.tab { min-height: 42px; padding: 0 var(--s3); background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); font-size: var(--t-s); font-weight: 600; white-space: nowrap; margin-bottom: -1px; }
+.tab { min-height: 40px; padding: 0 var(--s3); background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); font-size: var(--t-s); font-weight: 600; white-space: nowrap; margin-bottom: -1px; }
 .tab:hover { color: var(--text); }
 .tab.on { color: var(--on-tint); border-bottom-color: var(--primary); }
 
@@ -431,3 +431,15 @@ textarea.mono { width: 100%; }
 .howto { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: var(--s3); display: flex; flex-direction: column; gap: var(--s2); }
 .howto-row { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
 .howto-cmd { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; background: var(--raised); border-radius: var(--r-ctl); padding: 10px 12px; user-select: all; }
+
+/* Layar sentuh: target 44px. Desktop dengan mouse: 36px agar tabel tidak terlalu tinggi. */
+@media (pointer: coarse) { :root { --ctl: 44px; } .btn-sm, .seg button, .tab, .btn-icon { min-height: 44px; } .btn-icon { min-width: 44px; } }
+/* Tab yang bisa digeser: ujung kanan memudar sebagai petunjuk ada lanjutannya */
+@media (max-width: 760px) { .tabs { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); } }
+/* Kesehatan mesin: grid ringkas */
+.health-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: var(--s3); }
+.health-item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); padding: var(--s3); border: 1px solid var(--line-soft); border-radius: var(--r-ctl); min-width: 0; background: var(--surface); }
+.health-label { font-size: var(--t-xs); font-weight: 600; color: var(--muted); }
+.health-value { font-size: var(--t-m, 1.05rem); font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.health-hint { margin-top: var(--s1); }
+.stack > .h3 { margin: 0; }

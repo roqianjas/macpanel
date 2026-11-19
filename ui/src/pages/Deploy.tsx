@@ -49,6 +49,13 @@ export default function Deploy({ name }: { name: string }) {
       setErr(errText(x));
     }
   };
+  if (q.error.includes("tidak punya root")) {
+    return (
+      <Card title="Deploy tidak tersedia">
+        <p className="small muted">Situs ini hanya meneruskan permintaan ke layanan lain (reverse proxy), jadi tidak punya folder proyek untuk di-deploy dari panel. Deploy berlaku untuk situs PHP, statis, dan proyek yang dibuat lewat panel.</p>
+      </Card>
+    );
+  }
   return (
     <div className="stack">
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>

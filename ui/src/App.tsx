@@ -85,8 +85,8 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
         <h1>{step === "pwd" ? "Masuk" : "Verifikasi dua langkah"}</h1>
         {step === "pwd" ? (
           <form onSubmit={submitPwd} className="stack">
-            <Field label="Nama pengguna">{(id) => <input id={id} autoFocus autoComplete="username" value={name} onChange={(e) => setName(e.target.value)} required />}</Field>
-            <Field label="Kata sandi">{(id) => <input id={id} type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
+            <Field label="Nama pengguna">{(id) => <input id={id} autoFocus autoComplete="username" placeholder="nama pengguna" value={name} onChange={(e) => setName(e.target.value)} required />}</Field>
+            <Field label="Kata sandi">{(id) => <input id={id} type="password" autoComplete="current-password" placeholder="kata sandi" value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
             {err && <Alert>{err}</Alert>}
             <button className="btn btn-primary" disabled={busy || !name || !pw}>
               {busy ? "Memeriksa…" : "Lanjut ke kode"}
@@ -95,7 +95,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
         ) : (
           <form onSubmit={submitCode} className="stack">
             <p className="muted small">Masukkan kode 6 digit dari Google Authenticator (atau aplikasi TOTP Anda). Satu kode recovery juga diterima.</p>
-            <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} autoFocus autoComplete="one-time-code" className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} required spellCheck={false} />}</Field>
+            <Field label="Kode 6 digit atau kode recovery">{(id) => <input id={id} autoFocus autoComplete="one-time-code" className="mono code-input" placeholder="6 digit atau kode recovery" value={code} onChange={(e) => setCode(e.target.value)} required spellCheck={false} />}</Field>
             <label className="check"><input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />Percayai perangkat ini selama 30 hari (berikutnya cukup kata sandi). Jangan dicentang di komputer umum.</label>
             {err && <Alert>{err}</Alert>}
             <div className="row-end">
@@ -135,7 +135,7 @@ function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
     <Modal title="Verifikasi ulang" onClose={() => resolve(false)}>
       <form onSubmit={submit} className="stack">
         <p className="small">Aksi ini penting. Masukkan kata sandi Anda. Setelah benar, aksi penting lain tidak bertanya lagi selama 15 menit.</p>
-        <Field label="Kata sandi">{(id) => <input id={id} data-autofocus type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" maxLength={256} required />}</Field>
+        <Field label="Kata sandi">{(id) => <input id={id} data-autofocus type="password" placeholder="kata sandi" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" maxLength={256} required />}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={() => resolve(false)}>

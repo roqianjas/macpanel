@@ -77,10 +77,10 @@ export function PasswordDialog({ title, word, hint, onClose, onSubmit }: { title
         </div>
         {own && (
           <Field label="Kata sandi baru" hint="12-100 karakter: huruf, angka, dan . _ + = : , @ % ^ - (tanpa spasi dan tanda kutip).">
-            {(id, dd) => <input id={id} aria-describedby={dd} type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} required />}
+            {(id, dd) => <input id={id} aria-describedby={dd} type="password" autoComplete="new-password" placeholder="kata sandi" maxLength={100} value={pw} onChange={(e) => setPw(e.target.value)} required />}
           </Field>
         )}
-        <Field label={`Ketik "${word}" untuk konfirmasi`}>{(id) => <input id={id} className="mono" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} required />}</Field>
+        <Field label={`Ketik "${word}" untuk konfirmasi`}>{(id) => <input id={id} className="mono" placeholder={word} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} required />}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>
@@ -239,7 +239,7 @@ function AddUser({ base, onClose, onDone }: { base: PostUrl; onClose: () => void
     <Modal title="Tambah user database" onClose={onClose}>
       <form className="stack" onSubmit={submit} autoComplete="off">
         <Field label="Nama user" hint="Huruf kecil, angka, garis bawah; diawali huruf; 3-32 karakter.">
-          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={user} onChange={(e) => setUser(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_]{2,31}" required autoFocus spellCheck={false} />}
+          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="app_user" maxLength={32} value={user} onChange={(e) => setUser(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_]{2,31}" required autoFocus spellCheck={false} />}
         </Field>
         <Field label="Hak akses" hint="Berlaku hanya pada database ini; tidak ada hak global.">
           {(id, dd) => (
@@ -260,7 +260,7 @@ function AddUser({ base, onClose, onDone }: { base: PostUrl; onClose: () => void
         </div>
         {own && (
           <Field label="Kata sandi" hint="12-100 karakter: huruf, angka, dan . _ + = : , @ % ^ -">
-            {(id, dd) => <input id={id} aria-describedby={dd} type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} required />}
+            {(id, dd) => <input id={id} aria-describedby={dd} type="password" autoComplete="new-password" placeholder="kata sandi" maxLength={100} value={pw} onChange={(e) => setPw(e.target.value)} required />}
           </Field>
         )}
         {err && <Alert>{err}</Alert>}

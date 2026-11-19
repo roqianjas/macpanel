@@ -38,7 +38,7 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
     <Modal title="Tambah situs" onClose={onClose}>
       <form onSubmit={submit} className="stack">
         <Field label="Nama" hint={`Menjadi alamat https://${name || "nama"}.lab. Huruf kecil, angka, dan tanda hubung.`}>
-          {(id, d) => <input id={id} aria-describedby={d} data-autofocus value={name} onChange={(e) => setName(e.target.value.toLowerCase())} required pattern="[a-z0-9]([a-z0-9\-]{0,38}[a-z0-9])?" />}
+          {(id, d) => <input id={id} aria-describedby={d} data-autofocus placeholder="toko-saya" maxLength={40} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} required pattern="[a-z0-9]([a-z0-9\-]{0,38}[a-z0-9])?" />}
         </Field>
         <Field label="Jenis situs">
           {(id) => (

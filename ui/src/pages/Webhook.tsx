@@ -60,7 +60,7 @@ export default function Webhook({ name, steps }: { name: string; steps: { id: st
           <div className="checks">
             <label className="check"><input type="checkbox" checked={en} onChange={(e) => setEnabled(e.target.checked)} />Aktif</label>
           </div>
-          <Field label="Branch yang memicu deploy" hint="Mis. main atau production.">{(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={br} onChange={(e) => setBranch(e.target.value)} spellCheck={false} maxLength={100} />}</Field>
+          <Field label="Branch yang memicu deploy" hint="Mis. main atau production.">{(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="main" required pattern="[A-Za-z0-9._/\-]{1,100}" title="Huruf, angka, dan . _ / -" value={br} onChange={(e) => setBranch(e.target.value)} spellCheck={false} maxLength={100} />}</Field>
           <fieldset className="fieldset">
             <legend className="small">Langkah deploy</legend>
             <ul className="list">

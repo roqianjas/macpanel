@@ -60,7 +60,7 @@ function PanelCard() {
             }}
           >
             <Field label="Nama panel" hint={canEdit ? "Tampil di halaman masuk, menu samping, dan judul tab. 1-40 karakter." : "Hanya admin yang dapat mengganti nama panel."}>
-              {(id, dd) => <input id={id} aria-describedby={dd} value={shown} maxLength={40} disabled={!canEdit} onChange={(e) => setDraft(e.target.value)} required />}
+              {(id, dd) => <input id={id} aria-describedby={dd} placeholder="MacPanel" value={shown} maxLength={40} disabled={!canEdit} onChange={(e) => setDraft(e.target.value)} required />}
             </Field>
             {canEdit && (
               <div className="row-end">
@@ -189,7 +189,7 @@ function EnableDialog({ setup, onClose, onDone }: { setup: { secret: string; uri
         </div>
         {note && <Alert tone={note.tone}>{note.text}</Alert>}
         <Field label="Kode 6 digit dari aplikasi" hint="Memastikan kunci sudah benar sebelum 2FA diaktifkan.">
-          {(id, dd) => <input id={id} aria-describedby={dd} autoFocus inputMode="numeric" autoComplete="one-time-code" className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} required />}
+          {(id, dd) => <input id={id} aria-describedby={dd} autoFocus inputMode="numeric" autoComplete="one-time-code" className="mono code-input" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />}
         </Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
@@ -253,8 +253,8 @@ function DisableDialog({ onClose, onDone }: { onClose: () => void; onDone: () =>
     <Modal title="Matikan 2FA" onClose={onClose}>
       <form className="stack" onSubmit={submit} autoComplete="off">
         <p className="small muted">Masukkan kata sandi dan kode 6 digit (atau satu recovery code) saat ini.</p>
-        <Field label="Kata sandi">{(id) => <input id={id} type="password" autoFocus autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
-        <Field label="Kode 6 digit atau recovery code">{(id) => <input id={id} autoComplete="one-time-code" className="mono code-input" value={code} onChange={(e) => setCode(e.target.value)} required />}</Field>
+        <Field label="Kata sandi">{(id) => <input id={id} type="password" autoFocus autoComplete="current-password" placeholder="kata sandi" value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
+        <Field label="Kode 6 digit atau recovery code">{(id) => <input id={id} autoComplete="one-time-code" className="mono code-input" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>
@@ -319,7 +319,7 @@ function Tokens() {
           <form className="stack" onSubmit={create}>
             <div className="grid2">
               <Field label="Nama token" hint="Mis. nama agen atau mesin.">
-                {(id, dd) => <input id={id} aria-describedby={dd} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required autoComplete="off" />}
+                {(id, dd) => <input id={id} aria-describedby={dd} placeholder="mis. laptop-hp" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required autoComplete="off" />}
               </Field>
               <Field label="Tingkat">
                 {(id) => (

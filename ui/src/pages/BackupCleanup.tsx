@@ -38,8 +38,8 @@ export function CleanupCard({ onChanged }: { onChanged: () => void }) {
       <State loading={cfg.loading && !cfg.data} error={cfg.error} onRetry={cfg.reload}>
         <p className="small muted">Hapus backup yang melebihi jumlah simpanan atau lebih tua dari batas umur. Backup terbaru tidak pernah dihapus. Lihat dulu daftar yang akan dihapus sebelum menjalankan. Pengaturan otomatis ada di kartu Jadwal; backup harian menjalankan pembersihan yang sama.</p>
         <div className="grid2">
-          <Field label="Simpan backup terakhir" hint="1-60">{(id, h) => <input id={id} aria-describedby={h} type="number" min={1} max={60} value={k} onChange={(e) => { setKeep(e.target.value); setPlan(null); }} />}</Field>
-          <Field label="Hapus yang lebih tua dari (hari)" hint="0 = tanpa batas umur">{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} value={dd} onChange={(e) => { setDays(e.target.value); setPlan(null); }} />}</Field>
+          <Field label="Simpan backup terakhir" hint="1-60">{(id, h) => <input id={id} aria-describedby={h} type="number" min={1} max={60} placeholder="10" required value={k} onChange={(e) => { setKeep(e.target.value); setPlan(null); }} />}</Field>
+          <Field label="Hapus yang lebih tua dari (hari)" hint="0 = tanpa batas umur">{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} placeholder="30" required value={dd} onChange={(e) => { setDays(e.target.value); setPlan(null); }} />}</Field>
         </div>
         {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
         <div className="row-end">
@@ -125,7 +125,7 @@ function Row({ kind, title, info, onDone }: { kind: "db" | "restore"; title: str
       <div className="list-row"><div><p>{title}</p><p className="small muted">{info.count} item</p></div><span className="mono">{fmtBytes(info.kb * 1024)}</span></div>
       {info.count > 0 && (
         <div className="row-form">
-          <Field label="Hapus yang lebih tua dari (hari)" hint="0 = semua">{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} value={days} onChange={(e) => { setDays(e.target.value); setPv(null); }} />}</Field>
+          <Field label="Hapus yang lebih tua dari (hari)" hint="0 = semua">{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} placeholder="30" required value={days} onChange={(e) => { setDays(e.target.value); setPv(null); }} />}</Field>
           <button className="btn" onClick={check}>Hitung</button>
           {pv && pv.count > 0 && <button className="btn btn-danger-ghost" onClick={() => setConfirm(true)}>Hapus {pv.count} item ({fmtBytes(pv.kb * 1024)})</button>}
         </div>

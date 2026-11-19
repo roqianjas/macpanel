@@ -86,32 +86,21 @@ export default function HealthCard() {
               {fresh.tone !== "ok" && <Chip tone={fresh.tone === "mute" ? "mute" : "warn"}>{fresh.tone === "mute" ? "Menunggu" : "Perhatian"}</Chip>} {fresh.text}
             </p>
             {rows.length > 0 && (
-              <ul className="list">
+              <ul className="health-grid" aria-label="Rincian kesehatan mesin">
                 {rows.map((r) => (
-                  <li key={r.key} className="list-row">
-                    <div>
-                      <p>
-                        <strong>{r.label}</strong>
-                      </p>
-                      {r.hint && <p className="small muted">{r.hint}</p>}
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <p className="nowrap" style={{ fontVariantNumeric: "tabular-nums" }}>
-                        {r.value}
-                      </p>
-                      <Chip tone={r.st.tone}>{r.st.text}</Chip>
-                    </div>
+                  <li key={r.key} className="health-item">
+                    <span className="health-label">{r.label}</span>
+                    <span className="health-value">{r.value}</span>
+                    <Chip tone={r.st.tone}>{r.st.text}</Chip>
+                    {r.hint && <span className="small muted health-hint">{r.hint}</span>}
                   </li>
                 ))}
                 {fc && (
-                  <li className="list-row">
-                    <div>
-                      <p>
-                        <strong>Perkiraan disk penuh</strong>
-                      </p>
-                      <p className="small muted">{fc.text}</p>
-                    </div>
+                  <li className="health-item">
+                    <span className="health-label">Perkiraan disk penuh</span>
+                    <span className="health-value">{d.forecast.ok && d.forecast.days_to_full != null ? `${num(d.forecast.days_to_full, 0)} hari` : d.forecast.ok ? "stabil" : "n/a"}</span>
                     <Chip tone={fc.tone}>{fc.tone === "mute" ? "Belum cukup data" : fc.tone === "ok" ? "Aman" : fc.tone === "warn" ? "Perhatian" : "Mendesak"}</Chip>
+                    <span className="small muted health-hint">{fc.text}</span>
                   </li>
                 )}
               </ul>

@@ -64,7 +64,7 @@ export function InstallModal({ onClose, onDone }: { onClose: () => void; onDone:
             <button key={k.id} type="button" className={`seg-btn ${kind === k.id ? "on" : ""}`} aria-pressed={kind === k.id} onClick={() => { setKind(k.id); setRuntime(""); }}>{k.label}</button>
           ))}
         </div>
-        <Field label="Nama situs" hint="Huruf kecil, angka, tanda hubung. Jadi nama.lab.">{(id, dd) => <input id={id} aria-describedby={dd} className="mono" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
+        <Field label="Nama situs" hint="Huruf kecil, angka, tanda hubung. Jadi nama.lab.">{(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="toko-saya" pattern="[a-z0-9]([a-z0-9\-]{0,28}[a-z0-9])?" title="Huruf kecil, angka, tanda hubung; tidak diawali atau diakhiri tanda hubung" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
         {isApp ? (
           <>
             <Field label={`Versi ${meta.id === "nextjs" ? "Node" : meta.label}`} hint="Kosong = versi bawaan. Versi lain dipasang di menu PHP dan runtime.">
@@ -76,7 +76,7 @@ export function InstallModal({ onClose, onDone }: { onClose: () => void; onDone:
               )}
             </Field>
             <Field label="Port (opsional)" hint="Kosong = dipilihkan otomatis (3100-3999). Aplikasi hanya mendengarkan 127.0.0.1.">
-              {(id, dd) => <input id={id} aria-describedby={dd} className="mono" inputMode="numeric" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} maxLength={5} />}
+              {(id, dd) => <input id={id} aria-describedby={dd} className="mono" inputMode="numeric" placeholder="otomatis" pattern="[0-9]{4,5}" title="Port 1024-65535 atau kosong" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} maxLength={5} />}
             </Field>
           </>
         ) : (
@@ -104,7 +104,7 @@ export function CloneModal({ src, onClose, onDone }: { src: string; onClose: () 
     <Modal title={`Kloning ${src}.lab`} onClose={onClose}>
       <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run(`/api/sites/${src}/clone`, { dst, with_db: withDb }, `Kloning ${src} ke ${dst}`, dst); }}>
         <p className="small muted">Menyalin folder proyek (tanpa <span className="mono">.git</span>, <span className="mono">node_modules</span>, dan log) ke <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, membuat situs baru, dan database baru terpisah dengan kredensial sendiri; <span className="mono">.env</span> salinan diarahkan ke database baru sehingga staging tidak menyentuh data sumber. Meminta kata sandi ulang.</p>
-        <Field label="Nama situs baru">{(id) => <input id={id} className="mono" value={dst} onChange={(e) => setDst(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
+        <Field label="Nama situs baru">{(id) => <input id={id} className="mono" placeholder="toko-saya-baru" pattern="[a-z0-9]([a-z0-9\-]{0,28}[a-z0-9])?" title="Huruf kecil, angka, tanda hubung" value={dst} onChange={(e) => setDst(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
         <div className="checks">
           <label className="check"><input type="checkbox" checked={withDb} onChange={(e) => setWithDb(e.target.checked)} />Salin juga isi database (bila proyek memakai database lab dengan nama sama)</label>
         </div>

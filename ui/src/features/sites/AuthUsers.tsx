@@ -43,8 +43,8 @@ export function AuthUsers({ name, enabled }: { name: string; enabled: boolean })
       </State>
       <form onSubmit={add} className="stack">
         <div className="grid2">
-          <Field label="Nama pengguna">{(id) => <input id={id} className="mono" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="off" required pattern="[A-Za-z0-9._\-]{1,32}" />}</Field>
-          <Field label="Kata sandi" hint="8-128 karakter">{(id, dd) => <input id={id} aria-describedby={dd} type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required />}</Field>
+          <Field label="Nama pengguna">{(id) => <input id={id} className="mono" placeholder="nama pengguna" maxLength={32} value={user} onChange={(e) => setUser(e.target.value)} autoComplete="off" required pattern="[A-Za-z0-9._\-]{1,32}" />}</Field>
+          <Field label="Kata sandi" hint="8-128 karakter">{(id, dd) => <input id={id} aria-describedby={dd} type="password" placeholder="8-128 karakter" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required />}</Field>
         </div>
         {err && <Alert>{err}</Alert>}
         <div>

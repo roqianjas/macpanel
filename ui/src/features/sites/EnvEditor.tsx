@@ -48,7 +48,7 @@ export function EnvEditor({ name }: { name: string }) {
         <div className="stack">
           <p className="small mono">{path}{exists ? "" : " (belum ada, akan dibuat)"}</p>
           <label className="sr" htmlFor="env-text">Isi .env</label>
-          <textarea id="env-text" className="mono env-text" rows={16} value={content} onChange={(e) => setContent(e.target.value)} spellCheck={false} autoComplete="off" />
+          <textarea id="env-text" className="mono env-text" rows={16} placeholder={"APP_ENV=production\nAPP_DEBUG=false"} value={content} onChange={(e) => setContent(e.target.value)} spellCheck={false} autoComplete="off" />
           <div className="row-end">
             <button className="btn" onClick={() => { setState("closed"); setContent(""); }}>Tutup</button>
             <button className="btn btn-primary" onClick={save} disabled={busy || content.length > 65536}>{busy ? "Menyimpan…" : "Simpan"}</button>

@@ -160,9 +160,9 @@ function Schedule() {
         <form onSubmit={save} className="stack">
           <div className="grid2">
             <Field label="Jam backup harian" hint="Zona waktu Mac mini">{(id, dd) => <input id={id} aria-describedby={dd} type="time" value={t} onChange={(e) => setTime(e.target.value)} required />}</Field>
-            <Field label="Simpan backup terakhir" hint="1-60. Yang lebih lama dihapus otomatis.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={60} value={k} onChange={(e) => setKeep(e.target.value)} required />}</Field>
-            <Field label="Hapus otomatis backup lebih tua dari (hari)" hint="0 = hanya pakai jumlah simpanan. Backup terbaru selalu aman.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} value={dy} onChange={(e) => setDays(e.target.value)} required />}</Field>
-            <Field label="Hapus otomatis dump DB dan hasil ekstrak lebih tua dari (hari)" hint="0 = jangan dibersihkan otomatis">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} value={ex} onChange={(e) => setExtra(e.target.value)} required />}</Field>
+            <Field label="Simpan backup terakhir" hint="1-60. Yang lebih lama dihapus otomatis.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={60} placeholder="10" value={k} onChange={(e) => setKeep(e.target.value)} required />}</Field>
+            <Field label="Hapus otomatis backup lebih tua dari (hari)" hint="0 = hanya pakai jumlah simpanan. Backup terbaru selalu aman.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="30" value={dy} onChange={(e) => setDays(e.target.value)} required />}</Field>
+            <Field label="Hapus otomatis dump DB dan hasil ekstrak lebih tua dari (hari)" hint="0 = jangan dibersihkan otomatis">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="7" value={ex} onChange={(e) => setExtra(e.target.value)} required />}</Field>
           </div>
           {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
           <div>

@@ -33,10 +33,10 @@ export default function Account({ forced, onDone }: { forced?: boolean; onDone?:
       <form onSubmit={submit} className="stack" autoComplete="off">
         <p className="small muted">Meminta kata sandi ulang. Semua sesi lain dikeluarkan setelah berhasil. Kode TOTP dan recovery code tidak berubah; untuk mengganti perangkat autentikator, matikan lalu nyalakan lagi 2FA di bawah.</p>
         <div className="grid2">
-          <Field label="Kata sandi saat ini">{(id) => <input id={id} type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" required />}</Field>
+          <Field label="Kata sandi saat ini">{(id) => <input id={id} type="password" placeholder="kata sandi saat ini" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" required />}</Field>
           <span />
-          <Field label="Kata sandi baru" hint="Minimal 12 karakter, berbeda dari yang lama">{(id, dd) => <input id={id} aria-describedby={dd} type="password" value={nw} onChange={(e) => setNw(e.target.value)} autoComplete="new-password" minLength={12} maxLength={256} required />}</Field>
-          <Field label="Ulangi kata sandi baru" hint={mismatch ? "Tidak sama dengan kata sandi baru" : undefined}>{(id, dd) => <input id={id} aria-describedby={dd} aria-invalid={mismatch} type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" required />}</Field>
+          <Field label="Kata sandi baru" hint="Minimal 12 karakter, berbeda dari yang lama">{(id, dd) => <input id={id} aria-describedby={dd} type="password" placeholder="minimal 12 karakter" value={nw} onChange={(e) => setNw(e.target.value)} autoComplete="new-password" minLength={12} maxLength={256} required />}</Field>
+          <Field label="Ulangi kata sandi baru" hint={mismatch ? "Tidak sama dengan kata sandi baru" : undefined}>{(id, dd) => <input id={id} aria-describedby={dd} aria-invalid={mismatch} type="password" placeholder="ulangi kata sandi baru" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" required />}</Field>
         </div>
         {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
         <div>

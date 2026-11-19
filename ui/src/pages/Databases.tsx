@@ -160,7 +160,7 @@ function AddDB({ onClose, onDone }: { onClose: () => void; onDone: () => void })
     <Modal title="Buat database" onClose={onClose}>
       <form onSubmit={submit} className="stack">
         <Field label="Nama" hint="Dipakai untuk nama database dan pengguna. Huruf kecil, angka, dan garis bawah; diawali huruf.">
-          {(id, d) => <input id={id} aria-describedby={d} data-autofocus className="mono" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} required pattern="[a-z][a-z0-9_]{0,31}" />}
+          {(id, d) => <input id={id} aria-describedby={d} data-autofocus className="mono" placeholder="app_db" maxLength={32} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} required pattern="[a-z][a-z0-9_]{0,31}" />}
         </Field>
         <Field label="Mesin">
           {(id) => (
