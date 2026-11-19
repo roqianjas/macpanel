@@ -3,6 +3,8 @@ import { Play, RotateCw, Square, Trash2, Download } from "lucide-react";
 import { errText, get, post } from "../api";
 import type { GetUrl } from "../api.gen";
 import { trackJob } from "../jobs";
+import { FacetBar } from "../features/list/ListTools";
+import { applyFacet, countFacets, type Facet } from "../features/list/paging";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, Tabs, usePoll } from "../ui";
 
 interface Ctr { id: string; name: string; image: string; state: string; status: string; ports: string; project: string }
@@ -14,10 +16,16 @@ interface Stat { name: string; cpu: string; mem: string; memp: string }
 
 const stateTone = (s: string) => (s === "running" ? "ok" : s === "exited" || s === "created" ? "mute" : "warn") as "ok" | "mute" | "warn";
 
+const CTR_FACETS: Facet<Ctr>[] = [
+  { id: "running", label: "Berjalan", test: (c) => c.state === "running" },
+  { id: "stopped", label: "Berhenti", test: (c) => c.state !== "running" },
+];
+
 export default function Docker({ goto }: { goto?: (id: string) => void }) {
   const ov = usePoll(() => get<Ov>("/api/docker"), 6000);
   const stats = usePoll(() => (ov.data?.status.running ? get<{ stats: Stat[] }>("/api/docker/stats") : Promise.resolve({ stats: [] })), 15000, [ov.data?.status.running]);
   const [tab, setTab] = useState("container");
+  const [cf, setCf] = useState("all");
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [logOf, setLogOf] = useState<{ title: string; url: GetUrl } | null>(null);
   const [rm, setRm] = useState<{ kind: "ctr" | "img"; ref: string } | null>(null);
@@ -76,11 +84,12 @@ export default function Docker({ goto }: { goto?: (id: string) => void }) {
             <Tabs label="Bagian Docker" value={tab} onChange={setTab} tabs={[{ id: "container", label: "Container" }, { id: "compose", label: "Proyek Compose" }, { id: "image", label: "Image" }]} />
             {tab === "container" && (
               <Card>
+                <FacetBar label="Filter status container" value={cf} onChange={setCf} facets={countFacets(ov.data.containers, CTR_FACETS)} />
                 {ov.data.containers.length === 0 ? <p className="muted">Belum ada container. Jalankan proyek Compose dari tab Proyek Compose.</p> : (
                   <div className="tbl-wrap"><table className="tbl">
                     <thead><tr><th scope="col">Nama</th><th scope="col">Status</th><th scope="col">Image</th><th scope="col">Port</th><th scope="col">CPU / RAM</th><th scope="col"><span className="sr">Aksi</span></th></tr></thead>
                     <tbody>
-                      {ov.data.containers.map((c) => {
+                      {applyFacet(ov.data.containers, CTR_FACETS, cf).map((c) => {
                         const s = statMap.get(c.name);
                         return (
                           <tr key={c.id}>

@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Pause, Play, Plus } from "lucide-react";
 import { InstallModal } from "../../pages/Installer";
 import { errText, get, post } from "../../api";
-import { ListSearch, Pager, useListView } from "../list/ListTools";
+import { FilterTabs, ListSearch, Pager, useListView } from "../list/ListTools";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, useLoad } from "../../ui";
 import { Site, MODE_LABEL, health } from "./types";
+import { SITE_FACETS } from "./facets";
 import { AddSite } from "./AddSite";
 
 export function SiteList() {
@@ -15,7 +16,7 @@ export function SiteList() {
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const sites = data?.sites ?? [];
   const mine = sites.filter((s) => !s.system);
-  const lv = useListView(sites, (s) => `${s.host} ${s.name} ${s.mode} ${s.php ?? ""} ${s.target ?? ""} ${s.system ? "sistem" : ""} ${s.enabled ? "aktif" : "jeda"}`);
+  const lv = useListView(sites, (s) => `${s.host} ${s.name} ${s.mode} ${s.php ?? ""} ${s.target ?? ""} ${s.system ? "sistem" : ""} ${s.enabled ? "aktif" : "jeda"}`, undefined, SITE_FACETS);
 
   const resume = async (s: Site) => {
     setNote(null);
@@ -48,6 +49,7 @@ export function SiteList() {
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <Card>
         <State loading={loading && !data} error={error} empty={!!data && sites.length === 0} emptyText="Belum ada situs. Pilih “Tambah situs” untuk membuat yang pertama." onRetry={reload}>
+          <FilterTabs lv={lv} label="Filter jenis situs" />
           <ListSearch lv={lv} label="Cari situs" hint="Nama, jenis, PHP, atau sumber" />
           <div className="tbl-wrap">
             <table className="tbl">

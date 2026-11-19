@@ -52,6 +52,7 @@ from labcli.runtime import runtime
 from labcli.services import app, service
 from labcli.site import site
 from labcli.sysinfo import sysx
+from labcli.tailscale import tailscale_cmd
 from labcli.uninstall import uninstall_cmd
 from labcli.update import apply, check
 from labcli.worker import PHP, run
@@ -210,12 +211,17 @@ def reg_dev(top):
     fw.add_argument("--allow", choices=["tailnet", "none"], default="tailnet", help="block: tailnet tetap boleh (bawaan) atau hanya loopback")
     fw.add_argument("--dry-run", action="store_true", help="tampilkan langkah tanpa menjalankan sudo")
     un = top.add_parser("uninstall", help="lepas MacPanel dan aplikasi bundelnya (tanpa --apply hanya rencana)")
-    un.add_argument("--level", type=int, choices=[1, 2, 3], default=1, help="1 panel; 2 + aplikasi dihentikan; 3 + paket, data, dan ~/MacPanel dihapus")
+    un.add_argument("--level", type=int, choices=[1, 2, 3, 4], default=1, help="1 panel; 2 + aplikasi dihentikan; 3 + paket, data, dan ~/MacPanel dihapus; 4 HANYA Tailscale (berdiri sendiri)")
     un.add_argument("--backup-dir", default="", help="tingkat 3: folder backup akhir di LUAR ~/MacPanel")
     un.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya mencetak rencana")
     un.add_argument("--yes", action="store_true", help="lewati pertanyaan tingkat 1-2 (tidak berlaku untuk tingkat 3)")
     un.add_argument("--with-docker-tools", action="store_true", help="tingkat 3: hapus juga colima, docker, docker-compose, lima")
+    un.add_argument("--allow-remote-cut", action="store_true", help="tingkat 4: izinkan walau sesi SSH ini lewat tailnet (sesi akan putus)")
     un.add_argument("--confirm-host", default="", help="tingkat 3 non-interaktif: nama mesin")
+    ts = top.add_parser("tailscale", help="status dan pemasangan Tailscale (tanpa --apply hanya rencana)").add_subparsers(dest="tact", required=True)
+    ts.add_parser("status", help="terpasang, daemon, dan status tailnet")
+    ti = ts.add_parser("install", help="rencana pemasangan (Homebrew + daemon sistem)")
+    ti.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya rencana")
     cl = top.add_parser("clean", help="analisis disk dan pembersihan aman (tanpa --apply hanya pratinjau)").add_subparsers(dest="cact", required=True)
     cl.add_parser("scan", help="ukur katalog lokasi dan simpan hasilnya")
     cl.add_parser("last", help="tampilkan hasil analisis terakhir")
@@ -358,6 +364,7 @@ HANDLERS = {
     "proxy": proxy_cmd,
     "firewall": firewall_cmd,
     "clean": clean_cmd,
+    "tailscale": tailscale_cmd,
     "mem": mem_cmd,
     "uninstall": uninstall_cmd,
     "appinstall": app_install,

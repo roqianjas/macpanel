@@ -3,7 +3,8 @@ import { DatabaseBackup } from "lucide-react";
 import { errText, fmtTime, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { fmtBytes } from "../lib";
-import { ListSearch, Pager, useListView } from "../features/list/ListTools";
+import { ListSearch, Pager, useListView, FilterTabs } from "../features/list/ListTools";
+import type { Facet } from "../features/list/paging";
 import { newestName } from "../features/list/paging";
 import { Alert, Card, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { CleanupCard, ExtrasCard } from "./BackupCleanup";
@@ -14,6 +15,14 @@ interface Row {
   size: number;
   files: string[];
 }
+
+const DAY = 86400;
+const age = (at: number) => Date.now() / 1000 - at;
+const AGE_FACETS: Facet<{ at: number }>[] = [
+  { id: "baru", label: "7 hari terakhir", test: (r) => age(r.at) <= 7 * DAY },
+  { id: "bulan", label: "8 sampai 30 hari", test: (r) => age(r.at) > 7 * DAY && age(r.at) <= 30 * DAY },
+  { id: "lama", label: "Lebih dari 30 hari", test: (r) => age(r.at) > 30 * DAY },
+];
 
 export default function Backups() {
   const q = useLoad(() => get<{ backups: Row[]; offsite: boolean }>("/api/backups"));
@@ -40,7 +49,7 @@ export default function Backups() {
   const rows = q.data?.backups ?? [];
   // Yang terbaru ditentukan dari waktu, bukan dari posisi baris: setelah dicari/dipaginasi posisi 0 di halaman bukan lagi yang terbaru.
   const newest = newestName(rows);
-  const lv = useListView(rows, (r) => `${r.name} ${r.files.join(" ")} ${fmtTime(r.at)}`);
+  const lv = useListView(rows, (r) => `${r.name} ${r.files.join(" ")} ${fmtTime(r.at)}`, undefined, AGE_FACETS);
   return (
     <>
       <PageHead
@@ -62,6 +71,7 @@ export default function Backups() {
       <Schedule />
       <Card title="Daftar backup" action={sel.length > 0 ? <button className="btn btn-danger-ghost" onClick={() => setDelAsk(true)}>Hapus {sel.length} terpilih</button> : undefined}>
         <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && rows.length === 0} emptyText="Belum ada backup. Jalankan yang pertama." onRetry={q.reload}>
+          <FilterTabs lv={lv} label="Filter umur backup" />
           <ListSearch lv={lv} label="Cari backup" hint="Tanggal, nama, atau isi" />
           <div className="tbl-wrap">
             <table className="tbl">

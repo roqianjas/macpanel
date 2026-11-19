@@ -131,3 +131,26 @@ describe("newestName", () => {
     expect(filtered[0].name === newestName(all)).toBe(false);
   });
 });
+
+import { applyFacet, countFacets, type Facet } from "./paging";
+
+describe("facet daftar", () => {
+  const items = [1, 2, 3, 4, 5, 6];
+  const f: Facet<number>[] = [
+    { id: "genap", label: "Genap", test: (n) => n % 2 === 0 },
+    { id: "besar", label: "Besar", test: (n) => n > 4 },
+  ];
+  it("hitung dan terapkan", () => {
+    expect(countFacets(items, f)).toEqual([
+      { id: "all", label: "Semua", count: 6 },
+      { id: "genap", label: "Genap", count: 3 },
+      { id: "besar", label: "Besar", count: 2 },
+    ]);
+    expect(applyFacet(items, f, "besar")).toEqual([5, 6]);
+    expect(applyFacet(items, f, "all")).toEqual(items);
+    expect(applyFacet(items, f, "hilang")).toEqual(items);
+  });
+  it("tanpa facet hanya Semua", () => {
+    expect(countFacets(items, [])).toHaveLength(1);
+  });
+});

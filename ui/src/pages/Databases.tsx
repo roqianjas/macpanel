@@ -6,7 +6,7 @@ import DbConfig from "./DbConfig";
 import DbAccess from "./DbAccess";
 import RedisBrowser from "./RedisBrowser";
 import { fmtBytes } from "../lib";
-import { PagedList } from "../features/list/ListTools";
+import { FacetBar, PagedList } from "../features/list/ListTools";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { RootPasswords } from "./DbUsers";
 
@@ -17,6 +17,7 @@ export default function Databases() {
   const { data, error, loading, reload } = useLoad(() => get<{ databases: Record<Engine, string[]>; system: string[] }>("/api/db"));
   const isSys = (n: string) => (data?.system ?? ["dev"]).includes(n);
   const [adding, setAdding] = useState(false);
+  const [eng, setEng] = useState("all");
   const [dropping, setDropping] = useState<{ engine: Engine; name: string } | null>(null);
   const [restoring, setRestoring] = useState<{ engine: Engine; name: string } | null>(null);
   const [access, setAccess] = useState<{ engine: Engine; name: string } | null>(null);
@@ -50,7 +51,16 @@ export default function Databases() {
       />
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <State loading={loading && !data} error={error} empty={!!data && total === 0} emptyText="Belum ada database proyek. Pilih “Buat database”." onRetry={reload}>
-        {(["mariadb", "mysql", "pgsql"] as Engine[]).map((en) => (
+        <FacetBar
+          label="Filter mesin database"
+          value={eng}
+          onChange={setEng}
+          facets={[
+            { id: "all", label: "Semua", count: total },
+            ...(["mariadb", "mysql", "pgsql"] as Engine[]).map((en) => ({ id: en, label: ENGINE_LABEL[en].split(" (")[0], count: (data?.databases[en] ?? []).filter((n) => !isSys(n)).length })),
+          ]}
+        />
+        {(["mariadb", "mysql", "pgsql"] as Engine[]).filter((en) => eng === "all" || eng === en).map((en) => (
           <Card key={en} title={ENGINE_LABEL[en]}>
             {(data?.databases[en] ?? []).filter((n) => !isSys(n)).length === 0 && !(data?.databases[en] ?? []).some(isSys) ? (
               <div className="state">

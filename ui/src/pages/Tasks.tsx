@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, RotateCw, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
-import { ListSearch, Pager, useListView } from "../features/list/ListTools";
+import { FilterTabs, ListSearch, Pager, useListView } from "../features/list/ListTools";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, Tabs, statusTone, useLoad } from "../ui";
 
 interface Task {
@@ -15,7 +15,9 @@ interface Task {
 export default function Tasks() {
   const [kind, setKind] = useState<"worker" | "job">("worker");
   const { data, error, loading, reload } = useLoad(() => get<{ tasks: Task[] }>(`/api/tasks/${kind}`), [kind]);
-  const lv = useListView(data?.tasks ?? [], (t) => `${t.name} ${t.status} ${t.schedule ?? ""}`);
+  const tasks = data?.tasks ?? [];
+  const statusFacets = [...new Set(tasks.map((t) => t.status).filter(Boolean))].sort().map((st) => ({ id: st, label: st[0].toUpperCase() + st.slice(1), test: (t: Task) => t.status === st }));
+  const lv = useListView(tasks, (t) => `${t.name} ${t.status} ${t.schedule ?? ""}`, undefined, statusFacets);
   const [adding, setAdding] = useState(false);
   const [rm, setRm] = useState<string | null>(null);
   const [log, setLog] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export default function Tasks() {
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <Card>
         <State loading={loading && !data} error={error} empty={!!data && data.tasks.length === 0} emptyText={`Belum ada ${noun}.`} onRetry={reload}>
+          <FilterTabs lv={lv} label="Filter status" />
           <ListSearch lv={lv} label="Cari" hint="Nama, status, atau jadwal" />
           <div className="tbl-wrap">
             <table className="tbl">

@@ -155,8 +155,10 @@ def guard_path(env, path):
 
 def build_plan(env, level, backup_dir=None, with_docker=False):
     """Daftar langkah berurutan. Murni: tidak membaca atau mengubah mesin."""
-    if level not in (1, 2, 3):
-        raise UninstallError("tingkat harus 1, 2, atau 3")
+    if level not in (1, 2, 3, 4):
+        raise UninstallError("tingkat harus 1, 2, 3, atau 4")
+    if level == 4:
+        return tailscale_steps(env)
     if level == 3:
         if not backup_dir:
             raise UninstallError("tingkat 3 wajib --backup-dir (lokasi di luar ~/MacPanel)")
@@ -247,7 +249,35 @@ def build_plan(env, level, backup_dir=None, with_docker=False):
     return _sorted(P)
 
 
-_ORDER = {"L1 panel": 10, "L1 firewall": 11, "L2 aplikasi": 20, "L2 firewall": 21, "L3 backup": 30, "L3 hapus": 31, "L3 akhir": 99}
+TS_FORMULA = "tailscale"
+
+
+def tailscale_steps(env):
+    """Tingkat 4: hanya Tailscale (paket Homebrew dan daemon sistem). Berdiri sendiri, tidak memuat tingkat 1-3."""
+    P = []
+    if TS_FORMULA in env.formulas:
+        P.append(
+            step(4, "L4 tailscale", "sudo", "hentikan tailscaled (layanan sistem; akses tailnet putus saat ini juga)", argv=[str(env.brew / "bin/brew"), "services", "stop", TS_FORMULA], tolerate=True)
+        )
+        P.append(step(4, "L4 tailscale", "exec", "brew uninstall tailscale", argv=[str(env.brew / "bin/brew"), "uninstall", "--formula", TS_FORMULA]))
+    return P
+
+
+def remote_over_tailnet(environ=None):
+    """True bila sesi SSH ini datang dari alamat tailnet (100.64.0.0/10 atau fd7a:115c:a1e0::/48): memutus Tailscale akan memutus sesinya."""
+    import ipaddress
+
+    sc = (environ if environ is not None else os.environ).get("SSH_CONNECTION", "").split()
+    if not sc:
+        return False
+    try:
+        ip = ipaddress.ip_address(sc[0])
+    except ValueError:
+        return True  # tidak terbaca: anggap berisiko
+    return ip in ipaddress.ip_network("100.64.0.0/10") or ip in ipaddress.ip_network("fd7a:115c:a1e0::/48")
+
+
+_ORDER = {"L4 tailscale": 40, "L1 panel": 10, "L1 firewall": 11, "L2 aplikasi": 20, "L2 firewall": 21, "L3 backup": 30, "L3 hapus": 31, "L3 akhir": 99}
 
 
 def _sorted(plan):
@@ -404,7 +434,12 @@ def execute(env, plan, runner=None, out=sys.stdout, lab_backup=None):
 
 
 def print_plan(plan, level, out=sys.stdout, env=None, with_docker=False):
-    names = {1: "panel dan integrasinya", 2: "panel + aplikasi bundel dihentikan (paket dan data tetap)", 3: "SEMUA: paket, data, dan ~/MacPanel dihapus setelah backup terverifikasi"}
+    names = {
+        4: "HANYA Tailscale dihapus (akses jarak jauh lewat tailnet berakhir)",
+        1: "panel dan integrasinya",
+        2: "panel + aplikasi bundel dihentikan (paket dan data tetap)",
+        3: "SEMUA: paket, data, dan ~/MacPanel dihapus setelah backup terverifikasi",
+    }
     print(f"Rencana uninstall tingkat {level}: {names[level]}", file=out)
     phase = None
     for i, s in enumerate(plan, 1):
@@ -417,6 +452,10 @@ def print_plan(plan, level, out=sys.stdout, env=None, with_docker=False):
         opt = [f for f in DOCKER_FORMULAS if f in env.formulas]
         if opt:
             print(f"\nOpsional, TIDAK ikut dihapus: {', '.join(opt)}. Tambahkan --with-docker-tools bila memang ingin menghapusnya.", file=out)
+    if level == 4:
+        print("\nTidak disentuh: panel, situs, database, backup, Hermes, RustDesk, dan /etc/resolver/*.", file=out)
+        print("Status node di Tailscale (/var/lib/tailscale) tetap; hapus perangkat ini di admin console Tailscale bila tidak dipakai lagi.", file=out)
+        return
     print("\nTidak disentuh:", file=out)
     for u in UNTOUCHED:
         print(f"  - {u}", file=out)
@@ -425,13 +464,24 @@ def print_plan(plan, level, out=sys.stdout, env=None, with_docker=False):
 def uninstall_cmd(a):
     env = detect()
     try:
-        if not env.mp.exists():
+        if a.level == 4:
+            if os.geteuid() == 0:
+                raise UninstallError("jangan jalankan sebagai root; sudo dipanggil per langkah")
+            if a.apply and remote_over_tailnet() and not a.allow_remote_cut:
+                raise UninstallError(
+                    "sesi SSH ini lewat tailnet: menghapus Tailscale akan memutus sesi ini di tengah jalan dan Anda tidak bisa masuk lagi dari jauh. Jalankan dari layar/keyboard Mac mini, atau tambahkan --allow-remote-cut bila memang sadar."
+                )
+            plan = build_plan(env, 4)
+            if not plan:
+                raise UninstallError("Tailscale tidak terpasang lewat Homebrew; tidak ada yang dilepas (versi aplikasi: hapus lewat Finder)")
+        elif not env.mp.exists():
             raise UninstallError(f"{env.mp} tidak ada; tidak ada yang bisa dilepas")
-        if (env.mp / "server").exists() is False:
-            raise UninstallError(f"{env.mp} tidak tampak seperti instalasi MacPanel (tanpa folder server/); dibatalkan")
-        if os.geteuid() == 0:
-            raise UninstallError("jangan jalankan sebagai root; sudo dipanggil per langkah")
-        plan = build_plan(env, a.level, a.backup_dir, a.with_docker_tools)
+        if a.level != 4:
+            if (env.mp / "server").exists() is False:
+                raise UninstallError(f"{env.mp} tidak tampak seperti instalasi MacPanel (tanpa folder server/); dibatalkan")
+            if os.geteuid() == 0:
+                raise UninstallError("jangan jalankan sebagai root; sudo dipanggil per langkah")
+            plan = build_plan(env, a.level, a.backup_dir, a.with_docker_tools)
     except UninstallError as e:
         print("lab:", e, file=sys.stderr)
         return 1
@@ -443,8 +493,9 @@ def uninstall_cmd(a):
         if input("\nHapus juga alat Docker (colima, docker, docker-compose, lima)? [y/N] ").strip().lower() == "y":
             a.with_docker_tools = True
             plan = build_plan(env, a.level, a.backup_dir, True)
-    if a.level == 3:
-        if a.confirm_host != hostname() and not (sys.stdin.isatty() and input(f"\nKetik nama mesin ({hostname()}) untuk MENGHAPUS SEMUANYA: ").strip() == hostname()):
+    if a.level in (3, 4):
+        what = "MENGHAPUS SEMUANYA" if a.level == 3 else "MENGHAPUS TAILSCALE (akses jarak jauh berakhir)"
+        if a.confirm_host != hostname() and not (sys.stdin.isatty() and input(f"\nKetik nama mesin ({hostname()}) untuk {what}: ").strip() == hostname()):
             print("lab: nama mesin tidak cocok; dibatalkan.", file=sys.stderr)
             return 1
     elif not a.yes:

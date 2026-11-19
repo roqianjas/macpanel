@@ -3,9 +3,17 @@ import { Download, Play, RotateCw, ScrollText, Square, Trash2 } from "lucide-rea
 import { errText, get, post } from "../api";
 import { serviceView, useServices, type ServiceInfo } from "../data";
 import { trackJob } from "../jobs";
+import { FacetBar } from "../features/list/ListTools";
+import { applyFacet, countFacets, type Facet } from "../features/list/paging";
 import { Alert, Card, Chip, ConfirmDialog, Mark, Modal, PageHead, State } from "../ui";
 
 const ORDER = ["Web server", "PHP", "Database", "Cache dan antrean", "Monitoring", "Jaringan", "Alat pengembangan", "Sistem"];
+
+const APP_FACETS: Facet<ServiceInfo>[] = [
+  ...ORDER.map((g) => ({ id: g, label: g, test: (s: ServiceInfo) => s.group === g })),
+  { id: "_bermasalah", label: "Tidak berjalan", test: (s: ServiceInfo) => s.installed && s.state !== "running" },
+  { id: "_opsional", label: "Opsional", test: (s: ServiceInfo) => s.optional },
+];
 
 export default function Apps() {
   const { data, error, loading, reload } = useServices();
@@ -14,7 +22,11 @@ export default function Apps() {
   const [confirm, setConfirm] = useState<{ s: ServiceInfo; act: "stop" | "restart" | "remove" } | null>(null);
   const [log, setLog] = useState<ServiceInfo | null>(null);
 
-  const services = data?.services ?? [];
+  const [facet, setFacet] = useState("all");
+  const all = data?.services ?? [];
+  const facets = countFacets(all, APP_FACETS);
+  const active = facets.some((f) => f.id === facet) ? facet : "all";
+  const services = applyFacet(all, APP_FACETS, active);
   const groups = ORDER.map((g) => ({ g, items: services.filter((s) => s.group === g) })).filter((x) => x.items.length);
 
   const start = async (s: ServiceInfo) => {
@@ -46,6 +58,7 @@ export default function Apps() {
       <PageHead title="Aplikasi" desc="Server dan layanan yang berjalan di Mac mini: nyalakan, hentikan, mulai ulang, dan baca lognya. Layanan opsional bisa dipasang dari sini." />
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       {bad.length > 0 && <Alert tone="warn">{`Tidak berjalan: ${bad.map((b) => b.label).join(", ")}.`}</Alert>}
+      <FacetBar facets={facets} value={active} onChange={setFacet} label="Filter layanan" />
       <State loading={loading && !data} error={error} empty={!!data && groups.length === 0} emptyText="Daftar layanan kosong." onRetry={reload}>
         {groups.map(({ g, items }) => (
           <Card key={g} title={g}>

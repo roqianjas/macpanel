@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ListSearch, Pager, PagedList, useListView } from "./ListTools";
+import { FilterTabs, ListSearch, Pager, PagedList, useListView } from "./ListTools";
 
 afterEach(cleanup);
 
@@ -143,5 +143,35 @@ describe("PagedList", () => {
     expect(screen.queryByRole("searchbox")).toBeNull();
     expect(screen.queryByRole("navigation")).toBeNull();
     expect(items()).toHaveLength(3);
+  });
+});
+
+describe("tab filter", () => {
+  const items = ["a-php", "b-php", "c-proxy", "d-proxy", "e-proxy", "f-kustom"];
+  const facets = ["php", "proxy", "kustom", "statis"].map((k) => ({ id: k, label: k, test: (s: string) => s.endsWith(k) }));
+  function F() {
+    const lv = useListView(items, (s) => s, 2, facets);
+    return (
+      <div>
+        <FilterTabs lv={lv} label="Filter jenis" />
+        <ListSearch lv={lv} label="Cari" minItems={1} />
+        <ul>{lv.view.rows.map((r) => <li key={r}>{r}</li>)}</ul>
+        <Pager lv={lv} />
+      </div>
+    );
+  }
+  it("menyaring, menjaga angka tab, dan kembali ke halaman 1", async () => {
+    const u = userEvent.setup();
+    render(<F />);
+    const bar = screen.getByRole("group", { name: "Filter jenis" });
+    expect(within(bar).getByRole("button", { name: /^proxy 3$/ })).toBeTruthy();
+    expect(within(bar).queryByRole("button", { name: /statis/ })).toBeNull(); // 0 item disembunyikan
+    await u.click(screen.getByRole("button", { name: "Berikutnya" })); // halaman 2 dari Semua
+    await u.click(within(bar).getByRole("button", { name: /^proxy/ }));
+    expect(screen.getAllByRole("listitem").map((l) => l.textContent)).toEqual(["c-proxy", "d-proxy"]); // halaman 1 lagi
+    expect(within(bar).getByRole("button", { name: /^proxy/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(bar).getByRole("button", { name: /^php 2$/ })).toBeTruthy(); // angka tidak berubah
+    await u.type(screen.getByRole("searchbox"), "e-");
+    expect(screen.getAllByRole("listitem").map((l) => l.textContent)).toEqual(["e-proxy"]); // filter + cari bersama
   });
 });

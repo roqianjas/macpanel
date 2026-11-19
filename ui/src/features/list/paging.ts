@@ -18,6 +18,29 @@ export function filterItems<T>(items: readonly T[], query: string, text: (t: T) 
   });
 }
 
+export interface Facet<T> {
+  id: string;
+  label: string;
+  test: (t: T) => boolean;
+}
+
+export interface FacetCount {
+  id: string;
+  label: string;
+  count: number;
+}
+
+/** Jumlah item per facet, dihitung dari SELURUH daftar (bukan hasil pencarian) agar angka tab tidak melompat saat mengetik. "Semua" selalu ada di depan. */
+export function countFacets<T>(items: readonly T[], facets: readonly Facet<T>[]): FacetCount[] {
+  return [{ id: "all", label: "Semua", count: items.length }, ...facets.map((f) => ({ id: f.id, label: f.label, count: items.filter(f.test).length }))];
+}
+
+/** Terapkan facet terpilih. Id tak dikenal (mis. facet hilang setelah data berubah) diperlakukan sebagai "Semua", bukan daftar kosong. */
+export function applyFacet<T>(items: readonly T[], facets: readonly Facet<T>[], id: string): T[] {
+  const f = facets.find((x) => x.id === id);
+  return f ? items.filter(f.test) : items.slice();
+}
+
 export interface PageView<T> {
   rows: T[];
   page: number; // 1-based, sudah dijepit ke rentang sah

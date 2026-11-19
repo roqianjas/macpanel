@@ -99,7 +99,7 @@ def test_level3_requires_safe_backup_dir(tmp_path):
         with pytest.raises(U.UninstallError, match="tidak boleh"):
             U.build_plan(env, 3, str(bad))
     with pytest.raises(U.UninstallError):
-        U.build_plan(env, 4)
+        U.build_plan(env, 5)
 
 
 def test_order_backup_before_delete_and_mp_last(tmp_path):

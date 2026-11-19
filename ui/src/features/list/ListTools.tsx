@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { filterItems, pageOf, summary, PAGE_SIZE, type PageView } from "./paging";
+import { applyFacet, countFacets, filterItems, pageOf, summary, PAGE_SIZE, type Facet, type FacetCount, type PageView } from "./paging";
 
 // Ikon: Search untuk kolom cari, ChevronLeft/Right untuk halaman sebelumnya/berikutnya. Arah panah menunjukkan arah, jadi relevan.
 
@@ -12,19 +12,44 @@ export interface ListView<T> {
   filteredCount: number;
   allCount: number;
   searching: boolean;
+  facets: FacetCount[];
+  facet: string;
+  setFacet: (id: string) => void;
 }
 
 /**
  * Pencarian + halaman untuk daftar yang sudah dimuat penuh di browser (situs, database, worker, backup).
  * Halaman kembali ke 1 saat kueri berubah; bila item berkurang (mis. dihapus) halaman dijepit otomatis oleh pageOf.
  */
-export function useListView<T>(items: readonly T[], text: (t: T) => string, size: number = PAGE_SIZE): ListView<T> {
+export function useListView<T>(items: readonly T[], text: (t: T) => string, size: number = PAGE_SIZE, facetDefs: readonly Facet<T>[] = []): ListView<T> {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const filtered = useMemo(() => filterItems(items, q, text), [items, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [facet, setFacet] = useState("all");
+  const facets = useMemo(() => countFacets(items, facetDefs), [items]); // eslint-disable-line react-hooks/exhaustive-deps
+  const active = facets.some((f) => f.id === facet) ? facet : "all";
+  const filtered = useMemo(() => filterItems(applyFacet(items, facetDefs, active), q, text), [items, q, active]); // eslint-disable-line react-hooks/exhaustive-deps
   const view = pageOf(filtered, page, size);
-  useEffect(() => setPage(1), [q]);
-  return { q, setQ, view, setPage, filteredCount: filtered.length, allCount: items.length, searching: q.trim() !== "" };
+  useEffect(() => setPage(1), [q, active]);
+  return { q, setQ, view, setPage, filteredCount: filtered.length, allCount: items.length, searching: q.trim() !== "" || active !== "all", facets, facet: active, setFacet };
+}
+
+/** Tab filter presentasional. Memakai aria-pressed (ini filter, bukan panel bertab). Tab berisi 0 disembunyikan kecuali "Semua" dan yang sedang dipilih. */
+export function FacetBar({ facets, value, onChange, label, counts = true }: { facets: readonly FacetCount[]; value: string; onChange: (id: string) => void; label: string; counts?: boolean }) {
+  const shown = counts ? facets.filter((f) => f.id === "all" || f.count > 0 || f.id === value) : facets;
+  if (shown.length <= 2) return null;
+  return (
+    <div className="ftabs" role="group" aria-label={label}>
+      {shown.map((f) => (
+        <button key={f.id} type="button" className={`ftab ${value === f.id ? "on" : ""}`} aria-pressed={value === f.id} onClick={() => onChange(f.id)}>
+          {f.label}{counts && <> <span className="ftab-n">{f.count}</span></>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function FilterTabs<T>({ lv, label }: { lv: ListView<T>; label: string }) {
+  return <FacetBar facets={lv.facets} value={lv.facet} onChange={lv.setFacet} label={label} />;
 }
 
 /** Kolom cari dengan label terlihat (R-39) dan ringkasan hasil yang dibacakan pembaca layar. Tidak tampil bila daftar kecil dan belum dicari. */
@@ -85,10 +110,11 @@ export function Pager<T>({ lv }: { lv: ListView<T> }) {
 }
 
 /** Daftar `<ul className="list">` dengan cari + halaman. `render` mengembalikan `<li>`. */
-export function PagedList<T>({ items, text, render, label, hint, size }: { items: readonly T[]; text: (t: T) => string; render: (t: T) => ReactNode; label?: string; hint?: string; size?: number }) {
-  const lv = useListView(items, text, size);
+export function PagedList<T>({ items, text, render, label, hint, size, facets, facetLabel }: { items: readonly T[]; text: (t: T) => string; render: (t: T) => ReactNode; label?: string; hint?: string; size?: number; facets?: readonly Facet<T>[]; facetLabel?: string }) {
+  const lv = useListView(items, text, size, facets);
   return (
     <>
+      <FilterTabs lv={lv} label={facetLabel ?? "Filter"} />
       <ListSearch lv={lv} label={label} hint={hint} />
       <ul className="list">{lv.view.rows.map(render)}</ul>
       <Pager lv={lv} />

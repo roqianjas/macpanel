@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import { fmtTime } from "../api";
+import { FacetBar } from "../features/list/ListTools";
 import { useCursorList } from "../features/list/useCursorList";
 import { Card, Chip, PageHead, State, statusTone } from "../ui";
 
@@ -19,6 +20,26 @@ interface Job {
 }
 
 const PAGE = 25;
+
+// Pintasan pencarian ke server (bukan memfilter baris yang sudah dimuat, yang akan menyesatkan pada daftar berhalaman).
+// Tanpa garis bawah: "_" adalah wildcard pada pencarian LIKE.
+const JOB_SHORTCUTS = [
+  { id: "gagal", label: "Gagal" },
+  { id: "berjalan", label: "Berjalan" },
+  { id: "timeout", label: "Timeout" },
+];
+const AUDIT_SHORTCUTS = [
+  { id: "login", label: "Login" },
+  { id: "fail", label: "Gagal" },
+  { id: "backup", label: "Backup" },
+  { id: "clean", label: "Pembersihan" },
+  { id: "token", label: "Token" },
+];
+
+function Shortcuts({ items, q, setQ, label }: { items: { id: string; label: string }[]; q: string; setQ: (s: string) => void; label: string }) {
+  const value = items.some((i) => i.id === q.trim()) ? q.trim() : "all";
+  return <FacetBar label={label} value={value} onChange={(id) => setQ(id === "all" ? "" : id)} facets={[{ id: "all", label: "Semua", count: 0 }, ...items.map((i) => ({ ...i, count: 0 }))]} counts={false} />;
+}
 
 function Tools({ id, label, hint, q, setQ, shown, total, searching }: { id: string; label: string; hint: string; q: string; setQ: (s: string) => void; shown: number; total: number; searching: boolean }) {
   return (
@@ -55,6 +76,7 @@ export default function Activity() {
     <>
       <PageHead title="Aktivitas" desc="Jejak audit berantai: setiap login, percobaan gagal, dan perubahan tercatat. Verifikasi integritas dengan: panel audit verify." />
       <Card title="Audit">
+        <Shortcuts items={AUDIT_SHORTCUTS} q={audit.q} setQ={audit.setQ} label="Pintasan jenis catatan" />
         <Tools id="audit-q" label="Cari audit" hint="Pengguna, aksi, atau detail" q={audit.q} setQ={audit.setQ} shown={audit.rows.length} total={audit.total} searching={audit.searching} />
         <State loading={audit.loading && audit.rows.length === 0} error={audit.error} empty={!audit.loading && audit.rows.length === 0} emptyText={audit.searching ? "Tidak ada catatan yang cocok dengan pencarian ini." : "Belum ada catatan."} onRetry={audit.reload}>
           <div className="tbl-wrap">
@@ -87,6 +109,7 @@ export default function Activity() {
         </State>
       </Card>
       <Card title="Aksi terakhir">
+        <Shortcuts items={JOB_SHORTCUTS} q={jobs.q} setQ={jobs.setQ} label="Pintasan status aksi" />
         <Tools id="jobs-q" label="Cari aksi" hint="Nama aksi atau status" q={jobs.q} setQ={jobs.setQ} shown={jobs.rows.length} total={jobs.total} searching={jobs.searching} />
         <State loading={jobs.loading && jobs.rows.length === 0} error={jobs.error} empty={!jobs.loading && jobs.rows.length === 0} emptyText={jobs.searching ? "Tidak ada aksi yang cocok dengan pencarian ini." : "Belum ada aksi."} onRetry={jobs.reload}>
           <ul className="list">
