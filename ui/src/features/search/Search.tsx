@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { BookOpen, Compass, Cog, Database, Globe, Search as SearchIcon, Server, CornerDownLeft } from "lucide-react";
 import { get } from "../../api";
-import { Modal } from "../../ui";
+import { Modal, Skeleton } from "../../ui";
 import { fromDatabases, fromDocs, fromServices, fromSites, fromTasks, GROUP_ORDER, PAGES, rank, type Group, type Item } from "./model";
 
 // Ikon per jenis hasil, dipilih sesuai isinya: Compass = halaman, Globe = situs, Server = layanan, Database, Cog = tugas, BookOpen = dokumen.
@@ -121,7 +121,7 @@ function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) 
           })}
         </ul>
         {hits.length === 0 && <p className="state muted" role="status">Tidak ada hasil untuk “{q}”. Coba nama situs, layanan, atau menu.</p>}
-        {!data && <p className="small muted" role="status">Memuat situs, layanan, dan tugas…</p>}
+        {!data && <Skeleton />}
         {data && data.failed > 0 && <p className="small muted" role="status">{data.failed} sumber gagal dimuat; hasil mungkin tidak lengkap.</p>}
         <p className="small muted">Panah atas/bawah memilih, Enter membuka, Esc menutup. Kelompok: {GROUP_ORDER.join(", ")}.</p>
       </div>

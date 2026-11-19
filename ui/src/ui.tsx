@@ -73,7 +73,6 @@ export function State({ loading, error, empty, emptyText, onRetry, skeleton, chi
         </div>
       </div>
     );
-  if (loading && !children) return null;
   if (loading) return <Skeleton kind={skeleton} />;
   if (empty) return <div className="state"><p className="muted">{emptyText ?? "Belum ada data."}</p></div>;
   return <>{children}</>;

@@ -54,7 +54,19 @@ export default function Overview() {
   const tx = phys.reduce((a, n) => a + n.tx_bps, 0);
   const now = Math.floor(Date.now() / 1000);
 
-  const hero = (
+  const heroLoading = (svc.loading && !svc.data) || (sys.loading && !sys.data);
+  const hero = heroLoading ? (
+    <section className="hero" aria-label="Status keseluruhan" role="status" aria-busy="true">
+      <span className="sr">Memuat…</span>
+      <div aria-hidden="true" className="sk-hero">
+        <span className="sk sk-title" />
+        <span className="sk sk-line" style={{ width: "70%" }} />
+      </div>
+      <div aria-hidden="true" className="sk-hero-facts">
+        {[0, 1, 2].map((i) => <span key={i} className="sk sk-fact" />)}
+      </div>
+    </section>
+  ) : (
     <section className={`hero ${bad.length ? "hero-bad" : ""}`} aria-label="Status keseluruhan">
       <div>
         <h1 className="hero-title">

@@ -611,3 +611,15 @@ textarea.mono { width: 100%; }
 .pmenu-item:hover, .pmenu-item:focus-visible { background: var(--raised); }
 @media (max-width: 760px) { .pmenu-name, .pmenu-chev { display: none; } .pmenu-btn { padding: 4px; } }
 .user-row { gap: var(--s3); } .user-row > div { flex: 1; min-width: 0; }
+
+/* Skeleton konsisten: bila tidak berada di dalam kartu/dialog, ia tampil sebagai kartu sendiri, sama seperti isi yang akan datang */
+.sk-wrap { padding: var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); min-height: 160px; }
+.card .sk-wrap, .modal .sk-wrap, .sched .sk-wrap, .search-box .sk-wrap, .sk-wrap .sk-wrap { padding: 0; background: none; border: 0; border-radius: 0; min-height: 0; }
+.sk-wrap.sk-cards { padding: 0; background: none; border: 0; min-height: 0; }
+.sk-boot { min-height: 100vh; display: grid; place-items: center; padding: var(--s4); }
+.sk-boot .sk-wrap { width: min(520px, 100%); }
+.sk-hero { display: grid; gap: var(--s3); flex: 1; }
+.sk-title { height: 28px; width: 55%; }
+.sk-hero-facts { display: flex; gap: var(--s4); }
+.sk-fact { width: 90px; height: 34px; }
+@media (max-width: 760px) { .sk-hero-facts { display: none; } }

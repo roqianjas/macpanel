@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Activity, BookOpen, Bell, Boxes, Container, Database, DatabaseBackup, Download, Globe, History, LayoutDashboard, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
-import { Alert, Chip, Field, Modal, statusTone } from "./ui";
+import { Skeleton, Alert, Chip, Field, Modal, statusTone } from "./ui";
 import ErrorBoundary from "./ErrorBoundary";
 import { setDevicePref, useAccent, usePanelName, useSkin, useThemePref } from "./settings";
 import { BrandMark, useFavicon } from "./features/appearance/logo";
@@ -350,8 +350,8 @@ export default function App() {
   }, []);
   if (user === undefined)
     return (
-      <main className="login" id="main">
-        <p className="muted" role="status">Memuat…</p>
+      <main className="sk-boot" id="main">
+        <Skeleton />
       </main>
     );
   return (
