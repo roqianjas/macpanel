@@ -208,5 +208,9 @@ const en: Messages = {
   "ov.cores.one": "{n} core",
   "ov.chip.projects.one": "{n} project",
   "ov.chip.php.one": "{n} PHP installed",
+  "err.title": "This page failed to display",
+  "err.body": "A display error occurred, not a problem on your server. Reload the page; if it repeats, report the message below.",
+  "err.reload": "Reload",
+  "err.search": "Search failed to display. Close it and open it again.",
 };
 export default en;

@@ -361,9 +361,9 @@ export default function App() {
       </main>
     );
   return (
-    <>
+    <ErrorBoundary>
       {user && mustChange ? <ForcedChange onLogout={logout} /> : user ? <Shell user={user} role={role} onLogout={logout} /> : <Login onDone={(u) => { get<{ role?: string; must_change?: boolean }>("/api/me").then((r) => { setMustChange(!!r.must_change); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); }).catch(() => {}); setUser(u); }} />}
       {stepUp && <StepUpDialog resolve={stepUp} />}
-    </>
+    </ErrorBoundary>
   );
 }

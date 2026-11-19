@@ -3,6 +3,7 @@ import { BookOpen, Compass, Cog, Database, Globe, Search as SearchIcon, Server, 
 import { get } from "../../api";
 import { Modal, Skeleton } from "../../ui";
 import { useT } from "../../i18n";
+import ErrorBoundary from "../../ErrorBoundary";
 import { fromDatabases, fromDocs, fromServices, fromSites, fromTasks, GROUP_ORDER, PAGES, rank, type Group, type Item } from "./model";
 
 // Ikon per jenis hasil, dipilih sesuai isinya: Compass = halaman, Globe = situs, Server = layanan, Database, Cog = tugas, BookOpen = dokumen.
@@ -53,7 +54,11 @@ export default function GlobalSearch({ role }: { role: string }) {
         <span className="top-search-text">{t("common.search.short")}</span>
         <kbd className="kbd" aria-hidden="true">{mac ? "⌘K" : "Ctrl K"}</kbd>
       </button>
-      {open && <SearchDialog role={role} onClose={() => setOpen(false)} />}
+      {open && (
+        <ErrorBoundary resetKey={String(open)}>
+          <SearchDialog role={role} onClose={() => setOpen(false)} />
+        </ErrorBoundary>
+      )}
     </>
   );
 }

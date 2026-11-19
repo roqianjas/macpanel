@@ -207,5 +207,9 @@ const id = {
   "ov.cores.one": "{n} inti",
   "ov.chip.projects.one": "{n} proyek",
   "ov.chip.php.one": "{n} PHP terpasang",
+  "err.title": "Halaman ini gagal ditampilkan",
+  "err.body": "Terjadi kesalahan di tampilan, bukan di server Anda. Muat ulang halaman; bila berulang, laporkan pesan di bawah.",
+  "err.reload": "Muat ulang",
+  "err.search": "Pencarian gagal ditampilkan. Tutup lalu buka lagi.",
 } as const;
 export default id;
