@@ -47,7 +47,7 @@ html[data-skin="kertas"] .brand-ic { background: none; border: 1.5px solid var(-
 html[data-skin="kertas"] .side a.on { background: none; color: var(--primary); box-shadow: inset 0 -2px 0 var(--primary); border-radius: 0; }
 html[data-skin="kertas"] .top { border-bottom: 1.5px solid var(--text); }
 html[data-skin="kertas"] .card-title, html[data-skin="kertas"] .modal-head h2 { font-family: var(--font-display); font-size: 19px; }
-html[data-skin="kertas"] .tbl th { font-family: var(--mono); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; border-bottom: 1.5px solid var(--text); }
+html[data-skin="kertas"] .tbl thead th { font-family: var(--mono); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; border-bottom: 1.5px solid var(--text); }
 html[data-skin="kertas"] .tab.on { border-bottom-color: var(--primary); }
 html[data-skin="kertas"] .big { font-weight: 700; letter-spacing: -.02em; }
 
@@ -100,7 +100,7 @@ html[data-skin="bengkel"] .tab.on { background: var(--accent); color: var(--on-a
 html[data-skin="bengkel"] .ftab.on { background: var(--accent); color: var(--on-accent); border-radius: 8px 8px 0 0; border-bottom-color: var(--edge); }
 html[data-skin="bengkel"] .seg { border: 2px solid var(--edge); }
 html[data-skin="bengkel"] .seg button.on, html[data-skin="bengkel"] .seg-btn.on { background: var(--accent); color: var(--on-accent); }
-html[data-skin="bengkel"] .tbl th { background: var(--raised); color: var(--text); border-bottom: 2px solid var(--edge); font-weight: 800; }
+html[data-skin="bengkel"] .tbl thead th { background: var(--raised); color: var(--text); border-bottom: 2px solid var(--edge); font-weight: 800; }
 html[data-skin="bengkel"] .tile:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--hard); border-color: var(--edge); }
 html[data-skin="bengkel"] .big { font-weight: 800; letter-spacing: -.03em; }
 html[data-skin="bengkel"] .state { border-width: 2px; }
@@ -132,7 +132,7 @@ html[data-skin="mesin"] .side a.on { background: var(--tint); box-shadow: inset 
 html[data-skin="mesin"] .hero { background: radial-gradient(900px 260px at 12% -30%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 62%), var(--hero); color: var(--on-hero); border: 1px solid var(--line); }
 html[data-skin="mesin"] .hero-title .mark { color: var(--on-hero); }
 html[data-skin="mesin"] .hero-facts dd { font-family: var(--mono); font-size: 22px; }
-html[data-skin="mesin"] .card-title, html[data-skin="mesin"] .kpi-h, html[data-skin="mesin"] .side-label, html[data-skin="mesin"] .tbl th, html[data-skin="mesin"] .hero-facts dt { font-family: var(--mono); letter-spacing: .03em; }
+html[data-skin="mesin"] .card-title, html[data-skin="mesin"] .kpi-h, html[data-skin="mesin"] .side-label, html[data-skin="mesin"] .tbl thead th, html[data-skin="mesin"] .hero-facts dt { font-family: var(--mono); letter-spacing: .03em; }
 html[data-skin="mesin"] .mark-ok { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ok) 75%, transparent)); }
 html[data-skin="mesin"] .big { font-family: var(--mono); font-weight: 600; letter-spacing: -.02em; }
 html[data-skin="mesin"] .page-head h1 { font-weight: 600; letter-spacing: -.01em; }

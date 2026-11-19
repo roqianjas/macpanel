@@ -60,7 +60,7 @@ export function SiteList() {
                   <th scope="col">Jenis</th>
                   <th scope="col">PHP</th>
                   <th scope="col">Sertifikat</th>
-                  <th scope="col">Sumber</th>
+                  <th scope="col" className="col-low">Sumber</th>
                   <th scope="col"><span className="sr">Aksi</span></th>
                 </tr>
               </thead>
@@ -79,7 +79,7 @@ export function SiteList() {
                       <td>
                         {s.ssl_days == null ? <span className="muted">-</span> : <Chip tone={s.ssl_days < 0 ? "bad" : s.ssl_days < 30 ? "warn" : "ok"}>{s.ssl_days < 0 ? "Kedaluwarsa" : `${s.ssl_days} hari`}</Chip>}
                       </td>
-                      <td className="mono cell-trunc" title={s.target}>{s.mode === "proxy" ? `127.0.0.1:${s.target}` : s.target || "-"}</td>
+                      <td className="mono cell-trunc col-low" title={s.target}>{s.mode === "proxy" ? `127.0.0.1:${s.target}` : s.target || "-"}</td>
                       <td className="cell-end">
                         <div className="row">
                           <a className="btn btn-sm" href={`#/website/${s.name}`}>{s.system ? "Lihat" : "Kelola"}<span className="sr"> {s.host}</span></a>

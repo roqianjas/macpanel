@@ -373,7 +373,11 @@ textarea.mono { width: 100%; }
 .tbl td.cell-end { white-space: normal; width: 1%; min-width: 150px; }
 .cell-end .row { flex-wrap: wrap; justify-content: flex-end; }
 @media (min-width: 1280px) { .tbl td.cell-end { white-space: nowrap; } .cell-end .row { flex-wrap: nowrap; } }
+/* Kolom aksi selebar tombolnya saja: min-width tetap hanya saat tombol boleh turun baris (<1280), jika tidak tabel melebihi kartu dan tombol terpotong */
 .tbl td.cell-end { min-width: 230px; }
+@media (min-width: 1280px) { .tbl td.cell-end { min-width: 0; } }
+/* Nama situs/tuan rumah tidak dipecah di tengah kata */
+.tbl tbody th .row-link { white-space: nowrap; }
 @media (min-width: 900px) { .tbl-fixed { min-width: 0; } }
 
 /* Daftar layanan: di bawah 1280px tiap baris bertumpuk (nama, lalu status/versi/port, lalu tombol) supaya tidak ada kolom yang saling timpa. */
@@ -493,3 +497,11 @@ textarea.mono { width: 100%; }
 .tabs[data-right="1"], .ftabs[data-right="1"] { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
 .tabs[data-left="1"], .ftabs[data-left="1"] { mask-image: linear-gradient(to right, transparent, #000 36px); -webkit-mask-image: linear-gradient(to right, transparent, #000 36px); }
 .tabs[data-left="1"][data-right="1"], .ftabs[data-left="1"][data-right="1"] { mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
+
+/* Tabel di kartu sempit (sidebar + <1280px): kolom aksi lebih ramping; kolom sekunder (.col-low, mis. Sumber) disembunyikan agar tabel muat tanpa terpotong; isinya ada di halaman detail */
+@media (max-width: 1279.98px) {
+  .tbl td.cell-end { min-width: 150px; }
+  .cell-trunc { max-width: 150px; }
+  .tbl-fixed { min-width: 0; }
+}
+@media (min-width: 761px) and (max-width: 1279.98px) { .tbl .col-low { display: none; } }

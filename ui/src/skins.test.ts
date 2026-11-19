@@ -131,3 +131,10 @@ describe("kelengkapan", () => {
     expect(skinsCss).toMatch(/prefers-reduced-motion: reduce\)[\s\S]*bengkel/);
   });
 });
+
+describe("aturan tabel di gaya", () => {
+  it("selektor th harus dibatasi thead: th di tbody adalah sel nama baris, bukan judul kolom (cacat garis hitam)", () => {
+    const bad = skinsCss.split("\n").filter((l) => /\.tbl\s+th\b/.test(l) && !/\.tbl\s+thead\s+th\b/.test(l));
+    expect(bad).toEqual([]);
+  });
+});
