@@ -505,3 +505,50 @@ textarea.mono { width: 100%; }
   .tbl-fixed { min-width: 0; }
 }
 @media (min-width: 761px) and (max-width: 1279.98px) { .tbl .col-low { display: none; } }
+
+/* Logo */
+.brand-img { border-radius: 6px; object-fit: cover; display: block; }
+.brand-ic:has(.brand-img) { background: none; border: 0; }
+.logo-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.logo-opt { width: 44px; height: 44px; display: grid; place-items: center; background: var(--surface); color: var(--text); border: 2px solid var(--line); border-radius: var(--r-ctl); cursor: pointer; padding: 0; }
+.logo-opt:hover { border-color: var(--muted); }
+.logo-opt.on { border-color: var(--primary); background: var(--tint); color: var(--on-tint); }
+.logo-opt img { border-radius: 5px; }
+.field-err { color: var(--bad); }
+
+/* Skeleton: muncul setelah 150 ms; kilau hanya bila gerak diizinkan */
+.sk-wrap { display: grid; gap: var(--s3); animation: sk-in 200ms 150ms backwards; }
+.sk { display: block; background: var(--raised); border-radius: 6px; }
+.sk-row { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line-soft); }
+.sk-dot { width: 28px; height: 28px; border-radius: 50%; flex: none; }
+.sk-row .sk-line { flex: none; }
+.sk-chip { width: 72px; height: 22px; border-radius: 999px; margin-left: auto; flex: none; }
+.sk-line { height: 12px; }
+.sk-big { height: 34px; width: 55%; }
+.sk-cards { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.sk-card { display: grid; gap: var(--s2); padding: var(--s3); border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); }
+.sk-chart { display: grid; gap: var(--s3); }
+.sk-plot { height: 220px; border-radius: var(--r-ctl); }
+@keyframes sk-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sk-shine { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .sk { background: linear-gradient(90deg, var(--raised) 25%, color-mix(in srgb, var(--raised) 50%, var(--surface)) 50%, var(--raised) 75%); background-size: 200% 100%; animation: sk-shine 1.4s linear infinite; }
+}
+
+/* Scrollbar tipis dan tenang: lintasan transparan, gagang tipis, lebih tegas saat kursor di atasnya. Sidebar baru menampakkannya saat disorot. */
+:root { --sb: color-mix(in srgb, var(--muted) 45%, transparent); --sb-hover: color-mix(in srgb, var(--muted) 80%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: var(--sb) transparent; }
+*:hover { scrollbar-color: var(--sb-hover) transparent; }
+.side { scrollbar-color: transparent transparent; }
+.side:hover, .side:focus-within { scrollbar-color: var(--sb) transparent; }
+@supports not (scrollbar-width: thin) {
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--sb); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--sb-hover); }
+}
+.docs-body .tbl th, .docs-body .tbl td { overflow-wrap: anywhere; }
+.sk { background: color-mix(in srgb, var(--text) 9%, var(--surface)); }
+@media (prefers-reduced-motion: no-preference) {
+  .sk { background: linear-gradient(90deg, color-mix(in srgb, var(--text) 9%, var(--surface)) 25%, color-mix(in srgb, var(--text) 4%, var(--surface)) 50%, color-mix(in srgb, var(--text) 9%, var(--surface)) 75%); background-size: 200% 100%; }
+}

@@ -26,7 +26,38 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   return { data, error, loading, reload };
 }
 
-export function State({ loading, error, empty, emptyText, onRetry, children }: { loading: boolean; error: string; empty?: boolean; emptyText?: string; onRetry?: () => void; children: ReactNode }) {
+export type SkeletonKind = "rows" | "cards" | "chart";
+
+/** Kerangka isi saat memuat: bentuknya meniru isi (baris tabel, kartu angka, grafik) supaya tata letak tidak melompat. Muncul setelah jeda singkat agar muatan cepat tidak berkedip. */
+export function Skeleton({ kind = "rows" }: { kind?: SkeletonKind }) {
+  return (
+    <div className={`sk-wrap sk-${kind}`} role="status" aria-busy="true">
+      <span className="sr">Memuat…</span>
+      {kind === "rows" && [0, 1, 2, 3, 4].map((i) => (
+        <div className="sk-row" key={i} aria-hidden="true">
+          <span className="sk sk-dot" />
+          <span className="sk sk-line" style={{ width: `${44 + ((i * 17) % 30)}%` }} />
+          <span className="sk sk-chip" />
+        </div>
+      ))}
+      {kind === "cards" && [0, 1, 2, 3].map((i) => (
+        <div className="sk-card" key={i} aria-hidden="true">
+          <span className="sk sk-line" style={{ width: "40%" }} />
+          <span className="sk sk-big" />
+          <span className="sk sk-line" style={{ width: "70%" }} />
+        </div>
+      ))}
+      {kind === "chart" && (
+        <div className="sk-chart" aria-hidden="true">
+          <span className="sk sk-line" style={{ width: "30%" }} />
+          <span className="sk sk-plot" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function State({ loading, error, empty, emptyText, onRetry, skeleton, children }: { loading: boolean; error: string; empty?: boolean; emptyText?: string; onRetry?: () => void; skeleton?: SkeletonKind; children: ReactNode }) {
   if (error)
     return (
       <div className="state state-bad" role="alert">
@@ -43,13 +74,7 @@ export function State({ loading, error, empty, emptyText, onRetry, children }: {
       </div>
     );
   if (loading && !children) return null;
-  if (loading)
-    return (
-      <div className="state" role="status">
-        <LoaderCircle className="icon spin" size={18} aria-hidden="true" />
-        <p className="muted">Memuat…</p>
-      </div>
-    );
+  if (loading) return <Skeleton kind={skeleton} />;
   if (empty) return <div className="state"><p className="muted">{emptyText ?? "Belum ada data."}</p></div>;
   return <>{children}</>;
 }

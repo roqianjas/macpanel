@@ -160,16 +160,17 @@ def launchd_loaded(label):
 
 
 def snapshot():
-    vers, bst, rows = brew_versions(), brew_status(), []
+    # Satu panggilan `brew list` untuk semuanya; `brew services` (0,4 dtk) hanya dibaca bila ada layanan brew yang tidak merespons.
+    vers, rows, bst = brew_versions(), [], None
     for c in CATALOG:
         if c["kind"] == "brew":
             installed, ver = c["name"] in vers, vers.get(c["name"], "")
         else:
             installed, ver = (LAUNCH / f"{c['name']}.plist").exists(), ""
             if installed and c["id"] == "mariadb":
-                ver = brew_versions().get("mariadb@11.8", "")
+                ver = vers.get("mariadb@11.8", "")
             if installed and c["id"] == "docker":
-                ver = brew_versions().get("docker", "")
+                ver = vers.get("docker", "")
             if installed and c["id"] == "9router":
                 try:
                     ver = json.loads((NR_DIR / "node_modules/9router/package.json").read_text()).get("version", "")
@@ -179,7 +180,7 @@ def snapshot():
             state = "not_installed"
         elif probe(c):
             state = "running"
-        elif c["kind"] == "brew" and bst.get(c["name"]) == "error":
+        elif c["kind"] == "brew" and (bst := bst if bst is not None else brew_status()).get(c["name"]) == "error":
             state = "error"
         else:
             state = "stopped"

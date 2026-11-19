@@ -19,7 +19,7 @@ export default function Monitoring() {
   return (
     <>
       <PageHead title="Pantau" desc="Sumber daya dan lalu lintas jaringan Mac mini. Satu titik dicatat tiap 30 detik, disimpan 7 hari, dan hanya berisi pengukuran nyata." action={<RangePicker value={range} onChange={setRange} />} />
-      <State loading={met.loading && !m} error={met.error} onRetry={met.reload}>
+      <State loading={met.loading && !m} skeleton="chart" error={met.error} onRetry={met.reload}>
         {m && (
           <>
             <Card title={<><Cpu size={18} className="icon" aria-hidden="true" /> CPU dan memori: kapan mesin paling sibuk? ({label})</>}>

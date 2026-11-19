@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Check, Palette, RotateCcw } from "lucide-react";
+import { useRef, useState } from "react";
+import { fileToLogo, LOGOS, setLogo, useLogo } from "./logo";
+import { Check, ImageUp, Palette, RotateCcw } from "lucide-react";
 import { Card } from "../../ui";
 import { setAccent, setDevicePref, setSkin, useAccent, useSkin, useThemePref, type Pref } from "../../settings";
 import { ACCENTS, isHex, SKINS, type Mode, type Skin } from "../../skins";
@@ -31,6 +32,9 @@ export default function AppearanceCard() {
   const accent = useAccent();
   const pref = useThemePref();
   const [custom, setCustom] = useState(accent ?? "#0f766e");
+  const logo = useLogo();
+  const file = useRef<HTMLInputElement>(null);
+  const [logoErr, setLogoErr] = useState("");
   const dark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
   const mode: Mode = dark ? "dark" : "light";
 
@@ -72,6 +76,27 @@ export default function AppearanceCard() {
           <p className="small muted">
             {accent === null ? "Memakai warna bawaan gaya." : `Aksen ${accent}.`} Warna disesuaikan otomatis (lebih gelap atau lebih terang) supaya teks tetap terbaca di gaya dan mode yang dipilih.
           </p>
+        </div>
+
+        <div className="stack">
+          <span className="field-label" id="logo-label">Logo panel dan favicon</span>
+          <div className="logo-row" role="group" aria-labelledby="logo-label">
+            {LOGOS.map(({ id, label, Icon }) => (
+              <button key={id} type="button" className={`logo-opt ${logo.kind === "icon" && logo.id === id ? "on" : ""}`} aria-label={label} title={label} aria-pressed={logo.kind === "icon" && logo.id === id} onClick={() => { setLogoErr(""); setLogo({ kind: "icon", id }); }}>
+                <Icon size={20} aria-hidden="true" />
+              </button>
+            ))}
+            <button type="button" className={`logo-opt ${logo.kind === "img" ? "on" : ""}`} aria-label="Unggah gambar sendiri" title="Unggah gambar sendiri" aria-pressed={logo.kind === "img"} onClick={() => file.current?.click()}>
+              {logo.kind === "img" ? <img src={logo.src} width={28} height={28} alt="" /> : <ImageUp size={20} aria-hidden="true" />}
+            </button>
+            <input ref={file} type="file" accept="image/png,image/jpeg,image/webp" className="sr" tabIndex={-1} aria-hidden="true" onChange={async (e) => {
+              const f = e.target.files?.[0]; e.target.value = "";
+              if (!f) return;
+              try { setLogoErr(""); setLogo(await fileToLogo(f)); } catch (x) { setLogoErr(x instanceof Error ? x.message : "Gagal memuat gambar."); }
+            }} />
+          </div>
+          {logoErr && <p className="small field-err" role="alert">{logoErr}</p>}
+          <p className="small muted">Ikon mengikuti warna aksen. Gambar sendiri (PNG, JPG, WebP, maks 2 MB) dipotong persegi dan dikecilkan ke 128 px. Favicon tab browser ikut berubah. Nama panel diganti di bagian pengaturan umum.</p>
         </div>
 
         <div className="stack">

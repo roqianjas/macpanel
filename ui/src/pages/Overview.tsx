@@ -114,7 +114,7 @@ export default function Overview() {
           <p className="small muted">Peringatan {alerts.data.notify ?? "hanya ditampilkan di panel; tidak ada pesan keluar"}.</p>
         </Card>
       )}
-      <State loading={sys.loading && !sys.data} error={sys.error} onRetry={sys.reload}>
+      <State loading={sys.loading && !sys.data} skeleton="cards" error={sys.error} onRetry={sys.reload}>
         {si && (
           <ul className="kpis" aria-label="Sumber daya">
             <li className="card kpi">
@@ -177,7 +177,7 @@ export default function Overview() {
       <div className="split">
         <div className="stackc">
           <Card title={<><Activity size={18} className="icon" aria-hidden="true" /> Seberapa sibuk CPU dan memori?</>} action={<RangePicker value={range} onChange={setRange} />}>
-          <State loading={met.loading && !met.data} error={met.error} onRetry={met.reload}>
+          <State loading={met.loading && !met.data} skeleton="chart" error={met.error} onRetry={met.reload}>
             {met.data && (
               <LineChart
                 title="CPU dan memori"

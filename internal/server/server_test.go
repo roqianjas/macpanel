@@ -1805,6 +1805,9 @@ func TestStaticServesKnownFilesWithHeaders(t *testing.T) {
 	if r.Header().Get("Cache-Control") != "no-store" || !strings.Contains(r.Header().Get("Content-Security-Policy"), "default-src 'self'") || r.Header().Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatalf("header keamanan HTML: %v", r.Header())
 	}
+	if csp := r.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "img-src 'self' data:") || strings.Contains(csp, "unsafe") || strings.Contains(csp, "script-src") {
+		t.Fatalf("CSP hanya boleh melonggarkan gambar (logo/favicon data:): %s", csp)
+	}
 	j := testenv.Get(a, "/assets/app-abc123.js")
 	if j.Code != 200 || !strings.HasPrefix(j.Header().Get("Content-Type"), "text/javascript") || !strings.Contains(j.Header().Get("Cache-Control"), "immutable") {
 		t.Fatalf("asset: %d %v", j.Code, j.Header())

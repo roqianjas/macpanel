@@ -5,7 +5,7 @@ import { serviceView, useServices, type ServiceInfo } from "../data";
 import { trackJob } from "../jobs";
 import { FacetBar } from "../features/list/ListTools";
 import { applyFacet, countFacets, type Facet } from "../features/list/paging";
-import { Alert, Card, Chip, ConfirmDialog, Mark, Modal, PageHead, State } from "../ui";
+import { Alert, Card, Chip, ConfirmDialog, Mark, Modal, PageHead, Skeleton, State } from "../ui";
 
 const ORDER = ["Web server", "PHP", "Database", "Cache dan antrean", "Monitoring", "Jaringan", "Alat pengembangan", "Sistem"];
 
@@ -182,7 +182,7 @@ function LogDialog({ s, onClose }: { s: ServiceInfo; onClose: () => void }) {
   return (
     <Modal title={`Log ${s.label}`} onClose={onClose} wide>
       <div className="stack">
-        {loading && !data && <p className="muted" role="status">Memuat…</p>}
+        {loading && !data && <Skeleton />}
         {err && <Alert>{err}</Alert>}
         {data && <pre className="logbox mono">{data.log || "Log kosong."}</pre>}
         <div className="row-end">

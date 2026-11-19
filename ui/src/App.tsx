@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BookOpen, Bell, Boxes, Container, Database, DatabaseBackup, Download, Globe, History, KeyRound, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { Activity, BookOpen, Bell, Boxes, Container, Database, DatabaseBackup, Download, Globe, History, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
 import ErrorBoundary from "./ErrorBoundary";
-import { setDevicePref, usePanelName, useThemePref } from "./settings";
+import { setDevicePref, useAccent, usePanelName, useSkin, useThemePref } from "./settings";
+import { BrandMark, useFavicon } from "./features/appearance/logo";
 import Settings, { TwoFactor } from "./pages/Settings";
 import Users from "./pages/Users";
 import Account from "./pages/Account";
@@ -78,7 +79,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
       <div className="login-card card">
         <div className="brand">
           <span className="brand-ic">
-            <KeyRound size={20} aria-hidden="true" />
+            <BrandMark size={20} />
           </span>
           <span>{panelName}</span>
         </div>
@@ -194,6 +195,8 @@ function parseHash(): { page: string; sub: string } {
 
 function Shell({ user, role, onLogout }: { user: string; role: string; onLogout: () => void }) {
   const panelName = usePanelName();
+  const look = `${useSkin()}|${useAccent()}|${useThemePref()}`;
+  useFavicon(look);
   const theme = useTheme();
   const alerts = useAlerts();
   const nAlerts = alerts.data?.alerts.length ?? 0;
@@ -244,7 +247,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
         <div className="side-top">
           <span className="brand">
             <span className="brand-ic">
-              <KeyRound size={18} aria-hidden="true" />
+              <BrandMark size={18} />
             </span>
             <span className="brand-text">{panelName}</span>
           </span>
