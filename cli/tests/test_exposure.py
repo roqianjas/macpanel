@@ -121,3 +121,26 @@ def test_scan_finds_only_open_ports_on_local_socket():
     finally:
         srv.close()
     assert E.probe("127.0.0.1", port) is False, "setelah ditutup tidak terjangkau"
+
+
+def test_pf_guarded_ports_reads_only_our_block_rules(tmp_path):
+    (tmp_path / "macminiops-x").write_text(
+        "pass in quick on lo0 all\n"
+        "block drop in quick proto tcp from any to any port 21118\n"
+        "block drop in quick proto udp from any to any port { 21119 }\n"
+        "block drop in quick proto tcp from any to any port { 7000, 7001 }\n"
+    )
+    (tmp_path / "other").write_text("block drop in quick proto tcp from any to any port 9999\n")
+    assert E.pf_guarded_ports(str(tmp_path)) == {21118, 7000, 7001}
+    assert E.pf_guarded_ports(str(tmp_path / "tidak-ada")) == set()
+
+
+def test_build_marks_guarded_only_when_reachable_and_listed():
+    rows = [
+        {"cmd": "RustDesk", "pid": 1, "port": 21118, "bind": "*"},
+        {"cmd": "Other", "pid": 2, "port": 5000, "bind": "*"},
+    ]
+    out = {r["port"]: r for r in E.build(rows, {}, {21118, 5000}, "192.0.2.1", {21118})}
+    assert out[21118]["pf_guarded"] is True and out[5000]["pf_guarded"] is False
+    out = {r["port"]: r for r in E.build(rows, {}, set(), "192.0.2.1", {21118})}
+    assert out[21118]["pf_guarded"] is False, "tidak terjangkau: tidak perlu penanda"

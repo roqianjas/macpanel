@@ -53,6 +53,9 @@ type Listener struct {
 	LanReachable *bool  `json:"lan_reachable"`
 	Service      string `json:"service"`
 	Hidden       bool   `json:"hidden"`
+	// PFGuarded: ada aturan pf (berkas anchor milik kita) yang memblokir port ini. Uji sambung dari mesin sendiri lewat lo0 dan
+	// tidak bisa membuktikan blokir itu aktif, jadi bukan temuan; status "guarded".
+	PFGuarded bool `json:"pf_guarded"`
 }
 
 type Snapshot struct {
@@ -109,10 +112,10 @@ func Key(l Listener) string {
 
 // Exposed: mendengar di luar loopback/tailnet, bukan milik sistem Apple, dan sambungan dari LAN terbukti berhasil.
 func Exposed(l Listener) bool {
-	return (l.Scope == "all" || l.Scope == "lan") && !l.System && l.LanReachable != nil && *l.LanReachable
+	return (l.Scope == "all" || l.Scope == "lan") && !l.System && !l.PFGuarded && l.LanReachable != nil && *l.LanReachable
 }
 
-// Status satu pendengar: loopback | tailnet | system | blocked | unknown | allowed | flagged.
+// Status satu pendengar: loopback | tailnet | system | guarded | blocked | unknown | allowed | flagged.
 func Status(l Listener, allow map[string]bool) string {
 	switch {
 	case l.Scope == "loopback":
@@ -121,6 +124,8 @@ func Status(l Listener, allow map[string]bool) string {
 		return "tailnet"
 	case l.System:
 		return "system"
+	case l.PFGuarded:
+		return "guarded"
 	case l.LanReachable == nil:
 		return "unknown"
 	case !*l.LanReachable:

@@ -5,7 +5,7 @@ const it_ = (o: Partial<ExItem>): ExItem => ({ key: "x:1", proc: "x", pid: 1, po
 const view = (o: Partial<ExView> = {}): ExView => ({ now: { at: 1, lan_ip: "192.0.2.10", errors: [] }, stale: false, items: [], allowed: [], defaults: [], findings: 0, confirm_samples: 2, interval: 300, can_edit: true, ...o });
 
 describe("statusInfo", () => {
-  const all: Status[] = ["flagged", "allowed", "system", "tailnet", "blocked", "unknown", "loopback"];
+  const all: Status[] = ["flagged", "allowed", "system", "guarded", "tailnet", "blocked", "unknown", "loopback"];
   it("semua status punya teks dan petunjuk (tidak hanya warna)", () => {
     for (const s of all) {
       const i = statusInfo(s);

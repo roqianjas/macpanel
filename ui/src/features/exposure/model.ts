@@ -2,7 +2,7 @@
 import type { Tone } from "../../ui";
 
 export type Scope = "loopback" | "tailnet" | "all" | "lan";
-export type Status = "loopback" | "tailnet" | "system" | "blocked" | "unknown" | "allowed" | "flagged";
+export type Status = "loopback" | "tailnet" | "system" | "guarded" | "blocked" | "unknown" | "allowed" | "flagged";
 
 export interface ExItem {
   key: string;
@@ -13,6 +13,7 @@ export interface ExItem {
   scope: Scope;
   system: boolean;
   lan_reachable: boolean | null;
+  pf_guarded?: boolean;
   service: string;
   hidden: boolean;
   status: Status;
@@ -41,6 +42,8 @@ export function statusInfo(s: Status): { label: string; tone: Tone; hint: string
       return { label: "Sistem macOS", tone: "mute", hint: "Layanan bawaan macOS." };
     case "tailnet":
       return { label: "Hanya tailnet", tone: "ok", hint: "Hanya mendengar di alamat Tailscale." };
+    case "guarded":
+      return { label: "Dijaga pf", tone: "warn", hint: "Ada aturan firewall pf untuk port ini, tetapi uji dari mesin sendiri tidak bisa membuktikan aturannya aktif. Periksa dengan: sudo pfctl -s Anchors" };
     case "blocked":
       return { label: "Diblokir", tone: "ok", hint: "Mendengar di semua antarmuka, tetapi sambungan dari LAN gagal (mis. firewall)." };
     case "unknown":
@@ -50,7 +53,7 @@ export function statusInfo(s: Status): { label: string; tone: Tone; hint: string
   }
 }
 
-const ORDER: Record<Status, number> = { flagged: 0, unknown: 1, allowed: 2, blocked: 3, system: 4, tailnet: 5, loopback: 6 };
+const ORDER: Record<Status, number> = { flagged: 0, unknown: 1, guarded: 2, allowed: 3, blocked: 4, system: 5, tailnet: 6, loopback: 7 };
 
 /** Yang perlu perhatian dulu, lalu yang terbuka tetapi diizinkan; urutan stabil menurut port. */
 export function sortItems(items: readonly ExItem[]): ExItem[] {

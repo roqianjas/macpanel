@@ -11,8 +11,11 @@ Tanpa sudo.
 """
 
 import concurrent.futures
+import glob
 import ipaddress
 import json
+import os
+import re
 import socket
 import subprocess
 import time
@@ -106,7 +109,25 @@ def scan(host, ports, timeout=0.4, workers=64):
     return {p for p, ok in res if ok}
 
 
-def build(lsof_rows, paths, reachable, ip):
+PF_DIR = "/etc/pf.anchors"
+PF_BLOCK = re.compile(r"^\s*block\b.*\bproto\s+tcp\b.*\bport\s+(\{[^}]*\}|\d+)", re.M)
+
+
+def pf_guarded_ports(directory=None):
+    """Port TCP yang dicakup aturan `block ... proto tcp ... port N` di anchor milik kita (macminiops-*).
+    Hanya membaca berkas konfigurasi: ini bukti aturan DITULIS, bukan bukti aturan sedang AKTIF (itu butuh sudo pfctl)."""
+    ports = set()
+    for fn in glob.glob(os.path.join(directory or PF_DIR, "macminiops-*")):
+        try:
+            text = open(fn, encoding="utf-8").read(20000)
+        except OSError:
+            continue
+        for m in PF_BLOCK.finditer(text):
+            ports.update(int(x) for x in re.findall(r"\d+", m.group(1)))
+    return ports
+
+
+def build(lsof_rows, paths, reachable, ip, guarded=frozenset()):
     """Gabungkan hasil lsof, path proses, dan port yang terjangkau dari LAN (himpunan) menjadi daftar pendengar. Murni."""
     rows, known_ports = [], set()
     for r in lsof_rows[:MAX_LISTENERS]:
@@ -127,10 +148,11 @@ def build(lsof_rows, paths, reachable, ip):
                 "lan_reachable": reach,
                 "service": service_name(r["port"]),
                 "hidden": False,
+                "pf_guarded": bool(reach) and r["port"] in guarded,
             }
         )
     for p in sorted(reachable - known_ports):
-        rows.append({"proc": "?", "pid": None, "port": p, "bind": "?", "scope": "all", "system": False, "lan_reachable": True, "service": service_name(p), "hidden": True})
+        rows.append({"proc": "?", "pid": None, "port": p, "bind": "?", "scope": "all", "system": False, "lan_reachable": True, "service": service_name(p), "hidden": True, "pf_guarded": False})
     rows.sort(key=lambda x: (x["scope"] == "loopback", x["port"], x["proc"]))
     return rows[:MAX_LISTENERS]
 
@@ -152,4 +174,4 @@ def sys_exposure():
         reachable = scan(ip, ports)
     else:
         errors.append("IP LAN tidak terbaca: keterjangkauan dari LAN tidak diuji")
-    print(json.dumps({"at": int(time.time()), "lan_ip": ip, "listeners": build(rows, paths, reachable, ip), "errors": errors}))
+    print(json.dumps({"at": int(time.time()), "lan_ip": ip, "listeners": build(rows, paths, reachable, ip, pf_guarded_ports()), "errors": errors}))

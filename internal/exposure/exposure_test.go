@@ -200,3 +200,18 @@ func TestSnapshotJSONListsAreNeverNull(t *testing.T) {
 		t.Fatalf("%+v", s)
 	}
 }
+
+func TestPFGuardedIsNotAFinding(t *testing.T) {
+	yes := true
+	l := Listener{Proc: "RustDesk", Port: 21118, Scope: "all", LanReachable: &yes, PFGuarded: true}
+	if Exposed(l) {
+		t.Fatal("port yang dijaga pf tidak boleh jadi temuan")
+	}
+	if got := Status(l, map[string]bool{}); got != "guarded" {
+		t.Fatalf("status = %q, want guarded", got)
+	}
+	l.PFGuarded = false
+	if !Exposed(l) || Status(l, map[string]bool{}) != "flagged" {
+		t.Fatal("tanpa penjaga pf, tetap temuan")
+	}
+}
