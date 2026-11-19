@@ -105,7 +105,7 @@ select { padding-right: 8px; }
 .seg button { border: 0; border-radius: var(--r-ctl); background: none; padding: 6px 12px; font-size: var(--t-s); font-weight: 600; color: var(--muted); min-height: 36px; }
 .seg button:hover { background: var(--raised); color: var(--text); }
 .seg button.on { background: var(--tint); color: var(--on-tint); }
-.tabs { display: flex; gap: var(--s1); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; flex-wrap: nowrap; gap: var(--s1); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--line); overscroll-behavior-x: contain; }
 .tab { min-height: 40px; padding: 0 var(--s3); background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); font-size: var(--t-s); font-weight: 600; white-space: nowrap; margin-bottom: -1px; }
 .tab:hover { color: var(--text); }
 .tab.on { color: var(--on-tint); border-bottom-color: var(--primary); }
@@ -434,7 +434,6 @@ textarea.mono { width: 100%; }
 /* Layar sentuh: target 44px. Desktop dengan mouse: 36px agar tabel tidak terlalu tinggi. */
 @media (pointer: coarse) { :root { --ctl: 44px; } .btn-sm, .seg button, .tab, .btn-icon { min-height: 44px; } .btn-icon { min-width: 44px; } }
 /* Tab yang bisa digeser: ujung kanan memudar sebagai petunjuk ada lanjutannya */
-@media (max-width: 760px) { .tabs { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); } }
 /* Kesehatan mesin: grid ringkas */
 .health-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: var(--s3); }
 .health-item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); padding: var(--s3); border: 1px solid var(--line-soft); border-radius: var(--r-ctl); min-width: 0; background: var(--surface); }
@@ -463,7 +462,7 @@ textarea.mono { width: 100%; }
 @media (max-width: 640px) { .crow, .crow-act { grid-template-columns: minmax(0, 1fr) auto; } .crow-act .btn { grid-column: 1 / -1; } }
 
 /* Tab filter daftar */
-.ftabs { display: flex; gap: var(--s1); flex-wrap: wrap; margin-bottom: var(--s3); border-bottom: 1px solid var(--line); }
+.ftabs { display: flex; flex-wrap: nowrap; gap: var(--s1); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; margin-bottom: var(--s3); border-bottom: 1px solid var(--line); }
 .ftab { min-height: var(--tap, 40px); padding: 0 var(--s3); background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; color: var(--muted); font: inherit; font-size: var(--t-s); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: var(--s2); }
 .ftab:hover { color: var(--text); }
 .ftab.on { color: var(--on-tint); border-bottom-color: var(--primary); }
@@ -485,3 +484,12 @@ textarea.mono { width: 100%; }
 .accent-dot.on { outline: 3px solid var(--text); outline-offset: 2px; }
 .accent-custom input[type="color"] { width: 44px; height: 44px; min-height: 44px; padding: 2px; border-radius: 50%; cursor: pointer; }
 @media (pointer: coarse), (max-width: 760px) { .accent-dot { width: 44px; height: 44px; } }
+
+/* Deretan tab satu baris, digeser ke samping; pudar hanya di tepi yang masih berisi (data-left/right dari useScrollRow) */
+.tab, .ftab { flex: none; }
+.tab, .ftab { gap: var(--s2); }
+.tab { display: inline-flex; align-items: center; }
+.tab-ic { flex: none; }
+.tabs[data-right="1"], .ftabs[data-right="1"] { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+.tabs[data-left="1"], .ftabs[data-left="1"] { mask-image: linear-gradient(to right, transparent, #000 36px); -webkit-mask-image: linear-gradient(to right, transparent, #000 36px); }
+.tabs[data-left="1"][data-right="1"], .ftabs[data-left="1"][data-right="1"] { mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }

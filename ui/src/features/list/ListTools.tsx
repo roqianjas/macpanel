@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { TabIcon, useScrollRow } from "../../tabicons";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { applyFacet, countFacets, filterItems, pageOf, summary, PAGE_SIZE, type Facet, type FacetCount, type PageView } from "./paging";
 
@@ -35,12 +36,14 @@ export function useListView<T>(items: readonly T[], text: (t: T) => string, size
 
 /** Tab filter presentasional. Memakai aria-pressed (ini filter, bukan panel bertab). Tab berisi 0 disembunyikan kecuali "Semua" dan yang sedang dipilih. */
 export function FacetBar({ facets, value, onChange, label, counts = true }: { facets: readonly FacetCount[]; value: string; onChange: (id: string) => void; label: string; counts?: boolean }) {
+  const row = useScrollRow(value);
   const shown = counts ? facets.filter((f) => f.id === "all" || f.count > 0 || f.id === value) : facets;
   if (shown.length <= 2) return null;
   return (
-    <div className="ftabs" role="group" aria-label={label}>
+    <div className="ftabs" role="group" aria-label={label} ref={row}>
       {shown.map((f) => (
         <button key={f.id} type="button" className={`ftab ${value === f.id ? "on" : ""}`} aria-pressed={value === f.id} onClick={() => onChange(f.id)}>
+          <TabIcon id={f.id} />
           {f.label}{counts && <> <span className="ftab-n">{f.count}</span></>}
         </button>
       ))}

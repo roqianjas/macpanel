@@ -1,3 +1,4 @@
+import { TabIcon, useScrollRow } from "./tabicons";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { LoaderCircle, TriangleAlert, X } from "lucide-react";
 import { errText } from "./api";
@@ -266,10 +267,12 @@ export function Tabs({ tabs, value, onChange, label }: { tabs: { id: string; lab
     onChange(tabs[n].id);
     document.getElementById(`tab-${tabs[n].id}`)?.focus();
   };
+  const row = useScrollRow(value);
   return (
-    <div className="tabs" role="tablist" aria-label={label}>
+    <div className="tabs" role="tablist" aria-label={label} ref={row}>
       {tabs.map((t, i) => (
         <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={value === t.id} tabIndex={value === t.id ? 0 : -1} className={`tab ${value === t.id ? "on" : ""}`} onClick={() => onChange(t.id)} onKeyDown={(e) => onKey(e, i)}>
+          <TabIcon id={t.id} />
           {t.label}
         </button>
       ))}
