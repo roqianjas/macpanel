@@ -23,7 +23,9 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
     }
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => void reload(), deps);
+  useEffect(() => {
+    void reload();
+  }, deps);
   return { data, error, loading, reload };
 }
 

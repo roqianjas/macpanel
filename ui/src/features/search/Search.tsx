@@ -75,8 +75,12 @@ function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) 
     return () => void (alive = false);
   }, []);
   const hits = useMemo(() => rank([...PAGES, ...(data?.items ?? [])], q, role), [q, data, role]);
-  useEffect(() => setActive(0), [q]);
-  useEffect(() => list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" }), [active]);
+  useEffect(() => {
+    setActive(0);
+  }, [q]);
+  useEffect(() => {
+    list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+  }, [active]);
   const go = useCallback((h: Item) => {
     onClose();
     location.hash = h.hash;

@@ -36,7 +36,9 @@ export function useCursorList<T extends { id: number }>(base: GetPath, limit: nu
     }
   }, [base, limit, applied]);
 
-  useEffect(() => void first(), [first]);
+  useEffect(() => {
+    void first();
+  }, [first]);
 
   const more = useCallback(async () => {
     if (!st.next || loadingMore) return;

@@ -31,7 +31,9 @@ export function useListView<T>(items: readonly T[], text: (t: T) => string, size
   const active = facets.some((f) => f.id === facet) ? facet : "all";
   const filtered = useMemo(() => filterItems(applyFacet(items, facetDefs, active), q, text), [items, q, active]); // eslint-disable-line react-hooks/exhaustive-deps
   const view = pageOf(filtered, page, size);
-  useEffect(() => setPage(1), [q, active]);
+  useEffect(() => {
+    setPage(1);
+  }, [q, active]);
   return { q, setQ, view, setPage, filteredCount: filtered.length, allCount: items.length, searching: q.trim() !== "" || active !== "all", facets, facet: active, setFacet };
 }
 

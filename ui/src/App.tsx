@@ -224,7 +224,9 @@ function Shell({ role, onLogout }: { user: string; role: string; onLogout: () =>
     addEventListener("hashchange", h);
     return () => removeEventListener("hashchange", h);
   }, []);
-  useEffect(() => localStorage.setItem("panel-collapsed", collapsed ? "1" : "0"), [collapsed]);
+  useEffect(() => {
+    localStorage.setItem("panel-collapsed", collapsed ? "1" : "0");
+  }, [collapsed]);
 
   const ThemeIcon = theme.pref === "dark" ? Moon : theme.pref === "light" ? Sun : Monitor;
   const themeLabel = t(theme.pref === "dark" ? "theme.dark" : theme.pref === "light" ? "theme.light" : "theme.system");

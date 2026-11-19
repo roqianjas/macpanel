@@ -181,7 +181,9 @@ function LogDialog({ s, onClose }: { s: ServiceInfo; onClose: () => void }) {
     }
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => void load(), []);
+  useEffect(() => {
+    void load();
+  }, []);
   return (
     <Modal title={t("apps.logTitle", { name: s.label })} onClose={onClose} wide>
       <div className="stack">

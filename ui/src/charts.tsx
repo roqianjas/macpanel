@@ -72,7 +72,9 @@ export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series
   const svg = useRef<SVGSVGElement>(null);
   const box = useRef<HTMLElement>(null);
   const [W, setW] = useState(640); // lebar viewBox = lebar kartu, supaya teks sumbu tetap 11px di ukuran berapa pun
-  useEffect(() => setCursor(null), [rangeKey]);
+  useEffect(() => {
+    setCursor(null);
+  }, [rangeKey]);
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
