@@ -1,7 +1,7 @@
 import { Activity, Boxes, Cpu, Database, Download, Globe, HardDrive, MemoryStick, Network, Server, Timer } from "lucide-react";
 import { get } from "../api";
 import { CountUp, LineChart, RangePicker, Ring, Sparkline, toneOf } from "../charts";
-import { stateText, stateTone, useAlerts, useMetrics, useServices, useSystem } from "../data";
+import { serviceView, useAlerts, useMetrics, useServices, useSystem } from "../data";
 import { fmtAgo, fmtBytes, fmtRate, fmtUptime, type RangeKey } from "../lib";
 import { Card, Chip, Mark, State, usePoll } from "../ui";
 import HealthCard from "../features/hardware/HealthCard";
@@ -216,7 +216,7 @@ export default function Overview() {
                 {services.filter((s) => s.installed).map((s) => (
                   <li key={s.id}>
                     <a href="#/aplikasi">{s.label}</a>
-                    <Chip tone={stateTone(s.state)}>{stateText[s.state]}</Chip>
+                    <Chip tone={serviceView(s).tone}>{serviceView(s).text}</Chip>
                   </li>
                 ))}
               </ul>

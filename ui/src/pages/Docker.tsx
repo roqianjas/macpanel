@@ -206,7 +206,7 @@ function PullDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
       <form onSubmit={submit}>
         {err && <Alert>{err}</Alert>}
         <Field label="Nama image" hint="Contoh: nginx:1.27, postgres:17, redis:7. Huruf kecil saja.">
-          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="nginx:1.27" required maxLength={200} pattern="[a-z0-9][a-z0-9._/:@\-]{0,200}" title="Huruf kecil, angka, dan . _ / : @ -" value={ref} onChange={(e) => setRef(e.target.value.trim())} autoFocus />}
+          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="nginx:1.27" required maxLength={200} pattern="[a-z0-9][a-z0-9._/:@\-]{0,200}" title="Huruf kecil, angka, dan . _ / : @ -" value={ref} onChange={(e) => setRef(e.target.value.trim())} data-autofocus />}
         </Field>
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>Batal</button>

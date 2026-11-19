@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 
-from labcli.core import HOME, OPS, ROOT, die, du_kb, sh, stream
+from labcli.core import ENV, HOME, OPS, ROOT, die, du_kb, sh, stream
 
 STAGING = ROOT / "backup/staging"
 
@@ -58,6 +58,20 @@ DUMP_RE = re.compile(r"^[a-z0-9_-]+-(mariadb|mysql|pgsql)-\d{8}-\d{6}\.sql\.gz$"
 
 
 EXTRACT_RE = re.compile(r"^\d{8}-\d{6}-(developer|dotfiles)-\d{6}$")
+
+
+def bk_read_sched():
+    """(aktif, tiap_n_hari) dari backup.conf. Rusak/tidak ada = aktif, tiap 1 hari."""
+    en, every = True, 1
+    if BK_CONF.exists():
+        t = BK_CONF.read_text()
+        m = re.search(r"^ENABLED=([01])$", t, re.MULTILINE)
+        if m:
+            en = m.group(1) == "1"
+        m = re.search(r"^EVERY_DAYS=(\d{1,2})$", t, re.MULTILINE)
+        if m and 1 <= int(m.group(1)) <= 30:
+            every = int(m.group(1))
+    return en, every
 
 
 def bk_read_conf():
@@ -214,7 +228,8 @@ def bk_config(a):
             if m:
                 keep = int(m.group(1))
         keep, days, extra = bk_read_conf()
-        print(json.dumps(dict(time=t, keep=keep, days=days, extra_days=extra)))
+        en, every = bk_read_sched()
+        print(json.dumps(dict(time=t, keep=keep, days=days, extra_days=extra, enabled=en, every_days=every)))
         return
     tm = re.fullmatch(r"([01]\d|2[0-3]):([0-5]\d)", a.time or "")
     if not tm:
@@ -225,8 +240,13 @@ def bk_config(a):
         die("umur maksimal 0-3650 hari (0 = tanpa batas umur)")
     if not (0 <= a.extra_days <= 3650):
         die("umur dump/ekstrak 0-3650 hari (0 = jangan hapus otomatis)")
+    if a.enabled not in ("yes", "no"):
+        die("--enabled harus yes atau no")
+    if not (1 <= a.every_days <= 30):
+        die("interval 1-30 hari")
+    en = a.enabled == "yes"
     BK_CONF.parent.mkdir(parents=True, exist_ok=True)
-    BK_CONF.write_text(f"KEEP={a.keep}\nDAYS={a.days}\nEXTRA_DAYS={a.extra_days}\n")
+    BK_CONF.write_text(f"KEEP={a.keep}\nDAYS={a.days}\nEXTRA_DAYS={a.extra_days}\nENABLED={int(en)}\nEVERY_DAYS={a.every_days}\n")
     os.chmod(BK_CONF, 0o600)
     pl = plistlib.loads(BK_PLIST.read_bytes())
     shutil.copy2(BK_PLIST, f"{BK_PLIST}.bak.{time.strftime('%Y%m%d-%H%M%S')}")
@@ -234,11 +254,17 @@ def bk_config(a):
     BK_PLIST.write_bytes(plistlib.dumps(pl))
     uid = os.getuid()
     sh(["/bin/launchctl", "bootout", f"gui/{uid}/{BK_LABEL}"])
+    if not en:
+        # disable bertahan melewati reboot; plist tetap ada sehingga bisa dinyalakan lagi
+        sh(["/bin/launchctl", "disable", f"gui/{uid}/{BK_LABEL}"])
+        print("OK: backup otomatis DIMATIKAN. Backup manual (lab backup run) tetap bisa dijalankan.")
+        return
+    sh(["/bin/launchctl", "enable", f"gui/{uid}/{BK_LABEL}"])
     r = sh(["/bin/launchctl", "bootstrap", f"gui/{uid}", str(BK_PLIST)])
     if r.returncode:
         die("launchctl gagal: " + (r.stderr or r.stdout).strip()[-200:])
     print(
-        f"OK: backup harian pukul {a.time}, simpan {a.keep} terakhir"
+        f"OK: backup {'harian' if a.every_days == 1 else f'tiap {a.every_days} hari'} pukul {a.time}, simpan {a.keep} terakhir"
         + (f", hapus yang lebih tua dari {a.days} hari" if a.days else "")
         + (f"; dump/ekstrak > {a.extra_days} hari dibersihkan otomatis" if a.extra_days else "")
     )
@@ -299,7 +325,7 @@ def backup(a):
     if a.act == "extras":
         return bk_extras(a)
     if a.act == "run":
-        sys.exit(stream([str(OPS / "scripts/backup.sh")]))
+        sys.exit(stream([str(OPS / "scripts/backup.sh")], env={**ENV, "BACKUP_FORCE": "1"}))
     rows = []
     for d in sorted(STAGING.glob("20*"), reverse=True)[:60] if STAGING.exists() else []:
         if not d.is_dir():

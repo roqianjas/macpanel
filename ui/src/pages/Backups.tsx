@@ -125,13 +125,17 @@ export default function Backups() {
 }
 
 function Schedule() {
-  const q = useLoad(() => get<{ time: string; keep: number; days: number; extra_days: number }>("/api/backups/config"));
+  const q = useLoad(() => get<{ time: string; keep: number; days: number; extra_days: number; enabled: boolean; every_days: number }>("/api/backups/config"));
   const [time, setTime] = useState("");
   const [keep, setKeep] = useState("");
   const [days, setDays] = useState("");
   const [extra, setExtra] = useState("");
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [every, setEvery] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const on = enabled ?? q.data?.enabled ?? true;
+  const ev = every || String(q.data?.every_days ?? 1);
   const t = time || q.data?.time || "02:30";
   const k = keep || String(q.data?.keep ?? 7);
   const dy = days || String(q.data?.days ?? 0);
@@ -141,9 +145,11 @@ function Schedule() {
     setBusy(true);
     setMsg(null);
     try {
-      await post("/api/backups/config", { time: t, keep: Number(k), days: Number(dy), extra_days: Number(ex) });
-      setMsg({ tone: "ok", text: "Jadwal diperbarui di launchd." });
+      await post("/api/backups/config", { time: t, keep: Number(k), days: Number(dy), extra_days: Number(ex), enabled: on, every_days: Number(ev) });
+      setMsg({ tone: "ok", text: on ? "Jadwal diperbarui di launchd." : "Backup otomatis dimatikan. Backup manual tetap bisa dijalankan." });
       setTime("");
+      setEnabled(null);
+      setEvery("");
       setKeep("");
       setDays("");
       setExtra("");
@@ -158,8 +164,14 @@ function Schedule() {
     <Card title="Jadwal dan retensi">
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         <form onSubmit={save} className="stack">
+          <label className="check">
+            <input type="checkbox" checked={on} onChange={(e) => setEnabled(e.target.checked)} />
+            Backup otomatis aktif
+          </label>
+          {!on && <p className="callout">Backup otomatis mati. Tidak ada salinan baru sampai Anda menyalakannya lagi atau menekan "Jalankan sekarang".</p>}
           <div className="grid2">
-            <Field label="Jam backup harian" hint="Zona waktu Mac mini">{(id, dd) => <input id={id} aria-describedby={dd} type="time" value={t} onChange={(e) => setTime(e.target.value)} required />}</Field>
+            <Field label="Ulangi setiap (hari)" hint="1 = harian. Makin jarang, makin hemat disk (maks 30).">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={30} placeholder="1" value={ev} onChange={(e) => setEvery(e.target.value)} disabled={!on} required />}</Field>
+            <Field label="Jam backup" hint="Zona waktu Mac mini">{(id, dd) => <input id={id} aria-describedby={dd} type="time" value={t} onChange={(e) => setTime(e.target.value)} required />}</Field>
             <Field label="Simpan backup terakhir" hint="1-60. Yang lebih lama dihapus otomatis.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={60} placeholder="10" value={k} onChange={(e) => setKeep(e.target.value)} required />}</Field>
             <Field label="Hapus otomatis backup lebih tua dari (hari)" hint="0 = hanya pakai jumlah simpanan. Backup terbaru selalu aman.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="30" value={dy} onChange={(e) => setDays(e.target.value)} required />}</Field>
             <Field label="Hapus otomatis dump DB dan hasil ekstrak lebih tua dari (hari)" hint="0 = jangan dibersihkan otomatis">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="7" value={ex} onChange={(e) => setExtra(e.target.value)} required />}</Field>

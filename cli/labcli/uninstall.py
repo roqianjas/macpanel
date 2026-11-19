@@ -48,11 +48,9 @@ FORMULAS = [
     "memcached",
     "dnsmasq",
     "macmon",
-    "colima",
-    "docker",
-    "docker-compose",
-    "lima",
 ]
+# Alat Docker mungkin dipakai di luar panel: hanya dihapus bila diminta (--with-docker-tools atau dijawab ya saat apply).
+DOCKER_FORMULAS = ["colima", "docker", "docker-compose", "lima"]
 DATA_DIRS = ["mysql", "mariadb", "postgresql@17", "redis", "netdata", "lib/netdata", "cache/netdata", "log/nginx", "run/nginx"]
 LOG_FILES = {1: ["panel.log", "regproxy.log", "macminiops-backup.log", "macminiops-logrotate.log"], 2: ["9router.log", "colima.log", "mariadb.log", "uptime-kuma.log"]}
 UNTOUCHED = [
@@ -155,7 +153,7 @@ def guard_path(env, path):
     raise UninstallError(f"path di luar daftar yang boleh dihapus: {p}")
 
 
-def build_plan(env, level, backup_dir=None):
+def build_plan(env, level, backup_dir=None, with_docker=False):
     """Daftar langkah berurutan. Murni: tidak membaca atau mengubah mesin."""
     if level not in (1, 2, 3):
         raise UninstallError("tingkat harus 1, 2, atau 3")
@@ -235,7 +233,7 @@ def build_plan(env, level, backup_dir=None):
     # tingkat 3
     bd = Path(os.path.abspath(backup_dir))
     P.append(step(3, "L3 backup", "backup", f"backup akhir ke {bd} (backup DB, situs tanpa node_modules, backup lama, konfigurasi, catatan) lalu verifikasi", dest=str(bd)))
-    for f in [x for x in FORMULAS if x in env.formulas]:
+    for f in [x for x in FORMULAS + (DOCKER_FORMULAS if with_docker else []) if x in env.formulas]:
         P.append(step(3, "L3 hapus", "exec", f"brew uninstall {f}", argv=[str(env.brew / "bin/brew"), "uninstall", "--formula", f], tolerate=True))
     for d in DATA_DIRS:
         P.append(step(3, "L3 hapus", "rm", f"hapus data {d}", path=str(env.brew / "var" / d), missing_ok=True))
@@ -391,7 +389,7 @@ def execute(env, plan, runner=None, out=sys.stdout, lab_backup=None):
                 if d.exists() and not os.path.lexists(t):
                     shutil.copy2(d, t)
             elif op == "backup":
-                lb = lab_backup or (lambda: runner.run([str(env.mp / "server/scripts/lab"), "backup"]) == 0 or (_ for _ in ()).throw(UninstallError("lab backup gagal")))
+                lb = lab_backup or (lambda: runner.run([str(env.mp / "server/scripts/lab"), "backup", "run"]) == 0 or (_ for _ in ()).throw(UninstallError("lab backup gagal")))
                 outdir = make_backup(env, s["dest"], lb)
                 print(f"      backup terverifikasi: {outdir}", file=out)
             else:
@@ -405,7 +403,7 @@ def execute(env, plan, runner=None, out=sys.stdout, lab_backup=None):
     return 0
 
 
-def print_plan(plan, level, out=sys.stdout):
+def print_plan(plan, level, out=sys.stdout, env=None, with_docker=False):
     names = {1: "panel dan integrasinya", 2: "panel + aplikasi bundel dihentikan (paket dan data tetap)", 3: "SEMUA: paket, data, dan ~/MacPanel dihapus setelah backup terverifikasi"}
     print(f"Rencana uninstall tingkat {level}: {names[level]}", file=out)
     phase = None
@@ -415,6 +413,10 @@ def print_plan(plan, level, out=sys.stdout):
             print(f"\n{phase}", file=out)
         tag = {"sudo": "[sudo] ", "exec": "", "rm": "[hapus] ", "backup": "[backup] ", "restore_nginx": ""}[s["op"]]
         print(f"  {i:>2}. {tag}{s['desc']}", file=out)
+    if level == 3 and not with_docker and env is not None:
+        opt = [f for f in DOCKER_FORMULAS if f in env.formulas]
+        if opt:
+            print(f"\nOpsional, TIDAK ikut dihapus: {', '.join(opt)}. Tambahkan --with-docker-tools bila memang ingin menghapusnya.", file=out)
     print("\nTidak disentuh:", file=out)
     for u in UNTOUCHED:
         print(f"  - {u}", file=out)
@@ -429,14 +431,18 @@ def uninstall_cmd(a):
             raise UninstallError(f"{env.mp} tidak tampak seperti instalasi MacPanel (tanpa folder server/); dibatalkan")
         if os.geteuid() == 0:
             raise UninstallError("jangan jalankan sebagai root; sudo dipanggil per langkah")
-        plan = build_plan(env, a.level, a.backup_dir)
+        plan = build_plan(env, a.level, a.backup_dir, a.with_docker_tools)
     except UninstallError as e:
         print("lab:", e, file=sys.stderr)
         return 1
-    print_plan(plan, a.level)
+    print_plan(plan, a.level, env=env, with_docker=a.with_docker_tools)
     if not a.apply:
         print("\nINI HANYA RENCANA. Tidak ada yang diubah. Tambahkan --apply untuk menjalankan.")
         return 0
+    if a.level == 3 and not a.with_docker_tools and sys.stdin.isatty() and any(f in env.formulas for f in DOCKER_FORMULAS):
+        if input("\nHapus juga alat Docker (colima, docker, docker-compose, lima)? [y/N] ").strip().lower() == "y":
+            a.with_docker_tools = True
+            plan = build_plan(env, a.level, a.backup_dir, True)
     if a.level == 3:
         if a.confirm_host != hostname() and not (sys.stdin.isatty() and input(f"\nKetik nama mesin ({hostname()}) untuk MENGHAPUS SEMUANYA: ").strip() == hostname()):
             print("lab: nama mesin tidak cocok; dibatalkan.", file=sys.stderr)

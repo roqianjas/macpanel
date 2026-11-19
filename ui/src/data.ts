@@ -73,6 +73,12 @@ export const useServices = () => usePoll(() => get<{ services: ServiceInfo[] }>(
 export const stateText: Record<ServiceInfo["state"], string> = { running: "Berjalan", stopped: "Berhenti", not_installed: "Belum terpasang", error: "Galat" };
 export const stateTone = (s: ServiceInfo["state"]) => (s === "running" ? "ok" : s === "error" ? "bad" : s === "stopped" ? "warn" : "mute") as "ok" | "bad" | "warn" | "mute";
 
+/** Layanan opsional yang berhenti dianggap dimatikan sengaja (bukan masalah): nada netral, teks "Dimatikan". */
+export function serviceView(s: Pick<ServiceInfo, "state" | "optional">): { text: string; tone: "ok" | "bad" | "warn" | "mute" } {
+  if (s.optional && s.state === "stopped") return { text: "Dimatikan", tone: "mute" };
+  return { text: stateText[s.state], tone: stateTone(s.state) };
+}
+
 export interface AlertItem {
   id: string;
   level: "bad" | "warn";

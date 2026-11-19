@@ -238,7 +238,7 @@ def test_failed_required_step_stops(tmp_path):
 
 
 def args(**kw):
-    d = dict(level=1, backup_dir="", apply=False, yes=False, confirm_host="")
+    d = dict(with_docker_tools=False, level=1, backup_dir="", apply=False, yes=False, confirm_host="")
     d.update(kw)
     return types.SimpleNamespace(**d)
 
@@ -295,3 +295,12 @@ def test_exit_code_reflects_failure():
 
     r = sp.run([sys.executable, os.path.join(os.path.dirname(__file__), "..", "lab"), "uninstall", "--level", "3"], capture_output=True, text=True)
     assert r.returncode == 1 and "wajib" in r.stderr
+
+
+def test_docker_tools_optional_not_in_default_level3(tmp_path):
+    env = make_env(tmp_path)
+    env.formulas |= {"colima", "docker", "lima", "docker-compose"}
+    default = " ".join(s["desc"] for s in U.build_plan(env, 3, str(tmp_path / "o")))
+    assert "brew uninstall nginx" in default and not any(f"brew uninstall {f}" in default for f in ("colima", "docker", "lima", "docker-compose"))
+    withd = " ".join(s["desc"] for s in U.build_plan(env, 3, str(tmp_path / "o"), with_docker=True))
+    assert all(f"brew uninstall {f}" in withd for f in ("colima", "docker", "lima", "docker-compose"))

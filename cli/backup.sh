@@ -10,6 +10,15 @@ OUT="$MP/backup/staging/$TS"
 KEEP=7
 CONF="$HOME/.config/macminiops/backup.conf"
 if [ -f "$CONF" ]; then K=$(sed -n 's/^KEEP=\([0-9]\{1,3\}\)$/\1/p' "$CONF" | head -1); [ -n "$K" ] && [ "$K" -ge 1 ] && KEEP=$K; fi
+# Jadwal otomatis (bukan manual `lab backup run`, yang mengirim BACKUP_FORCE=1): hormati ENABLED dan EVERY_DAYS
+if [ -z "${BACKUP_FORCE:-}" ] && [ -f "$CONF" ]; then
+  EN=$(sed -n 's/^ENABLED=\([01]\)$/\1/p' "$CONF" | head -1); EV=$(sed -n 's/^EVERY_DAYS=\([0-9]\{1,2\}\)$/\1/p' "$CONF" | head -1)
+  [ "${EN:-1}" = 0 ] && { echo "backup otomatis dimatikan; dilewati"; exit 0; }
+  if [ "${EV:-1}" -gt 1 ] 2>/dev/null; then
+    LAST=$(ls -1d "$MP"/backup/staging/20* 2>/dev/null | tail -1)
+    if [ -n "$LAST" ] && [ $(( $(date +%s) - $(stat -f %m "$LAST") )) -lt $(( EV * 86400 - 7200 )) ]; then echo "backup terakhir kurang dari $EV hari; dilewati"; exit 0; fi
+  fi
+fi
 mkdir -p "$OUT"; chmod 700 "$MP/backup" "$MP/backup/staging" "$OUT"
 
 echo "[1/5] PostgreSQL dump"

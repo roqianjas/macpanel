@@ -23,4 +23,12 @@ describe("form guard", () => {
     }
     expect(bad).toEqual([]);
   });
+
+  it("dialog memakai data-autofocus, bukan autoFocus (autoFocus mencuri fokus sebelum dialog menyimpan pemicunya, fokus tidak kembali)", () => {
+    const bad = Object.entries(sources)
+      .filter(([rel]) => rel !== "./App.tsx" && !rel.endsWith(".test.tsx"))
+      .filter(([, src]) => /\sautoFocus[\s/>=]/.test(src))
+      .map(([rel]) => rel);
+    expect(bad).toEqual([]);
+  });
 });

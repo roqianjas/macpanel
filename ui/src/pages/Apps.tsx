@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, Play, RotateCw, ScrollText, Square, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
-import { stateText, stateTone, useServices, type ServiceInfo } from "../data";
+import { serviceView, useServices, type ServiceInfo } from "../data";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, ConfirmDialog, Mark, Modal, PageHead, State } from "../ui";
 
@@ -65,10 +65,10 @@ export default function Apps() {
                   {items.map((s) => (
                     <tr key={s.id} className={s.installed ? "" : "row-off"}>
                       <th scope="row">
-                        <span className="row"><Mark tone={stateTone(s.state)} /><span>{s.label}</span></span>
+                        <span className="row"><Mark tone={serviceView(s).tone} /><span>{s.label}</span></span>
                         <span className="small muted" style={{ fontWeight: 400, display: "block" }}>{s.desc}</span>
                       </th>
-                      <td><Chip tone={stateTone(s.state)}>{stateText[s.state]}</Chip></td>
+                      <td><Chip tone={serviceView(s).tone}>{serviceView(s).text}</Chip></td>
                       <td className="mono" data-label="Versi">{s.version || "-"}</td>
                       <td className="mono" data-label="Port">{s.port ?? "-"}</td>
                       <td className="cell-end">

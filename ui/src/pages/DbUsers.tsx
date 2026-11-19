@@ -239,7 +239,7 @@ function AddUser({ base, onClose, onDone }: { base: PostUrl; onClose: () => void
     <Modal title="Tambah user database" onClose={onClose}>
       <form className="stack" onSubmit={submit} autoComplete="off">
         <Field label="Nama user" hint="Huruf kecil, angka, garis bawah; diawali huruf; 3-32 karakter.">
-          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="app_user" maxLength={32} value={user} onChange={(e) => setUser(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_]{2,31}" required autoFocus spellCheck={false} />}
+          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="app_user" maxLength={32} value={user} onChange={(e) => setUser(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_]{2,31}" required data-autofocus spellCheck={false} />}
         </Field>
         <Field label="Hak akses" hint="Berlaku hanya pada database ini; tidak ada hak global.">
           {(id, dd) => (

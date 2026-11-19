@@ -175,6 +175,8 @@ func BackupCfgGet(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.
 		Keep      int    `json:"keep"`
 		Days      int    `json:"days"`
 		ExtraDays int    `json:"extra_days"`
+		Enabled   bool   `json:"enabled"`
+		EveryDays int    `json:"every_days"`
 	}
 	if res.Code != 0 || !core.ParseLabJSON(res.Out, &c) {
 		core.WriteError(w, 502, "gagal membaca jadwal backup")
@@ -188,19 +190,28 @@ func BackupCfgSet(a *core.App, w http.ResponseWriter, r *http.Request, ss *store
 		Time      string
 		Keep      int
 		Days      int
-		ExtraDays int `json:"extra_days"`
+		ExtraDays int   `json:"extra_days"`
+		Enabled   *bool `json:"enabled"`
+		EveryDays int   `json:"every_days"`
 	}
 	if !core.DecodeJSON(w, r, &in) {
 		return
 	}
-	if !bkTimeRE.MatchString(in.Time) || in.Keep < 1 || in.Keep > 60 || in.Days < 0 || in.Days > 3650 || in.ExtraDays < 0 || in.ExtraDays > 3650 {
+	if !bkTimeRE.MatchString(in.Time) || in.Keep < 1 || in.Keep > 60 || in.Days < 0 || in.Days > 3650 || in.ExtraDays < 0 || in.ExtraDays > 3650 || in.EveryDays < 0 || in.EveryDays > 30 {
 		core.WriteError(w, 400, "jam HH:MM dan simpan 1-60 backup")
 		return
+	}
+	enabled, every := "yes", in.EveryDays
+	if in.Enabled != nil && !*in.Enabled {
+		enabled = "no"
+	}
+	if every == 0 {
+		every = 1
 	}
 	if !a.RequireStepUp(w, ss) {
 		return
 	}
-	a.Record(w, ss, a.ClientIP(r), "backup_config", in.Time+" keep "+strconv.Itoa(in.Keep), a.Mutate([]string{"backup", "config", "set", "--time", in.Time, "--keep", strconv.Itoa(in.Keep), "--days", strconv.Itoa(in.Days), "--extra-days", strconv.Itoa(in.ExtraDays)}, ""))
+	a.Record(w, ss, a.ClientIP(r), "backup_config", in.Time+" keep "+strconv.Itoa(in.Keep), a.Mutate([]string{"backup", "config", "set", "--time", in.Time, "--keep", strconv.Itoa(in.Keep), "--days", strconv.Itoa(in.Days), "--extra-days", strconv.Itoa(in.ExtraDays), "--enabled", enabled, "--every-days", strconv.Itoa(every)}, ""))
 }
 
 func BackupLs(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Session) {

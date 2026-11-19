@@ -213,6 +213,7 @@ def reg_dev(top):
     un.add_argument("--backup-dir", default="", help="tingkat 3: folder backup akhir di LUAR ~/MacPanel")
     un.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya mencetak rencana")
     un.add_argument("--yes", action="store_true", help="lewati pertanyaan tingkat 1-2 (tidak berlaku untuk tingkat 3)")
+    un.add_argument("--with-docker-tools", action="store_true", help="tingkat 3: hapus juga colima, docker, docker-compose, lima")
     un.add_argument("--confirm-host", default="", help="tingkat 3 non-interaktif: nama mesin")
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
     for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd", "exposure"):
@@ -236,6 +237,8 @@ def reg_dev(top):
     q.add_argument("--keep", type=int, default=7)
     q.add_argument("--days", type=int, default=0)
     q.add_argument("--extra-days", dest="extra_days", type=int, default=0)
+    q.add_argument("--enabled", default="yes", help="yes atau no: nyalakan/matikan backup otomatis")
+    q.add_argument("--every-days", dest="every_days", type=int, default=1, help="interval backup otomatis, 1-30 hari")
     q = b.add_parser("prune")
     q.add_argument("--keep", type=int)
     q.add_argument("--days", type=int)
