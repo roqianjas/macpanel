@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const sources = import.meta.glob("./**/*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
-const SKIP_TYPES = /type="(checkbox|radio|hidden|file|time|search)"/;
+const SKIP_TYPES = /type="(checkbox|radio|hidden|file|time|search|color)"/;
 const ALLOW = new Set(["./features/sites/ConfigEditor.tsx"]); // editor config penuh: isinya berkas, bukan contoh
 
 describe("form guard", () => {

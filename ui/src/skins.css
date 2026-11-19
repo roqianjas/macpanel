@@ -1,0 +1,175 @@
+/* Gaya panel (skin). Dipilih lewat <html data-skin="...">; terang/gelap tetap lewat data-theme.
+ * Hanya token dan bentuk visual yang berubah. Tata letak dan fungsi tidak.
+ * Warna status (ok/warn/bad) memakai nilai bersama di styles.css agar kontrasnya terjaga di semua gaya.
+ * Nilai --bg dan --surface di sini dicerminkan di skins.ts (SKINS.preview); skins.test.ts menjaga keduanya sama dan memeriksa kontras. */
+
+/* ---- dasar bersama ---- */
+:root {
+  --font-display: var(--font);
+  --bw: 1px;
+  --edge: var(--line);
+  --hard: transparent;
+  --r-chip: 999px;
+  --accent: var(--primary);
+  --on-accent: #ffffff;
+}
+html[data-theme="dark"] { --on-accent: #06142b; }
+.page-head h1, .hero-title, .login-card h1, .modal-head h2, .big { font-family: var(--font-display); }
+
+/* ================================================================
+ * KERTAS TEKNIS: editorial. Alasan: data panel ini tabel dan angka; huruf serif untuk angka besar dan judul membuatnya terbaca
+ * seperti laporan, garis tipis menggantikan kotak bayangan, satu aksen jingga bata untuk hal yang perlu dilihat.
+ * ================================================================ */
+html[data-skin="kertas"] {
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --r-card: 4px; --r-ctl: 4px; --r-s: 3px; --r-chip: 3px;
+}
+html[data-skin="kertas"][data-theme="light"] {
+  --bg: #f6f1e7; --surface: #fffaf0; --raised: #ece4d3; --text: #1c1a16; --muted: #5a5345;
+  --primary: #a73a0c; --accent: #c2410c; --on-accent: #ffffff; --tint: #fbeadf; --on-tint: #8f3209;
+  --hero: #fffaf0; --on-hero: #1c1a16; --line: #d6cbb4; --line-soft: #e8dfcb; --focus: #a73a0c; --series2: #0e7490;
+  --shadow: 0 8px 24px rgba(28, 26, 22, .14);
+}
+html[data-skin="kertas"][data-theme="dark"] {
+  --bg: #1b1813; --surface: #232018; --raised: #2d281f; --text: #efe7d6; --muted: #b3a98f;
+  --primary: #fdba74; --accent: #fb923c; --on-accent: #1a0f05; --tint: #3a2616; --on-tint: #fdba74;
+  --hero: #232018; --on-hero: #efe7d6; --line: #3b3527; --line-soft: #2f2a20; --focus: #fdba74; --series2: #22d3ee;
+  --shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
+html[data-skin="kertas"] .page-head h1 { font-size: 38px; font-weight: 700; letter-spacing: -.025em; }
+html[data-skin="kertas"] .hero { background: var(--hero); color: var(--on-hero); border: 1px solid var(--line); border-top: 2px solid var(--text); }
+html[data-skin="kertas"] .hero-title { font-size: 46px; line-height: 1.04; letter-spacing: -.03em; font-weight: 700; }
+html[data-skin="kertas"] .hero-title .mark { color: var(--primary); }
+html[data-skin="kertas"] .hero-facts dd { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+html[data-skin="kertas"] .hero-facts > div { border-top: 1px solid var(--text); padding-top: var(--s2); min-width: 110px; }
+html[data-skin="kertas"] .side { background: var(--bg); border-right: 2px solid var(--text); }
+html[data-skin="kertas"] .brand-ic { background: none; border: 1.5px solid var(--text); color: var(--text); }
+html[data-skin="kertas"] .side a.on { background: none; color: var(--primary); box-shadow: inset 0 -2px 0 var(--primary); border-radius: 0; }
+html[data-skin="kertas"] .top { border-bottom: 1.5px solid var(--text); }
+html[data-skin="kertas"] .card-title, html[data-skin="kertas"] .modal-head h2 { font-family: var(--font-display); font-size: 19px; }
+html[data-skin="kertas"] .tbl th { font-family: var(--mono); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; border-bottom: 1.5px solid var(--text); }
+html[data-skin="kertas"] .tab.on { border-bottom-color: var(--primary); }
+html[data-skin="kertas"] .big { font-weight: 700; letter-spacing: -.02em; }
+
+/* ================================================================
+ * BENGKEL: berani. Alasan: identitas ".lab" dan satu pengguna yang menyukai karakter kuat; garis tebal dan bayangan keras
+ * memisahkan blok tanpa blur, warna dipakai sebagai kode (biru = kesehatan, aksen = aksi) bukan hiasan.
+ * ================================================================ */
+html[data-skin="bengkel"] {
+  --font: "Archivo", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: "Archivo", "Arial Black", "Helvetica Neue", sans-serif;
+  --bw: 2.5px; --r-card: 14px; --r-ctl: 8px; --r-s: 5px; --r-chip: 6px;
+}
+html[data-skin="bengkel"][data-theme="light"] {
+  --bg: #fffdf5; --surface: #ffffff; --raised: #f1efe4; --text: #111111; --muted: #4a4a3f;
+  --primary: #3f6212; --accent: #c6f432; --on-accent: #111111; --tint: #ecfccb; --on-tint: #365314;
+  --hero: #9ad8ff; --on-hero: #111111; --line: #d9d7c8; --line-soft: #e8e6d8; --edge: #111111; --hard: #111111; --focus: #1d4ed8; --series2: #0369a1;
+  --shadow: 5px 5px 0 #111111;
+}
+html[data-skin="bengkel"][data-theme="dark"] {
+  --bg: #14140f; --surface: #1e1e17; --raised: #2a2a20; --text: #f5f3e6; --muted: #bdbaa6;
+  --primary: #d4f55a; --accent: #c6f432; --on-accent: #111111; --tint: #2b3410; --on-tint: #d4f55a;
+  --hero: #0e4a63; --on-hero: #ffffff; --line: #4a4a38; --line-soft: #33331f; --edge: #f5f3e6; --hard: #c6f432; --focus: #7dd3fc; --series2: #38bdf8;
+  --shadow: 5px 5px 0 #c6f432;
+}
+html[data-skin="bengkel"] .card, html[data-skin="bengkel"] .tile, html[data-skin="bengkel"] .modal, html[data-skin="bengkel"] .tray-item, html[data-skin="bengkel"] .hero {
+  border: var(--bw) solid var(--edge); box-shadow: 5px 5px 0 var(--hard);
+}
+html[data-skin="bengkel"] .hero { background: var(--hero); color: var(--on-hero); }
+html[data-skin="bengkel"] .hero-title { font-size: 42px; font-weight: 800; letter-spacing: -.04em; line-height: 1.02; }
+html[data-skin="bengkel"] .hero-title .mark { color: var(--on-hero); }
+html[data-skin="bengkel"] .page-head h1 { font-size: 44px; font-weight: 800; letter-spacing: -.04em; line-height: 1.02; }
+html[data-skin="bengkel"] .card-title { font-weight: 800; font-size: 17px; }
+html[data-skin="bengkel"] .btn { border: 2px solid var(--edge); box-shadow: 2px 2px 0 var(--hard); font-weight: 700; }
+html[data-skin="bengkel"] .btn:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--hard); }
+html[data-skin="bengkel"] .btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--hard); }
+html[data-skin="bengkel"] .btn-ghost, html[data-skin="bengkel"] .btn-danger-ghost { box-shadow: none; border-color: transparent; }
+html[data-skin="bengkel"] .btn-ghost:hover:not(:disabled), html[data-skin="bengkel"] .btn-danger-ghost:hover:not(:disabled) { transform: none; box-shadow: none; }
+html[data-skin="bengkel"] input, html[data-skin="bengkel"] select, html[data-skin="bengkel"] textarea { border: 2px solid var(--edge); }
+html[data-skin="bengkel"] .side { background: var(--accent); border-right: 3px solid var(--edge); }
+html[data-skin="bengkel"] .side .side-label, html[data-skin="bengkel"] .side a[href^="#/"], html[data-skin="bengkel"] .side-collapse, html[data-skin="bengkel"] .brand { color: var(--on-accent); }
+html[data-skin="bengkel"] .side a[href^="#/"]:hover, html[data-skin="bengkel"] .side-collapse:hover { background: color-mix(in srgb, var(--on-accent) 12%, transparent); color: var(--on-accent); }
+html[data-skin="bengkel"] .side a.on { background: var(--surface); color: var(--text); border: 2px solid var(--edge); box-shadow: 3px 3px 0 var(--hard); }
+html[data-skin="bengkel"] .brand-ic { background: var(--on-accent); color: var(--accent); }
+html[data-skin="bengkel"] .side-bottom { border-top-color: color-mix(in srgb, var(--on-accent) 30%, transparent); }
+html[data-skin="bengkel"] .top { border-bottom: 2.5px solid var(--edge); }
+html[data-skin="bengkel"] .chip { border: 2px solid currentColor; font-weight: 800; }
+html[data-skin="bengkel"] .tabs { border-bottom: 2.5px solid var(--edge); }
+html[data-skin="bengkel"] .chip { margin-inline-end: 4px; }
+html[data-skin="bengkel"] .tab.on { background: var(--accent); color: var(--on-accent); border-radius: 8px 8px 0 0; border-bottom-color: var(--edge); }
+html[data-skin="bengkel"] .ftab.on { background: var(--accent); color: var(--on-accent); border-radius: 8px 8px 0 0; border-bottom-color: var(--edge); }
+html[data-skin="bengkel"] .seg { border: 2px solid var(--edge); }
+html[data-skin="bengkel"] .seg button.on, html[data-skin="bengkel"] .seg-btn.on { background: var(--accent); color: var(--on-accent); }
+html[data-skin="bengkel"] .tbl th { background: var(--raised); color: var(--text); border-bottom: 2px solid var(--edge); font-weight: 800; }
+html[data-skin="bengkel"] .tile:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--hard); border-color: var(--edge); }
+html[data-skin="bengkel"] .big { font-weight: 800; letter-spacing: -.03em; }
+html[data-skin="bengkel"] .state { border-width: 2px; }
+
+/* ================================================================
+ * RUANG MESIN: instrumen. Alasan: panel ini mengendalikan perangkat keras sungguhan (Mac mini); label bermono dan lampu status
+ * yang menyala membuat keadaan layanan terbaca sekilas. Glow hanya pada tanda status (ok), bukan dekorasi lain.
+ * ================================================================ */
+html[data-skin="mesin"] {
+  --font: "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+  --r-card: 14px; --r-ctl: 8px; --r-chip: 6px;
+}
+html[data-skin="mesin"][data-theme="light"] {
+  --bg: #efeae0; --surface: #faf7f0; --raised: #e5dfd0; --text: #25211a; --muted: #5c5545;
+  --primary: #9a4707; --accent: #b45309; --on-accent: #ffffff; --tint: #f7e8cf; --on-tint: #7c3a05;
+  --hero: #25211a; --on-hero: #f4efe2; --line: #d2c9b6; --line-soft: #e3dccb; --focus: #9a4707; --series2: #0e7490;
+  --ok: #0c6a45; /* hijau bawaan 4,35:1 di latar ini; digelapkan agar lolos 4,5:1 */
+  --shadow: 0 8px 24px rgba(37, 33, 26, .16);
+}
+html[data-skin="mesin"][data-theme="dark"] {
+  --bg: #15130f; --surface: #1c1913; --raised: #26221a; --text: #ece6d8; --muted: #a79f8d;
+  --primary: #f2b13c; --accent: #f2b13c; --on-accent: #1a1405; --tint: #2a2210; --on-tint: #f2b13c;
+  --hero: #1c1913; --on-hero: #ece6d8; --line: #302b20; --line-soft: #26221a; --focus: #f2b13c; --series2: #22d3ee;
+  --shadow: 0 8px 24px rgba(0, 0, 0, .55);
+}
+html[data-skin="mesin"] .side { background: color-mix(in srgb, var(--bg) 80%, #000); }
+html[data-theme="light"][data-skin="mesin"] .side { background: var(--raised); }
+html[data-skin="mesin"] .side a.on { background: var(--tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+html[data-skin="mesin"] .hero { background: radial-gradient(900px 260px at 12% -30%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 62%), var(--hero); color: var(--on-hero); border: 1px solid var(--line); }
+html[data-skin="mesin"] .hero-title .mark { color: var(--on-hero); }
+html[data-skin="mesin"] .hero-facts dd { font-family: var(--mono); font-size: 22px; }
+html[data-skin="mesin"] .card-title, html[data-skin="mesin"] .kpi-h, html[data-skin="mesin"] .side-label, html[data-skin="mesin"] .tbl th, html[data-skin="mesin"] .hero-facts dt { font-family: var(--mono); letter-spacing: .03em; }
+html[data-skin="mesin"] .mark-ok { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ok) 75%, transparent)); }
+html[data-skin="mesin"] .big { font-family: var(--mono); font-weight: 600; letter-spacing: -.02em; }
+html[data-skin="mesin"] .page-head h1 { font-weight: 600; letter-spacing: -.01em; }
+
+/* ================================================================
+ * KACA DINGIN: modern. Alasan: kesan ramah dan rapi; kaca buram hanya pada SATU elemen (fakta di strip ringkasan) sebagai titik
+ * fokus layar, kartu lain solid supaya tabel tetap tajam.
+ * ================================================================ */
+html[data-skin="kaca"] { --r-card: 20px; --r-ctl: 12px; --r-chip: 999px; }
+html[data-skin="kaca"][data-theme="light"] {
+  --bg: #eef3f1; --surface: #ffffff; --raised: #e3ece9; --text: #10302c; --muted: #46635e;
+  --primary: #0f766e; --accent: #0f766e; --on-accent: #ffffff; --tint: #dcf5ec; --on-tint: #0b5f58;
+  --hero: #0b4f49; --on-hero: #ffffff; --line: #d3e1dd; --line-soft: #e5eeeb; --focus: #0f766e; --series2: #b45309;
+  --shadow: 0 8px 24px rgba(16, 48, 44, .14);
+}
+html[data-skin="kaca"][data-theme="dark"] {
+  --bg: #0c1a18; --surface: #132624; --raised: #1b3330; --text: #e3f2ef; --muted: #9bb8b3;
+  --primary: #5eead4; --accent: #2dd4bf; --on-accent: #04201d; --tint: #153a36; --on-tint: #5eead4;
+  --hero: #0b3b36; --on-hero: #ffffff; --line: #24403c; --line-soft: #1b322f; --focus: #5eead4; --series2: #fbbf24;
+  --shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
+html[data-skin="kaca"] .side { background: var(--raised); border-right-color: transparent; }
+html[data-skin="kaca"] .side a.on { background: var(--surface); color: var(--on-tint); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 14%, transparent); }
+html[data-skin="kaca"] .card, html[data-skin="kaca"] .tile { border-color: transparent; box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 12%, transparent); }
+html[data-skin="kaca"] .hero { position: relative; overflow: hidden; background: var(--hero); color: var(--on-hero); border: 0; }
+html[data-skin="kaca"] .hero::before { content: ""; position: absolute; width: 360px; height: 360px; right: -80px; bottom: -200px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent), transparent 66%); pointer-events: none; }
+html[data-skin="kaca"] .hero > * { position: relative; z-index: 1; }
+html[data-skin="kaca"] .hero-title .mark { color: var(--on-hero); }
+html[data-skin="kaca"] .hero-facts { background: rgba(255, 255, 255, .13); border: 1px solid rgba(255, 255, 255, .26); border-radius: 16px; padding: var(--s3) var(--s4); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+html[data-skin="kaca"] .page-head h1 { font-weight: 700; letter-spacing: -.02em; }
+
+@media (max-width: 760px) {
+  html[data-skin="kertas"] .hero-title { font-size: 32px; }
+  html[data-skin="bengkel"] .hero-title, html[data-skin="bengkel"] .page-head h1 { font-size: 32px; }
+  html[data-skin="kertas"] .page-head h1 { font-size: 30px; }
+  html[data-skin="bengkel"] .card, html[data-skin="bengkel"] .tile, html[data-skin="bengkel"] .hero { box-shadow: 3px 3px 0 var(--hard); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="bengkel"] .btn, html[data-skin="bengkel"] .tile { transition: none; transform: none !important; }
+}

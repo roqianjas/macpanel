@@ -3,6 +3,7 @@ import { errText, fmtTime, get, post } from "../api";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { hasDevicePref, setDevicePref, setPublicSettings, useServerTheme, useThemePref, usePanelName, type Pref } from "../settings";
 import Account from "./Account";
+import AppearanceCard from "../features/appearance/AppearanceCard";
 import NotifyCard from "../features/notify/NotifyCard";
 import ThresholdsCard from "../features/hardware/ThresholdsCard";
 
@@ -419,6 +420,7 @@ export default function Settings() {
     <>
       <PageHead title="Pengaturan" desc="Nama dan tema panel, kata sandi, verifikasi dua langkah, perangkat tepercaya, dan token API." />
       <PanelCard />
+      <AppearanceCard />
       <NotifyCard />
       <ThresholdsCard />
       <Account />

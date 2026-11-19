@@ -5,6 +5,7 @@ import "@fontsource/plus-jakarta-sans/latin-600.css";
 import "@fontsource/plus-jakarta-sans/latin-700.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import "./styles.css";
+import "./skins.css";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
