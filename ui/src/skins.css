@@ -173,3 +173,11 @@ html[data-skin="kaca"] .page-head h1 { font-weight: 700; letter-spacing: -.02em;
 @media (prefers-reduced-motion: reduce) {
   html[data-skin="bengkel"] .btn, html[data-skin="bengkel"] .tile { transition: none; transform: none !important; }
 }
+
+/* Bengkel: judul tabel punya latar, jadi ujung kiri dan kanan baris diberi jarak (hanya di ujung agar lebar tabel tidak membengkak) */
+html[data-skin="bengkel"] .tbl thead th, html[data-skin="bengkel"] .tbl tbody th, html[data-skin="bengkel"] .tbl td { padding-right: 10px; }
+html[data-skin="bengkel"] .tbl tr > :first-child { padding-left: var(--s3); }
+html[data-skin="bengkel"] .tbl tr > :last-child { padding-right: var(--s3); }
+html[data-skin="bengkel"] .tbl thead th:has(> .sr), html[data-skin="bengkel"] .tbl td:has(> .rowcheck) { padding-left: var(--s3); padding-right: var(--s2); }
+html[data-skin="bengkel"] .docs-search, html[data-skin="bengkel"] .search-box { border: 2px solid var(--edge); }
+html[data-skin="bengkel"] .docs-search input, html[data-skin="bengkel"] .search-box input { border: 0; box-shadow: none; }

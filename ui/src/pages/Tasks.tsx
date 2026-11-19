@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, RotateCw, Trash2 } from "lucide-react";
 import { errText, get, post } from "../api";
 import { FilterTabs, ListSearch, Pager, useListView } from "../features/list/ListTools";
-import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, Tabs, statusTone, useLoad } from "../ui";
+import AddTask, { TypeIcon } from "../features/tasks/AddTask";
+import { describe } from "../features/tasks/schedule";
+import { Alert, Card, Chip, ConfirmDialog, Modal, PageHead, State, Tabs, statusTone, useLoad } from "../ui";
+
+const typeOf = (cmd: string) => (cmd.startsWith("[shell]") ? "shell" : cmd.startsWith("[url]") ? "url" : /^(php|composer)\b/.test(cmd) ? "php" : /^(node|npm|pnpm)\b/.test(cmd) ? "node" : /^python/.test(cmd) ? "python" : "cmd");
 
 interface Task {
   name: string;
@@ -10,14 +14,16 @@ interface Task {
   pid: string;
   exit: string;
   schedule: string;
+  cmd?: string;
 }
 
-export default function Tasks() {
-  const [kind, setKind] = useState<"worker" | "job">("worker");
+export default function Tasks({ sub = "" }: { sub?: string }) {
+  const [kind, setKind] = useState<"worker" | "job">(sub === "job" ? "job" : "worker");
+  useEffect(() => { if (sub === "job" || sub === "worker") setKind(sub); }, [sub]);
   const { data, error, loading, reload } = useLoad(() => get<{ tasks: Task[] }>(`/api/tasks/${kind}`), [kind]);
   const tasks = data?.tasks ?? [];
   const statusFacets = [...new Set(tasks.map((t) => t.status).filter(Boolean))].sort().map((st) => ({ id: st, label: st[0].toUpperCase() + st.slice(1), test: (t: Task) => t.status === st }));
-  const lv = useListView(tasks, (t) => `${t.name} ${t.status} ${t.schedule ?? ""}`, undefined, statusFacets);
+  const lv = useListView(tasks, (t) => `${t.name} ${t.status} ${t.schedule ?? ""} ${t.cmd ?? ""} ${describe(t.schedule ?? "")}`, undefined, statusFacets);
   const [adding, setAdding] = useState(false);
   const [rm, setRm] = useState<string | null>(null);
   const [log, setLog] = useState<string | null>(null);
@@ -38,7 +44,7 @@ export default function Tasks() {
     <>
       <PageHead
         title="Worker dan cron"
-        desc="Pengganti Supervisor dan crontab, dijalankan launchd. Berjalan setelah Anda login di Mac mini (FileVault berhenti di layar unlock sehabis reboot)."
+        desc="Pengganti Supervisor dan crontab, dijalankan launchd. Tipe shell, PHP, Node, Python, dan URL; jadwal dari tiap N menit sampai cron kustom. Berjalan setelah Anda login di Mac mini (FileVault berhenti di layar unlock sehabis reboot)."
         action={
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
             <Plus size={18} aria-hidden="true" />
@@ -71,7 +77,8 @@ export default function Tasks() {
                   <th scope="col">Status</th>
                   <th scope="col">PID</th>
                   <th scope="col">Exit terakhir</th>
-                  <th scope="col">Jadwal dan perintah</th>
+                  <th scope="col">{kind === "job" ? "Jadwal" : "Mode"}</th>
+                  <th scope="col" className="col-low">Tipe dan perintah</th>
                   <th scope="col">
                     <span className="sr">Aksi</span>
                   </th>
@@ -86,8 +93,12 @@ export default function Tasks() {
                     </td>
                     <td className="mono">{t.pid}</td>
                     <td className="mono">{t.exit}</td>
-                    <td className="mono cell-trunc" title={t.schedule}>
-                      {t.schedule}
+                    <td title={t.schedule}>
+                      {kind === "job" ? describe(t.schedule) : "Selalu berjalan"}
+                      {kind === "job" && <span className="small muted mono block">{t.schedule}</span>}
+                    </td>
+                    <td className="mono cell-trunc col-low" title={t.cmd ?? ""}>
+                      <TypeIcon t={typeOf(t.cmd ?? "")} /> {(t.cmd ?? "").replace(/^\[(shell|url)\] /, "")}
                     </td>
                     <td className="cell-end">
                       <div className="row">
@@ -144,92 +155,6 @@ function LogDialog({ kind, name, onClose }: { kind: string; name: string; onClos
           Tutup
         </button>
       </div>
-    </Modal>
-  );
-}
-
-function AddTask({ kind, onClose, onDone }: { kind: "worker" | "job"; onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ name: "", dir: "", cmd: "", php: "", procs: "1", when: "every", every: "5m", at: "03:00" });
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const up = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setErr("");
-    try {
-      const body: Record<string, unknown> = { name: f.name, dir: f.dir, cmd: f.cmd };
-      if (f.php) body.php = f.php;
-      if (kind === "worker") body.procs = Number(f.procs);
-      else if (f.when === "every") body.every = f.every;
-      else body.at = f.at;
-      await post(`/api/tasks/${kind}`, body);
-      onDone();
-    } catch (x) {
-      setErr(errText(x));
-      setBusy(false);
-    }
-  };
-  return (
-    <Modal title={kind === "worker" ? "Tambah worker" : "Tambah cron job"} onClose={onClose} wide>
-      <form onSubmit={submit} className="stack">
-        <div className="grid2">
-          <Field label="Nama" hint="Huruf kecil, angka, tanda hubung.">
-            {(id, d) => <input id={id} aria-describedby={d} data-autofocus className="mono" placeholder="queue-default" maxLength={40} value={f.name} onChange={(e) => up("name", e.target.value.toLowerCase())} required pattern="[a-z][a-z0-9\-]{0,39}" />}
-          </Field>
-          <Field label="Folder kerja" hint="Di bawah ~/MacPanel/wwwroot.">
-            {(id, d) => <input id={id} aria-describedby={d} className="mono" value={f.dir} onChange={(e) => up("dir", e.target.value)} required placeholder="~/MacPanel/wwwroot/org/proyek" />}
-          </Field>
-        </div>
-        <Field label="Perintah" hint="Program yang diizinkan: php, node, python3, npm run, pnpm run, composer run-script. Tanpa kutip, pipa, atau $; kode sebaris seperti php -r ditolak.">
-          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={f.cmd} onChange={(e) => up("cmd", e.target.value)} required placeholder="php artisan queue:work --tries=3" />}
-        </Field>
-        <div className="grid2">
-          <Field label="Versi PHP (opsional)" hint="Untuk perintah php, memakai biner versi ini.">
-            {(id, d) => (
-              <select id={id} aria-describedby={d} value={f.php} onChange={(e) => up("php", e.target.value)}>
-                <option value="">(bawaan)</option>
-                {["8.2", "8.3", "8.4", "8.5"].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            )}
-          </Field>
-          {kind === "worker" ? (
-            <Field label="Jumlah proses">{(id) => <input id={id} type="number" min={1} max={8} placeholder="1" required value={f.procs} onChange={(e) => up("procs", e.target.value)} />}</Field>
-          ) : (
-            <>
-              <Field label="Jadwal">
-                {(id) => (
-                  <select id={id} value={f.when} onChange={(e) => up("when", e.target.value)}>
-                    <option value="every">Setiap beberapa menit/jam</option>
-                    <option value="at">Setiap hari pada jam tertentu</option>
-                  </select>
-                )}
-              </Field>
-              {f.when === "every" ? (
-                <Field label="Interval" hint="Contoh: 5m (menit) atau 2h (jam).">
-                  {(id, d) => <input id={id} aria-describedby={d} className="mono" placeholder="5m" title="Angka lalu m (menit) atau h (jam), mis. 5m atau 2h" value={f.every} onChange={(e) => up("every", e.target.value)} required pattern="[1-9][0-9]{0,2}[mh]" />}
-                </Field>
-              ) : (
-                <Field label="Jam (24 jam)" hint="Zona waktu Mac mini.">
-                  {(id, d) => <input id={id} aria-describedby={d} type="time" value={f.at} onChange={(e) => up("at", e.target.value)} required />}
-                </Field>
-              )}
-            </>
-          )}
-        </div>
-        {err && <Alert>{err}</Alert>}
-        <p className="small muted">Aksi ini meminta kata sandi ulang karena menjalankan kode proyek terus-menerus.</p>
-        <div className="row-end">
-          <button type="button" className="btn" onClick={onClose}>
-            Batal
-          </button>
-          <button className="btn btn-primary" disabled={busy || !f.name || !f.dir || !f.cmd}>
-            {busy ? "Membuat…" : "Buat"}
-          </button>
-        </div>
-      </form>
     </Modal>
   );
 }

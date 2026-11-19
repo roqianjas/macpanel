@@ -652,7 +652,7 @@ func TestWorkerAddArgvAndGuards(t *testing.T) {
 	if c, b := o.Post("/api/tasks/worker", body); c != 200 {
 		t.Fatalf("%d %s", c, b)
 	}
-	if !strings.Contains(o.Calls(), "CALL:[worker][add][queue][--dir]["+dir+"][--cmd][php artisan queue:work --tries=3][--php][8.4][--procs][2]") {
+	if !strings.Contains(o.Calls(), "CALL:[worker][add][queue][--type][cmd][--dir]["+dir+"][--cmd][php artisan queue:work --tries=3][--php][8.4][--procs][2]") {
 		t.Fatalf("argv: %s", o.Calls())
 	}
 	n0 := len(o.Calls())
@@ -683,7 +683,7 @@ func TestJobAddScheduleValidation(t *testing.T) {
 		c, _ := o.Post("/api/tasks/job", `{"name":"tick","dir":"`+dir+`","cmd":"php tick.php",`+extra+`}`)
 		return c
 	}
-	if ok(`"every":"5m"`) != 200 || !strings.Contains(o.Calls(), "[job][add][tick][--dir]["+dir+"][--cmd][php tick.php][--every][5m]") {
+	if ok(`"every":"5m"`) != 200 || !strings.Contains(o.Calls(), "[job][add][tick][--type][cmd][--dir]["+dir+"][--cmd][php tick.php][--every][5m]") {
 		t.Fatalf("every: %s", o.Calls())
 	}
 	if ok(`"at":"03:15"`) != 200 || !strings.Contains(o.Calls(), "[--at][03:15]") {
@@ -1857,5 +1857,56 @@ func TestAPIUnknownStill404JSONAndAuthStillRequired(t *testing.T) {
 	server.Handler(a).ServeHTTP(rec, httptest.NewRequest("GET", "/api/sites", nil))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("tanpa sesi harus 401: %d", rec.Code)
+	}
+}
+
+func TestTaskTypesAndCron(t *testing.T) {
+	o := testenv.NewP3Env(t)
+	o.Stepup()
+	dir := filepath.Join(o.Home, "Developer/proj")
+	post := func(kind, body string) int { c, _ := o.Post("/api/tasks/"+kind, body); return c }
+	// shell: skrip lewat stdin (bukan argv), baris pertama tercatat oleh lab palsu
+	if c := post("job", `{"name":"sh1","dir":"`+dir+`","type":"shell","script":"echo halo\nls","cron":"*/15 8-17 * * 1-5"}`); c != 200 {
+		t.Fatalf("shell: %d", c)
+	}
+	if !strings.Contains(o.Calls(), "[job][add][sh1][--type][shell][--dir]["+dir+"][--script-stdin][--cron][*/15 8-17 * * 1-5] STDIN=[echo halo]") {
+		t.Fatalf("shell argv/stdin: %s", o.Calls())
+	}
+	if strings.Contains(o.Calls(), "[--cmd]") {
+		t.Fatal("skrip tidak boleh lewat --cmd")
+	}
+	if c := post("job", `{"name":"u1","type":"url","url":"https://app.lab/schedule/run","cron":"@hourly"}`); c != 200 || !strings.Contains(o.Calls(), "[job][add][u1][--type][url][--url][https://app.lab/schedule/run][--cron][@hourly]") {
+		t.Fatalf("url: %s", o.Calls())
+	}
+	if c := post("worker", `{"name":"py1","dir":"`+dir+`","type":"python","cmd":"python3 worker.py"}`); c != 200 || !strings.Contains(o.Calls(), "[worker][add][py1][--type][python]") {
+		t.Fatalf("python: %s", o.Calls())
+	}
+	n0 := len(o.Calls())
+	for kind, bodies := range map[string][]string{
+		"job": {
+			`{"name":"x","dir":"` + dir + `","type":"shell","script":"","every":"5m"}`, // skrip kosong
+			`{"name":"x","dir":"` + dir + `","type":"shell","script":"a\u0000b","every":"5m"}`,
+			`{"name":"x","dir":"` + dir + `","type":"shell","script":"` + strings.Repeat("a", 20001) + `","every":"5m"}`, // terlalu besar                            // NUL
+			`{"name":"x","dir":"` + dir + `","type":"shell","script":"ls","cmd":"php a","every":"5m"}`,                   // cmd tak dipakai shell? (cmd boleh kosong saja)
+			`{"name":"x","dir":"/etc","type":"shell","script":"ls","every":"5m"}`,                                        // folder di luar wwwroot
+			`{"name":"x","type":"url","url":"ftp://x","every":"5m"}`,                                                     // skema
+			`{"name":"x","type":"url","url":"https://a b","every":"5m"}`,                                                 // spasi
+			`{"name":"x","type":"url","url":"https://a/'x","every":"5m"}`,                                                // kutip
+			`{"name":"x","dir":"` + dir + `","type":"php","cmd":"node a.js","every":"5m"}`,                               // tipe tak cocok program
+			`{"name":"x","dir":"` + dir + `","type":"ruby","cmd":"php a","every":"5m"}`,                                  // tipe tak dikenal
+			`{"name":"x","dir":"` + dir + `","type":"php","cmd":"php a","cron":"* * * * *","every":"5m"}`,                // dua jadwal
+			`{"name":"x","dir":"` + dir + `","type":"php","cmd":"php a","cron":"* * * * *;id"}`,                          // karakter
+			`{"name":"x","dir":"` + dir + `","type":"php","cmd":"php a","url":"https://a.lab"}`,                          // url bukan tipe url
+		},
+	} {
+		for _, b := range bodies {
+			c := post(kind, b)
+			if c != 400 && !(c == 413 && len(b) > 20000) { // skrip raksasa boleh ditolak lebih awal oleh batas body
+				t.Errorf("harus 400: %.200s -> %d", b, c)
+			}
+		}
+	}
+	if len(o.Calls()) != n0 {
+		t.Fatal("lab terpanggil oleh input buruk")
 	}
 }

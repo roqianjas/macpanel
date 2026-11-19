@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -17,12 +18,14 @@ type TaskRow struct {
 	PID      string `json:"pid"`
 	Exit     string `json:"exit"`
 	Schedule string `json:"schedule"`
+	Cmd      string `json:"cmd"`
 }
 
 func ParseTasks(out string) []TaskRow {
 	res := []TaskRow{}
 	for _, l := range strings.Split(out, "\n") {
-		f := strings.Fields(l)
+		head, cmd, _ := strings.Cut(l, "\t") // jadwal dan perintah dipisah tab; format lama tanpa tab tetap terbaca
+		f := strings.Fields(head)
 		if len(f) < 4 || f[0] == "NAMA" {
 			continue
 		}
@@ -33,7 +36,7 @@ func ParseTasks(out string) []TaskRow {
 		if len(rest) < 2 {
 			continue
 		}
-		res = append(res, TaskRow{Name: name, Status: status, PID: rest[0], Exit: rest[1], Schedule: strings.Join(rest[2:], " ")})
+		res = append(res, TaskRow{Name: name, Status: status, PID: rest[0], Exit: rest[1], Schedule: strings.Join(rest[2:], " "), Cmd: strings.TrimSpace(cmd)})
 	}
 	return res
 }
@@ -87,6 +90,40 @@ func ValidCmd(a *core.App, cmd string) error {
 	return nil
 }
 
+var taskTypes = map[string]bool{"cmd": true, "php": true, "node": true, "python": true, "shell": true, "url": true}
+
+var typePrograms = map[string]map[string]bool{
+	"php": {"php": true, "composer": true}, "node": {"node": true, "npm": true, "pnpm": true}, "python": {"python3": true, "python": true},
+}
+
+var urlRE = regexp.MustCompile(`^https?://[A-Za-z0-9._~:/?&=%+,@#-]{1,300}$`)
+
+var cronRE = regexp.MustCompile(`^[0-9A-Za-z*/,@ -]{1,100}$`)
+
+const maxScript = 20000
+
+// ValidScript: skrip shell bebas (pilihan pemilik panel, di balik kata sandi ulang dan tercatat), hanya dibatasi ukuran dan NUL.
+func ValidScript(s string) error {
+	switch {
+	case strings.TrimSpace(s) == "":
+		return errors.New("skrip kosong")
+	case len(s) > maxScript:
+		return errors.New("skrip maksimal 20000 byte")
+	case strings.ContainsRune(s, 0):
+		return errors.New("skrip tidak boleh berisi karakter NUL")
+	}
+	return nil
+}
+
+func sortedKeys(m map[string]bool) []string {
+	k := make([]string, 0, len(m))
+	for x := range m {
+		k = append(k, x)
+	}
+	sort.Strings(k)
+	return k
+}
+
 func taskKind(w http.ResponseWriter, r *http.Request) (string, bool) {
 	k := r.PathValue("kind")
 	if k != "worker" && k != "job" {
@@ -115,8 +152,8 @@ func TaskAdd(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sess
 		return
 	}
 	var in struct {
-		Name, Dir, Cmd, PHP, Every, At string
-		Procs                          int
+		Name, Dir, Cmd, PHP, Every, At, Cron, Type, Script, URL string
+		Procs                                                   int
 	}
 	if !core.DecodeJSON(w, r, &in) {
 		return
@@ -125,20 +162,60 @@ func TaskAdd(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sess
 		core.WriteError(w, 400, "nama: huruf kecil/angka/-, diawali huruf, maks 40")
 		return
 	}
-	dir, err := a.UnderDev(in.Dir)
-	if err != nil {
-		core.WriteError(w, 400, err.Error())
+	if in.Type == "" {
+		in.Type = "cmd"
+	}
+	if !taskTypes[in.Type] {
+		core.WriteError(w, 400, "type: cmd, php, node, python, shell, atau url")
 		return
 	}
-	if isDir, _ := core.StatDir(dir); !isDir {
-		core.WriteError(w, 400, "dir bukan folder")
+	dir := ""
+	if in.Dir != "" || in.Type != "url" {
+		d, err := a.UnderDev(in.Dir)
+		if err != nil {
+			core.WriteError(w, 400, err.Error())
+			return
+		}
+		if isDir, _ := core.StatDir(d); !isDir {
+			core.WriteError(w, 400, "dir bukan folder")
+			return
+		}
+		dir = d
+	}
+	args := []string{k, "add", in.Name, "--type", in.Type}
+	if dir != "" {
+		args = append(args, "--dir", dir)
+	}
+	stdin := ""
+	switch in.Type {
+	case "shell":
+		if err := ValidScript(in.Script); err != nil {
+			core.WriteError(w, 400, err.Error())
+			return
+		}
+		args = append(args, "--script-stdin")
+		stdin = in.Script
+	case "url":
+		if !urlRE.MatchString(in.URL) {
+			core.WriteError(w, 400, "url harus http:// atau https:// tanpa spasi atau kutip, maks 300 karakter")
+			return
+		}
+		args = append(args, "--url", in.URL)
+	default:
+		if err := ValidCmd(a, in.Cmd); err != nil {
+			core.WriteError(w, 400, err.Error())
+			return
+		}
+		if want := typePrograms[in.Type]; want != nil && !want[strings.Fields(in.Cmd)[0]] {
+			core.WriteError(w, 400, "tipe "+in.Type+": program pertama harus "+strings.Join(sortedKeys(want), " atau "))
+			return
+		}
+		args = append(args, "--cmd", in.Cmd)
+	}
+	if in.Type != "shell" && in.Script != "" || in.Type != "url" && in.URL != "" || (in.Type == "shell" || in.Type == "url") && in.Cmd != "" {
+		core.WriteError(w, 400, "script hanya untuk tipe shell, url hanya untuk tipe url, cmd tidak dipakai keduanya")
 		return
 	}
-	if err := ValidCmd(a, in.Cmd); err != nil {
-		core.WriteError(w, 400, err.Error())
-		return
-	}
-	args := []string{k, "add", in.Name, "--dir", dir, "--cmd", in.Cmd}
 	if in.PHP != "" {
 		if !core.PhpVersions[in.PHP] {
 			core.WriteError(w, 400, "versi PHP harus 8.2-8.5")
@@ -147,7 +224,7 @@ func TaskAdd(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sess
 		args = append(args, "--php", in.PHP)
 	}
 	if k == "worker" {
-		if in.Every != "" || in.At != "" {
+		if in.Every != "" || in.At != "" || in.Cron != "" {
 			core.WriteError(w, 400, "worker tidak memakai jadwal")
 			return
 		}
@@ -163,11 +240,23 @@ func TaskAdd(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sess
 			core.WriteError(w, 400, "job tidak memakai procs")
 			return
 		}
-		if (in.Every == "") == (in.At == "") {
-			core.WriteError(w, 400, "isi tepat satu: every (mis. 5m) atau at (HH:MM)")
+		n := 0
+		for _, v := range []string{in.Every, in.At, in.Cron} {
+			if v != "" {
+				n++
+			}
+		}
+		if n != 1 {
+			core.WriteError(w, 400, "isi tepat satu: every (mis. 5m), at (HH:MM), atau cron (5 kolom)")
 			return
 		}
-		if in.Every != "" {
+		if in.Cron != "" {
+			if !cronRE.MatchString(in.Cron) {
+				core.WriteError(w, 400, "cron hanya boleh angka, huruf, * / , - dan spasi (maks 100 karakter)")
+				return
+			}
+			args = append(args, "--cron", in.Cron)
+		} else if in.Every != "" {
 			if !everyRE.MatchString(in.Every) || strings.HasPrefix(in.Every, "0") {
 				core.WriteError(w, 400, "every: 1-999 diikuti m atau h")
 				return
@@ -184,7 +273,7 @@ func TaskAdd(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sess
 	if !a.RequireStepUp(w, ss) {
 		return
 	}
-	a.Record(w, ss, a.ClientIP(r), k+"_add", in.Name, a.Mutate(args, ""))
+	a.Record(w, ss, a.ClientIP(r), k+"_add", in.Name, a.Mutate(args, stdin))
 }
 
 func taskName(w http.ResponseWriter, r *http.Request) (string, string, bool) {

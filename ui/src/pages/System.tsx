@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Skull } from "lucide-react";
 import { get, post } from "../api";
 import { fmtBytes } from "../lib";
 import CleanSection from "../features/clean/CleanSection";
 import MemSection from "../features/clean/MemSection";
+import TailscaleSection from "../features/tailscale/TailscaleSection";
 import UninstallGuide from "../features/uninstall/UninstallGuide";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, Tabs, useLoad } from "../ui";
 
@@ -12,18 +13,20 @@ const TABS = [
   { id: "proses", label: "Proses" },
   { id: "disk", label: "Ruang dan memori" },
   { id: "dns", label: "DNS" },
+  { id: "tailscale", label: "Tailscale" },
   { id: "docker", label: "Docker" },
   { id: "uninstall", label: "Uninstall" },
 ];
 
-export default function System() {
-  const [tab, setTab] = useState("keamanan");
+export default function System({ sub = "" }: { sub?: string }) {
+  const [tab, setTab] = useState(TABS.some((t) => t.id === sub) ? sub : "keamanan");
+  useEffect(() => { if (TABS.some((t) => t.id === sub)) setTab(sub); }, [sub]);
   return (
     <>
       <PageHead title="Sistem" desc="Status keamanan, proses, ruang disk, memori, dan Docker. Yang mengubah sistem hanya pembersihan cache (dengan pratinjau dan verifikasi ulang), mematikan layanan opsional, dan menghentikan proses pengembangan." />
       <Tabs tabs={TABS} value={tab} onChange={setTab} label="Bagian sistem" />
       <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
-        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <SpaceMemory /> : tab === "dns" ? <Dns /> : tab === "uninstall" ? <UninstallGuide /> : <Docker />}
+        {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <SpaceMemory /> : tab === "dns" ? <Dns /> : tab === "tailscale" ? <TailscaleSection /> : tab === "uninstall" ? <UninstallGuide /> : <Docker />}
       </div>
     </>
   );

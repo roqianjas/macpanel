@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, Archive, ArrowRightLeft, Boxes, Box, Calendar, Circle, CircleStop, Clock, Cog, Cpu, Database, DatabaseBackup, Eraser, FileCode, FileText, Globe, HardDrive, KeyRound, Layers, LayoutGrid, Lock, LogIn, Network, Package, Pause, Play, Power, RefreshCw, ScrollText, ShieldCheck, SlidersHorizontal, Trash2, TriangleAlert, Wrench, Zap, Terminal, Route, Settings, Gauge, Rocket, CalendarClock, type LucideIcon } from "lucide-react";
+import { Activity, Archive, ArrowRightLeft, Boxes, Box, Calendar, Circle, CircleStop, Clock, Cog, Cpu, Database, DatabaseBackup, Eraser, FileCode, FileText, Globe, HardDrive, KeyRound, Layers, LayoutGrid, Lock, LogIn, Network, Package, Pause, Play, Power, RefreshCw, ScrollText, ShieldCheck, SlidersHorizontal, Trash2, TriangleAlert, Wrench, Zap, Terminal, Route, Settings, Gauge, Rocket, Waypoints, CalendarClock, type LucideIcon } from "lucide-react";
 
 // Ikon dekoratif tab dan filter, dipetakan dari id supaya tab baru otomatis ikut tanpa mengubah tiap daftar.
 // Setiap ikon dipilih karena relevan dengan isinya (aria-hidden: label teks tetap ada). Id tak dikenal: titik netral, bukan ikon asal.
@@ -17,7 +17,7 @@ const MAP: Record<string, LucideIcon> = {
   ext: Package, ini: SlidersHorizontal, fpm: Terminal,
   container: Box, compose: Layers, image: Package,
   worker: Cog, job: CalendarClock,
-  keamanan: ShieldCheck, proses: Cpu, disk: HardDrive, dns: Network, docker: Boxes, uninstall: Trash2,
+  keamanan: ShieldCheck, proses: Cpu, disk: HardDrive, dns: Network, tailscale: Waypoints, docker: Boxes, uninstall: Trash2,
 };
 
 export function TabIcon({ id }: { id: string }) {

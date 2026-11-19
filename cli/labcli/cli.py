@@ -55,7 +55,7 @@ from labcli.sysinfo import sysx
 from labcli.tailscale import tailscale_cmd
 from labcli.uninstall import uninstall_cmd
 from labcli.update import apply, check
-from labcli.worker import PHP, run
+from labcli.worker import PHP, TYPES, run
 
 # ---------- pendaftaran parser, satu fungsi per kelompok perintah ----------
 
@@ -98,8 +98,11 @@ def reg_worker(top):
         s.add_parser("list")
         p = s.add_parser("add")
         p.add_argument("name")
-        p.add_argument("--dir", required=True)
-        p.add_argument("--cmd", required=True)
+        p.add_argument("--dir", help="folder kerja di bawah ~/MacPanel/wwwroot (bawaan: akar wwwroot)")
+        p.add_argument("--type", choices=list(TYPES), default="cmd", help="cmd/php/node/python: --cmd; shell: skrip lewat --script-stdin; url: --url")
+        p.add_argument("--cmd")
+        p.add_argument("--url")
+        p.add_argument("--script-stdin", dest="script_stdin", action="store_true", help="baca isi skrip shell dari stdin")
         p.add_argument("--php", choices=list(PHP))
         p.add_argument("--env", action="append", default=[])
         if kind == "worker":
@@ -107,6 +110,7 @@ def reg_worker(top):
         else:
             p.add_argument("--every")
             p.add_argument("--at")
+            p.add_argument("--cron", help="5 kolom cron (menit jam tanggal bulan hari) atau @reboot/@hourly/@daily/@weekly/@monthly")
         for x in ("status", "restart", "remove", "logs"):
             q = s.add_parser(x)
             q.add_argument("name")
@@ -222,6 +226,15 @@ def reg_dev(top):
     ts.add_parser("status", help="terpasang, daemon, dan status tailnet")
     ti = ts.add_parser("install", help="rencana pemasangan (Homebrew + daemon sistem)")
     ti.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya rencana")
+    for act, hlp in (
+        ("start", "jalankan daemon (sudo)"),
+        ("stop", "hentikan daemon (sudo; memutus akses jarak jauh)"),
+        ("restart", "mulai ulang daemon (sudo)"),
+        ("down", "putuskan sambungan tailnet, daemon tetap hidup"),
+    ):
+        sp = ts.add_parser(act, help=hlp)
+        sp.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya rencana")
+        sp.add_argument("--allow-remote-cut", action="store_true", help="izinkan walau sesi SSH ini lewat tailnet (sesi akan putus)")
     cl = top.add_parser("clean", help="analisis disk dan pembersihan aman (tanpa --apply hanya pratinjau)").add_subparsers(dest="cact", required=True)
     cl.add_parser("scan", help="ukur katalog lokasi dan simpan hasilnya")
     cl.add_parser("last", help="tampilkan hasil analisis terakhir")

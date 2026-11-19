@@ -2,6 +2,7 @@
 
 import types
 
+from labcli import netcheck
 from labcli import tailscale as T
 from labcli import uninstall as U
 from test_uninstall import Rec, make_env
@@ -103,3 +104,59 @@ def test_cmd_level4_not_installed(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("SSH_CONNECTION", raising=False)
     assert U.uninstall_cmd(args(apply=False)) == 1
     assert "tidak terpasang" in capsys.readouterr().err
+
+
+# ---- start / stop / restart / down ----
+def _args(act, apply=False, cut=False):
+    return types.SimpleNamespace(tact=act, apply=apply, allow_remote_cut=cut)
+
+
+def test_service_plans_use_absolute_argv_and_never_up(tmp_path):
+    env = tsenv(tmp_path)
+    for act, op, tail in (
+        ("start", "sudo", ["services", "start", "tailscale"]),
+        ("stop", "sudo", ["services", "stop", "tailscale"]),
+        ("restart", "sudo", ["services", "restart", "tailscale"]),
+        ("down", "exec", ["down"]),
+    ):
+        p = T.plan_service(env, act)
+        assert len(p) == 1 and p[0]["op"] == op and p[0]["argv"][-len(tail) :] == tail and p[0]["argv"][0].startswith("/"), act
+        assert "up" not in p[0]["argv"] and "login" not in p[0]["argv"]
+    assert T.plan_service(tsenv(tmp_path, formula=False), "stop") == []
+
+
+def test_service_without_apply_runs_nothing(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(T, "execute", lambda *a, **k: (_ for _ in ()).throw(AssertionError("dijalankan tanpa --apply")))
+    for act in ("start", "stop", "restart", "down"):
+        assert T._service_cmd(_args(act), tsenv(tmp_path)) == 0
+    assert "HANYA RENCANA" in capsys.readouterr().out
+
+
+def test_service_not_installed_fails_cleanly(tmp_path, capsys):
+    assert T._service_cmd(_args("stop", apply=True), tsenv(tmp_path, formula=False)) == 1
+    assert "tidak terpasang" in capsys.readouterr().err
+
+
+def test_stop_and_down_refuse_from_tailnet_ssh_but_start_restart_do_not(tmp_path, monkeypatch):
+    ran = []
+    monkeypatch.setattr(T, "execute", lambda env, plan, runner=None, **k: ran.append(plan[0]["argv"][-2:]) or 0)
+    monkeypatch.setattr(U, "remote_over_tailnet", lambda environ=None: True)
+    monkeypatch.setattr(T.os, "geteuid", lambda: 501)
+    for act in ("stop", "down"):
+        assert T._service_cmd(_args(act, apply=True), tsenv(tmp_path)) == 1, act
+    assert ran == []
+    for act in ("start", "restart"):
+        assert T._service_cmd(_args(act, apply=True), tsenv(tmp_path)) == 0, act
+    assert T._service_cmd(_args("stop", apply=True, cut=True), tsenv(tmp_path)) == 0  # --allow-remote-cut melewati penjaga
+    assert len(ran) == 3
+
+
+def test_status_includes_self_info_from_same_call(monkeypatch):
+    raw = '{"BackendState":"Running","Version":"1.9","Self":{"Online":true,"DNSName":"mesin.tailx.ts.net.","TailscaleIPs":["100.64.0.10","fd7a::1"]},"Peer":{}}'
+    monkeypatch.setattr(T, "tailscale_status", lambda run: (netcheck.parse_tailscale(run(["x"]).stdout), None))
+    monkeypatch.setattr(T, "detect", lambda: T.TsEnv(True, True))
+    import subprocess
+
+    monkeypatch.setattr(subprocess, "run", lambda argv, **k: types.SimpleNamespace(stdout=raw, returncode=0))
+    s = T.status()
+    assert s["tailnet"]["ip"] == "100.64.0.10" and s["tailnet"]["name"] == "mesin.tailx.ts.net" and s["tailnet"]["version"] == "1.9"

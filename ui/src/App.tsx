@@ -6,6 +6,7 @@ import { Alert, Chip, Field, Modal, statusTone } from "./ui";
 import ErrorBoundary from "./ErrorBoundary";
 import { setDevicePref, useAccent, usePanelName, useSkin, useThemePref } from "./settings";
 import { BrandMark, useFavicon } from "./features/appearance/logo";
+import GlobalSearch from "./features/search/Search";
 import Settings, { TwoFactor } from "./pages/Settings";
 import Users from "./pages/Users";
 import Account from "./pages/Account";
@@ -226,8 +227,8 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
       case "database": return <Databases />;
       case "runtime": return <Runtimes />;
       case "docker": return <Docker goto={(id) => { location.hash = `#/${id}`; }} />;
-      case "tugas": return <Tasks />;
-      case "sistem": return <System />;
+      case "tugas": return <Tasks sub={route.sub} />;
+      case "sistem": return <System sub={route.sub} />;
       case "backup": return <Backups />;
       case "pembaruan": return <Updates />;
       case "aktivitas": return <ActivityPage />;
@@ -282,6 +283,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
           <button className="btn btn-ghost btn-icon menu-btn" onClick={() => setSheet(true)} aria-label="Buka menu" aria-expanded={sheet}>
             <Menu size={20} aria-hidden="true" />
           </button>
+          <GlobalSearch role={role} />
           <span className="top-info">
             Masuk sebagai <strong className="mono">{user}</strong> {role === "viewer" && <Chip tone="info">Hanya-baca</Chip>}
           </span>

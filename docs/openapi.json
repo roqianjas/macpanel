@@ -2546,6 +2546,18 @@
         "x-token": true
       }
     },
+    "/api/tailscale": {
+      "get": {
+        "operationId": "get_api_tailscale",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
     "/api/tasks/{kind}": {
       "get": {
         "operationId": "get_api_tasks_kind",

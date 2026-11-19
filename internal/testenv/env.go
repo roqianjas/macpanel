@@ -311,6 +311,7 @@ const FakeSys = `case "$1 $2" in
 "clean last") printf '{"at":1700000000,"rows":[{"id":"go-build","label":"Cache build Go","tier":"safe","bytes":1000,"complete":true,"why":"x","cost":"y","paths":["~/a"]}],"safe_bytes":1000,"careful_bytes":0,"disk_free":5}';;
 "clean run") printf '{"dry_run":true,"items":[],"skipped":[],"bytes":0}';;
 "clean scan") printf '{"rows":[]}';;
+"tailscale status") printf '{"formula":true,"daemon_plist":true,"tailnet":{"state":"Hacked","self_online":true,"peers":2,"peers_online":1,"health":["a","b","c","d"],"ip":"100.64.0.10","name":"mesin.ts.net","version":"1.9"},"error":null}';;
 "mem top") printf '{"mem":{"total_mb":16384},"groups":[],"suggestions":[]}';;
 "sys procs") printf '{"procs":[{"pid":123,"name":"node","cpu":1.5,"killable":true}],"total":1}';;
 "sys security") printf '{"firewall":"on","ports":[]}';;

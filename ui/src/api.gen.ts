@@ -65,6 +65,7 @@ export type GetPath =
   | "/api/sys/procs"
   | "/api/sys/security"
   | "/api/system"
+  | "/api/tailscale"
   | `/api/tasks/${string}`
   | `/api/tasks/${string}/${string}/logs`
   | "/api/updates"

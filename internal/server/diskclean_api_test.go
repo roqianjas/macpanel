@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -147,5 +148,35 @@ func TestCleanExtraCarefulPrefixNeedsTyping(t *testing.T) {
 	}
 	if !waitCall(t, o, "[cx:hermes-backups][--confirm-careful][--apply]") {
 		t.Fatalf("argumen salah: %q", o.Calls())
+	}
+}
+
+func TestTailscaleStatusIsReadOnlyAndSanitised(t *testing.T) {
+	o := testenv.NewOpsEnv(t, testenv.FakeSys)
+	code, body := o.As(o.Cookie, o.Csrf, "GET", "/api/tailscale", "")
+	if code != 200 {
+		t.Fatalf("%d %s", code, body)
+	}
+	var d struct {
+		Tailnet struct {
+			State  string   `json:"state"`
+			Health []string `json:"health"`
+			IP     string   `json:"ip"`
+		} `json:"tailnet"`
+	}
+	if err := json.Unmarshal([]byte(body), &d); err != nil {
+		t.Fatal(err)
+	}
+	if d.Tailnet.State != "NoState" || len(d.Tailnet.Health) != 3 || d.Tailnet.IP != "100.64.0.10" {
+		t.Fatalf("nilai tidak dibatasi: %+v", d)
+	}
+	if !strings.Contains(o.Calls(), "CALL:[tailscale][status]") {
+		t.Fatalf("argv: %s", o.Calls())
+	}
+	// tidak ada rute tulis: panel tidak memegang root
+	for _, p := range []string{"/api/tailscale/stop", "/api/tailscale/start", "/api/tailscale/uninstall"} {
+		if c, _ := o.Post(p, `{}`); c != 404 && c != 405 {
+			t.Errorf("%s harus tidak ada, dapat %d", p, c)
+		}
 	}
 }

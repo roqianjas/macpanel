@@ -195,6 +195,7 @@ func Routes() []core.Route {
 		{Method: "GET", Path: "/api/hw", Level: core.Full, H: hardware.Hardware},
 		{Method: "GET", Path: "/api/hw/thresholds", Level: core.Full, H: hardware.ThresholdsGet},
 		{Method: "GET", Path: "/api/exposure", Level: core.Full, H: exposure.Handler},
+		{Method: "GET", Path: "/api/tailscale", Level: core.Full, H: system.TailscaleStatus},
 		{Method: "GET", Path: "/api/clean", Level: core.Full, H: diskclean.Last},
 		{Method: "POST", Path: "/api/clean/scan", Level: core.Full, H: diskclean.Scan},
 		{Method: "POST", Path: "/api/clean/preview", Level: core.Full, H: diskclean.Preview},
