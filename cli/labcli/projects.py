@@ -125,6 +125,13 @@ def mise_x(kind, rv, *cmd):
     return [MISE, "exec", f"{RT_TOOL[kind]}@{rv}", "--", *cmd]
 
 
+def proxy_env(env):
+    """Salinan env dengan registry diarahkan ke proxy resume bila diaktifkan dan sehat (lab proxy enable)."""
+    from labcli.regproxy import env_overrides
+
+    return {**(env or {}), **env_overrides()}
+
+
 def wait_http(port, secs=60):
     import urllib.request
 
@@ -174,7 +181,7 @@ def app_project(a):
     try:
         APPS_DIR.mkdir(parents=True, exist_ok=True)
         dest.mkdir()
-        env = dict(ENV, CI="1", GIT_TERMINAL_PROMPT="0")
+        env = proxy_env(dict(ENV, CI="1", GIT_TERMINAL_PROMPT="0"))
         print(f"== siapkan proyek {kind} ({RT_TOOL[kind]} {rv}) ==", flush=True)
         if kind == "go":
             (dest / "go.mod").write_text(f"module {n.replace('-', '_')}\n\ngo {'.'.join(rv.split('.')[:2])}\n")

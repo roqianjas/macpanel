@@ -17,6 +17,7 @@ import (
 	"github.com/roqianjas/macpanel/internal/core"
 	"github.com/roqianjas/macpanel/internal/crypto"
 	"github.com/roqianjas/macpanel/internal/deploy"
+	"github.com/roqianjas/macpanel/internal/exposure"
 	"github.com/roqianjas/macpanel/internal/hardware"
 	"github.com/roqianjas/macpanel/internal/netmon"
 	"github.com/roqianjas/macpanel/internal/overview"
@@ -120,6 +121,7 @@ func main() {
 		go system.ActiveCollector(app).Run(context.Background())
 		go hardware.Run(context.Background(), app)
 		go netmon.Run(context.Background(), app)
+		go exposure.Run(context.Background(), app)
 		go overview.RunNotify(context.Background(), app)
 		srv := &http.Server{Addr: *addr, Handler: server.Handler(app), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 150 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 		if *hookAddr != "" {

@@ -24,6 +24,7 @@ export type GetPath =
   | `/api/docker/containers/${string}/logs`
   | "/api/docker/stats"
   | "/api/docs"
+  | "/api/exposure"
   | "/api/hw"
   | "/api/hw/thresholds"
   | "/api/jobs"
@@ -107,6 +108,8 @@ export type PostPath =
   | "/api/docker/images/prune"
   | "/api/docker/images/pull"
   | "/api/docker/images/remove"
+  | "/api/exposure/allow"
+  | "/api/exposure/revoke"
   | "/api/hw/thresholds"
   | "/api/installer"
   | "/api/me/2fa/disable"
@@ -173,6 +176,8 @@ export const TOKEN_BLOCKED: readonly string[] = [
   "POST /api/db/{engine}/{name}/dbusers/{user}/privs",
   "POST /api/db/{engine}/{name}/dbusers/{user}/remove",
   "POST /api/dbroot/{engine}/passwd",
+  "POST /api/exposure/allow",
+  "POST /api/exposure/revoke",
   "POST /api/hw/thresholds",
   "GET /api/me/2fa",
   "POST /api/me/2fa/disable",

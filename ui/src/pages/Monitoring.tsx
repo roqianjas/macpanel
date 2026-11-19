@@ -6,6 +6,7 @@ import { byteUnit, fmtBytes, fmtRate, niceTop, RANGES, type RangeKey } from "../
 import { Card, PageHead, State } from "../ui";
 import HardwareSection from "../features/hardware/HardwareSection";
 import NetSection from "../features/netmon/NetSection";
+import ExposureSection from "../features/exposure/ExposureSection";
 
 export default function Monitoring() {
   const [range, setRange] = useState<RangeKey>("1h");
@@ -48,6 +49,7 @@ export default function Monitoring() {
             <HardwareSection range={range} />
 
             <NetSection range={range} />
+            <ExposureSection />
 
             <h2 className="card-title" style={{ marginTop: 8 }}>
               <Network size={18} className="icon" aria-hidden="true" /> Bandwidth jaringan

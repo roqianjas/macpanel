@@ -44,6 +44,7 @@ from labcli.install import app_install, site_clone
 from labcli.nginx import nginx
 from labcli.php import php
 from labcli.redis import redis_cmd
+from labcli.regproxy import proxy_cmd
 from labcli.runtime import runtime
 from labcli.services import app, service
 from labcli.site import site
@@ -197,8 +198,10 @@ def reg_dev(top):
         q.add_argument("--db", type=int, default=0)
         q.add_argument("arg", nargs="?", default="")
     rd.add_parser("password", help="kata sandi Redis: status | enable | disable").add_argument("mode", choices=["status", "enable", "disable"])
+    px = top.add_parser("proxy", help="proxy registry npm lokal yang melanjutkan unduhan terputus")
+    px.add_argument("mode", choices=["status", "enable", "disable", "purge", "serve"])
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)
-    for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd"):
+    for x in ("procs", "disk", "security", "docker", "dns", "hw", "ssd", "exposure"):
         sy.add_parser(x)
     sy.add_parser("net").add_argument("--dns-name", default="", help="nama lokal yang dites resolusinya (mis. panel.lab)")
     sy.add_parser("kill").add_argument("pid", type=int)
@@ -325,6 +328,7 @@ HANDLERS = {
     "dbcfg": dbcfg,
     "sys": sysx,
     "redis": redis_cmd,
+    "proxy": proxy_cmd,
     "appinstall": app_install,
     "siteclone": site_clone,
     "docker": run_docker,

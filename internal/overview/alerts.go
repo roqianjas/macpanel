@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/roqianjas/macpanel/internal/core"
+	"github.com/roqianjas/macpanel/internal/exposure"
 	"github.com/roqianjas/macpanel/internal/hardware"
 	"github.com/roqianjas/macpanel/internal/netmon"
 	"github.com/roqianjas/macpanel/internal/services"
@@ -103,6 +104,9 @@ func CurrentAlerts(a *core.App) ([]Alert, time.Time) {
 			al.cache = append(al.cache, Alert{f.ID, f.Level, f.Title, f.Detail, "#/pantau"})
 		}
 		for _, f := range netmon.Findings(netmon.InputsNow(a)) {
+			al.cache = append(al.cache, Alert{f.ID, f.Level, f.Title, f.Detail, "#/pantau"})
+		}
+		for _, f := range exposure.Findings(exposure.InputsNow(a)) {
 			al.cache = append(al.cache, Alert{f.ID, f.Level, f.Title, f.Detail, "#/pantau"})
 		}
 	}

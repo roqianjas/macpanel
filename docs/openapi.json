@@ -1168,6 +1168,42 @@
         "x-token": true
       }
     },
+    "/api/exposure": {
+      "get": {
+        "operationId": "get_api_exposure",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/exposure/allow": {
+      "post": {
+        "operationId": "post_api_exposure_allow",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
+    "/api/exposure/revoke": {
+      "post": {
+        "operationId": "post_api_exposure_revoke",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
     "/api/hw": {
       "get": {
         "operationId": "get_api_hw",

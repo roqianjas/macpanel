@@ -255,6 +255,10 @@ def sysx(a):
         from labcli.netcheck import sys_net
 
         return sys_net(a.dns_name)
+    if a.act == "exposure":
+        from labcli.exposure import sys_exposure
+
+        return sys_exposure()
     if a.act == "hw":
         from labcli.hardware import sys_hw
 
