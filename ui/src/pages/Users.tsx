@@ -51,7 +51,11 @@ export default function Users() {
                     {u.must_change && <Chip tone="warn">Belum ganti sandi sementara</Chip>}
                   </div>
                 </div>
-                {!u.self && (
+                {u.self ? (
+                  <a className="btn" href="#/pengaturan">
+                    Ubah kata sandi dan 2FA<span className="sr"> akun Anda di Pengaturan</span>
+                  </a>
+                ) : (
                   <button className="btn" onClick={() => setSel(u)}>
                     Kelola<span className="sr"> {u.name}</span>
                   </button>
@@ -67,7 +71,8 @@ export default function Users() {
           onDone={(r) => {
             setAdding(false);
             q.reload();
-            setSecret({ title: `Akun ${r.name} dibuat`, label: "Kata sandi sementara", value: r.temp_password, note: "Berikan kepada pemiliknya lewat jalur aman. Ia wajib menggantinya saat masuk pertama." });
+            if (!r.temp_password) return setNote(`Akun ${r.name} dibuat dengan kata sandi sementara pilihan Anda. Pemilik wajib menggantinya saat masuk pertama.`);
+            setSecret({ title: `Akun ${r.name} dibuat`, label: "Kata sandi sementara", value: r.temp_password ?? "", note: "Berikan kepada pemiliknya lewat jalur aman. Ia wajib menggantinya saat masuk pertama." });
           }}
         />
       )}
@@ -88,9 +93,10 @@ export default function Users() {
   );
 }
 
-function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { name: string; temp_password: string }) => void }) {
+function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { name: string; temp_password?: string }) => void }) {
   const [name, setName] = useState("");
   const [role, setRole] = useState("viewer");
+  const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   return (
@@ -103,7 +109,7 @@ function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { na
           setBusy(true);
           setErr("");
           try {
-            onDone(await post("/api/accounts", { name, role }));
+            onDone(await post("/api/accounts", pw ? { name, role, password: pw } : { name, role }));
           } catch (x) {
             setErr(errText(x));
             setBusy(false);
@@ -121,12 +127,13 @@ function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { na
             </select>
           )}
         </Field>
+        <PasswordField value={pw} onChange={setPw} />
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>
             Batal
           </button>
-          <button className="btn btn-primary" disabled={busy || !name}>
+          <button className="btn btn-primary" disabled={busy || !name || (pw !== "" && pw.length < 12)}>
             {busy ? "Membuat…" : "Buat akun"}
           </button>
         </div>
@@ -172,16 +179,7 @@ function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; on
           <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/${acc.disabled ? "enable" : "disable"}`, {}); onChanged(`${acc.name} ${acc.disabled ? "diaktifkan" : "dinonaktifkan"}.`); })}>
             {acc.disabled ? "Aktifkan akun" : "Nonaktifkan akun (keluarkan semua sesi)"}
           </button>
-          <button
-            className="btn"
-            disabled={busy}
-            onClick={() => run(async () => {
-              const r = await post<{ temp_password: string }>(`${base}/reset`, {});
-              onChanged("", { title: `Kata sandi ${acc.name} direset`, label: "Kata sandi sementara", value: r.temp_password, note: "Semua sesi, perangkat tepercaya, dan token akun itu dicabut. Ia wajib menggantinya saat masuk." });
-            })}
-          >
-            Reset kata sandi
-          </button>
+          <ResetPassword busy={busy} run={run} base={base} acc={acc} onChanged={onChanged} />
           {acc.totp_on && (
             <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/2fa-off`, {}); onChanged(`2FA ${acc.name} dimatikan; ia dapat menyalakannya lagi di Pengaturan.`); })}>
               Matikan 2FA (mis. ponsel hilang)
@@ -207,5 +205,45 @@ function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; on
         />
       )}
     </Modal>
+  );
+}
+
+function PasswordField({ value, onChange, label = "Kata sandi sementara (opsional)" }: { value: string; onChange: (v: string) => void; label?: string }) {
+  const [show, setShow] = useState(false);
+  const gen = () => {
+    const a = new Uint8Array(18);
+    crypto.getRandomValues(a);
+    onChange(btoa(String.fromCharCode(...a)).replace(/[+/=]/g, "x").slice(0, 20));
+    setShow(true);
+  };
+  return (
+    <Field label={label} hint={value ? (value.length < 12 ? `Minimal 12 karakter (sekarang ${value.length}).` : "Pemilik tetap wajib menggantinya saat masuk pertama.") : "Kosongkan agar panel membuat kata sandi acak dan menampilkannya sekali. Atau isi sendiri, minimal 12 karakter."}>
+      {(id, dd) => (
+        <div className="row">
+          <input id={id} aria-describedby={dd} className="mono" type={show ? "text" : "password"} autoComplete="new-password" placeholder="kosong = dibuat otomatis" maxLength={256} value={value} onChange={(e) => onChange(e.target.value)} />
+          <button type="button" className="btn" onClick={() => setShow((v) => !v)} aria-pressed={show}>{show ? "Sembunyikan" : "Tampilkan"}</button>
+          <button type="button" className="btn" onClick={gen}>Buat acak</button>
+        </div>
+      )}
+    </Field>
+  );
+}
+
+function ResetPassword({ busy, run, base, acc, onChanged }: { busy: boolean; run: (fn: () => Promise<void>) => void; base: string; acc: Acc; onChanged: (msg: string, secret?: Secret) => void }) {
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState("");
+  if (!open) return <button className="btn" disabled={busy} onClick={() => setOpen(true)}>Reset kata sandi</button>;
+  return (
+    <div className="stack sched">
+      <PasswordField value={pw} onChange={setPw} label="Kata sandi sementara baru (opsional)" />
+      <div className="row">
+        <button className="btn" onClick={() => { setOpen(false); setPw(""); }}>Batal</button>
+        <button className="btn btn-primary" disabled={busy || (pw !== "" && pw.length < 12)} onClick={() => run(async () => {
+          const r = await post<{ temp_password?: string }>(`${base}/reset` as `/api/accounts/${string}/reset`, pw ? { password: pw } : {});
+          if (!r.temp_password) return onChanged(`Kata sandi ${acc.name} direset ke pilihan Anda; semua sesi dan token dicabut. Ia wajib menggantinya saat masuk.`);
+          onChanged("", { title: `Kata sandi ${acc.name} direset`, label: "Kata sandi sementara", value: r.temp_password, note: "Semua sesi, perangkat tepercaya, dan token akun itu dicabut. Ia wajib menggantinya saat masuk." });
+        })}>Reset kata sandi</button>
+      </div>
+    </div>
   );
 }

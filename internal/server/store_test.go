@@ -749,6 +749,17 @@ func TestAccountManagement(t *testing.T) {
 	if _, _, code := o.Login2("budi", "sandi-baru-budi-12345"); code == 200 {
 		t.Fatal("sandi lama masih berlaku setelah reset")
 	}
+	// reset dengan sandi pilihan admin: tidak dikirim balik, pendek ditolak
+	if c, _ := o.Post("/api/accounts/budi/reset", `{"password":"pendek"}`); c != 400 {
+		t.Fatalf("sandi pendek harus 400: %d", c)
+	}
+	c, b = o.Post("/api/accounts/budi/reset", `{"password":"pilihan-admin-123"}`)
+	if c != 200 || strings.Contains(b, "pilihan-admin-123") || strings.Contains(b, "temp_password") || !o.App.Store.GetUser("budi").MustChange {
+		t.Fatalf("reset pilihan: %d %s", c, b)
+	}
+	if _, _, code := o.Login2("budi", "pilihan-admin-123"); code != 200 {
+		t.Fatalf("sandi pilihan tidak berlaku: %d", code)
+	}
 	// 2FA off milik orang lain
 	if c, _ := o.Post("/api/accounts/budi/2fa-off", `{}`); c != 409 {
 		t.Fatalf("2FA budi sudah mati: %d", c)
@@ -1417,5 +1428,26 @@ func TestVersionsPrunedTo20AndDeduped(t *testing.T) {
 	o.App.Store.AddVersion("toko", "u", "isi-29", "n", o.Now) // duplikat berturut-turut
 	if n := len(o.App.Store.Versions("toko")); n != 20 {
 		t.Fatalf("harus 20 versi: %d", n)
+	}
+}
+
+func TestAccountCreateWithChosenPassword(t *testing.T) {
+	o := testenv.NewP3Env(t)
+	o.Stepup()
+	for _, bad := range []string{`{"name":"rina","password":"pendek"}`, `{"name":"rinarinarina","password":"rinarinarina"}`} {
+		if c, _ := o.Post("/api/accounts", bad); c != 400 {
+			t.Errorf("harus 400: %s -> %d", bad, c)
+		}
+	}
+	c, b := o.Post("/api/accounts", `{"name":"rina","password":"sandi-pilihan-rina1"}`)
+	if c != 200 || strings.Contains(b, "sandi-pilihan-rina1") || strings.Contains(b, "temp_password") {
+		t.Fatalf("buat: %d %s", c, b)
+	}
+	if u := o.App.Store.GetUser("rina"); u == nil || !u.MustChange {
+		t.Fatal("akun harus ada dan wajib ganti sandi")
+	}
+	c, b = o.Post("/api/accounts", `{"name":"andi"}`)
+	if c != 200 || !strings.Contains(b, "temp_password") {
+		t.Fatalf("tanpa sandi harus dibuat otomatis: %d %s", c, b)
 	}
 }

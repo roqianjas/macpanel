@@ -23,7 +23,7 @@ func AccountCreate(a *core.App, w http.ResponseWriter, r *http.Request, ss *stor
 	if !core.AdminOnly(w, ss) {
 		return
 	}
-	var in struct{ Name, Role string }
+	var in struct{ Name, Role, Password string }
 	if !core.DecodeJSON(w, r, &in) {
 		return
 	}
@@ -46,14 +46,22 @@ func AccountCreate(a *core.App, w http.ResponseWriter, r *http.Request, ss *stor
 		core.WriteError(w, 409, "nama sudah dipakai")
 		return
 	}
-	temp := crypto.RandToken()[:20]
+	temp, given, bad := chosenPassword(in.Password, in.Name)
+	if bad != "" {
+		core.WriteError(w, 400, bad)
+		return
+	}
 	enc, err := crypto.Seal(a.Key, crypto.NewTOTPSecret()) // kolom wajib terisi; tidak dipakai sampai pemilik menyalakan 2FA sendiri
 	if err != nil || !a.Store.CreateAccount(in.Name, crypto.HashPassword(temp), enc, in.Role, a.Now().Unix()) {
 		core.WriteError(w, 500, "gagal membuat akun")
 		return
 	}
 	a.Store.Audit(ss.User, "account_create", in.Name+" ("+in.Role+")", a.ClientIP(r), a.Now())
-	core.WriteJSON(w, 200, map[string]any{"name": in.Name, "role": in.Role, "temp_password": temp, "note": "Kata sandi sementara tampil sekali. Pemilik wajib menggantinya saat masuk pertama dan dapat menyalakan 2FA sendiri."})
+	out := map[string]any{"name": in.Name, "role": in.Role, "note": "Pemilik wajib mengganti kata sandi saat masuk pertama dan dapat menyalakan 2FA sendiri."}
+	if !given {
+		out["temp_password"] = temp // hanya yang dibuat panel yang ditampilkan; yang Anda ketik tidak dikirim balik
+	}
+	core.WriteJSON(w, 200, out)
 }
 
 // accountTarget memeriksa admin, nama, dan bahwa target bukan diri sendiri.
@@ -150,16 +158,28 @@ func AccountReset(a *core.App, w http.ResponseWriter, r *http.Request, ss *store
 	if !ok {
 		return
 	}
+	var in struct{ Password string }
+	if !core.DecodeJSON(w, r, &in) {
+		return
+	}
+	temp, given, bad := chosenPassword(in.Password, u.Name)
+	if bad != "" {
+		core.WriteError(w, 400, bad)
+		return
+	}
 	if !a.RequireStepUp(w, ss) {
 		return
 	}
-	temp := crypto.RandToken()[:20]
 	if err := a.Store.SetTempPassword(u.ID, crypto.HashPassword(temp)); err != nil {
 		core.WriteError(w, 500, "gagal menyimpan")
 		return
 	}
 	a.Store.Audit(ss.User, "account_reset", u.Name+" (sesi, perangkat tepercaya, token dicabut)", a.ClientIP(r), a.Now())
-	core.WriteJSON(w, 200, map[string]any{"name": u.Name, "temp_password": temp, "note": "Tampil sekali. Pemilik wajib menggantinya saat masuk."})
+	out := map[string]any{"name": u.Name, "note": "Pemilik wajib menggantinya saat masuk."}
+	if !given {
+		out["temp_password"] = temp
+	}
+	core.WriteJSON(w, 200, out)
 }
 
 func Account2FAOff(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session) {
@@ -215,4 +235,15 @@ func Users(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sessio
 		return
 	}
 	core.WriteJSON(w, 200, map[string]any{"users": a.Store.UserRows(), "howto": "Tambah atau ubah peran lewat terminal Mac mini: panel user add <nama> --role viewer; panel user role <nama> admin|viewer"})
+}
+
+// chosenPassword: kata sandi sementara pilihan admin (12-256 karakter, bukan nama akun) atau yang dibuat panel bila kosong.
+func chosenPassword(in, name string) (pw string, given bool, bad string) {
+	if in == "" {
+		return crypto.RandToken()[:20], false, ""
+	}
+	if len(in) < 12 || len(in) > 256 || strings.EqualFold(in, name) {
+		return "", true, "kata sandi minimal 12 karakter dan tidak sama dengan nama akun"
+	}
+	return in, true, ""
 }
