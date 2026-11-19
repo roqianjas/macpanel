@@ -58,12 +58,11 @@ export function setLogo(l: Logo | null) {
 export const useLogo = () => useSyncExternalStore(subscribe, currentLogo);
 
 /** Gambar unggahan: dipotong persegi dari tengah, diperkecil 128 px, disimpan sebagai PNG baru (metadata asli dan isi aktif tidak ikut). */
-export async function fileToLogo(file: File): Promise<Logo> {
+export async function fileToLogo(file: File, S = 128): Promise<Logo> {
   if (!IMG_TYPES.includes(file.type)) throw new Error("Format harus PNG, JPG, atau WebP. SVG ditolak karena bisa memuat skrip.");
   if (file.size > MAX_IMG_BYTES) throw new Error("Ukuran gambar maksimal 2 MB.");
   const bmp = await createImageBitmap(file).catch(() => null);
   if (!bmp) throw new Error("Gambar tidak bisa dibaca.");
-  const S = 128;
   const c = document.createElement("canvas");
   c.width = c.height = S;
   const g = c.getContext("2d");

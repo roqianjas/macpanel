@@ -12,11 +12,13 @@ type AccountRow struct {
 	MustChange bool   `json:"must_change"`
 	Created    int64  `json:"created"`
 	Self       bool   `json:"self"`
+	Display    string `json:"display_name"`
+	Avatar     string `json:"avatar"`
 }
 
 func (s *Store) AccountRows(self string) []AccountRow {
 	out := []AccountRow{}
-	rows, err := s.DB.Query("SELECT name,role,disabled,totp_on,must_change,created FROM users ORDER BY name")
+	rows, err := s.DB.Query("SELECT name,role,disabled,totp_on,must_change,created,display_name,avatar FROM users ORDER BY name")
 	if err != nil {
 		return out
 	}
@@ -24,7 +26,7 @@ func (s *Store) AccountRows(self string) []AccountRow {
 	for rows.Next() {
 		var r AccountRow
 		var d, t, m int
-		if rows.Scan(&r.Name, &r.Role, &d, &t, &m, &r.Created) != nil {
+		if rows.Scan(&r.Name, &r.Role, &d, &t, &m, &r.Created, &r.Display, &r.Avatar) != nil {
 			continue
 		}
 		r.Disabled, r.TOTPOn, r.MustChange, r.Self = d == 1, t == 1, m == 1, r.Name == self
@@ -218,4 +220,19 @@ func (s *Store) RenameUser(oldName, newName string) bool {
 		return false
 	}
 	return tx.Commit() == nil
+}
+
+// Profile: nama tampilan dan avatar (kosong = awalan nama).
+func (s *Store) Profile(name string) (display, avatar string) {
+	_ = s.DB.QueryRow("SELECT display_name,avatar FROM users WHERE name=?", name).Scan(&display, &avatar)
+	return
+}
+
+func (s *Store) SetProfile(name, display, avatar string) bool {
+	r, err := s.DB.Exec("UPDATE users SET display_name=?, avatar=? WHERE name=?", display, avatar, name)
+	if err != nil {
+		return false
+	}
+	n, _ := r.RowsAffected()
+	return n == 1
 }

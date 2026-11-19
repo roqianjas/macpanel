@@ -2,6 +2,7 @@ import { useState } from "react";
 import { errText, fmtTime, get, post } from "../api";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { SecretDialog } from "./DbUsers";
+import { Avatar } from "../features/profile/avatar";
 
 interface Acc {
   name: string;
@@ -11,6 +12,8 @@ interface Acc {
   must_change: boolean;
   created: number;
   self: boolean;
+  display_name: string;
+  avatar: string;
 }
 type Secret = { title: string; label: string; value: string; note?: string } | null;
 
@@ -37,10 +40,12 @@ export default function Users() {
         <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && list.length === 0} emptyText="Belum ada pengguna." onRetry={q.reload}>
           <ul className="list">
             {list.map((u) => (
-              <li key={u.name} className="list-row">
+              <li key={u.name} className="list-row user-row">
+                <Avatar name={u.name} display={u.display_name} avatar={u.avatar} size={44} />
                 <div>
+                  {u.display_name && <p className="profile-name">{u.display_name}</p>}
                   <p className="mono">
-                    {u.name}
+                    @{u.name}
                     {u.self ? " (Anda)" : ""}
                   </p>
                   <p className="small muted">Dibuat {fmtTime(u.created)}</p>
@@ -52,8 +57,8 @@ export default function Users() {
                   </div>
                 </div>
                 {u.self ? (
-                  <a className="btn" href="#/pengaturan">
-                    Ubah kata sandi dan 2FA<span className="sr"> akun Anda di Pengaturan</span>
+                  <a className="btn" href="#/profil">
+                    Profil saya<span className="sr"> (nama, avatar, kata sandi, 2FA)</span>
                   </a>
                 ) : (
                   <button className="btn" onClick={() => setSel(u)}>
@@ -180,6 +185,7 @@ function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; on
             {acc.disabled ? "Aktifkan akun" : "Nonaktifkan akun (keluarkan semua sesi)"}
           </button>
           <ResetPassword busy={busy} run={run} base={base} acc={acc} onChanged={onChanged} />
+          {!acc.totp_on && <p className="small muted">2FA mati. Hanya pemilik akun yang bisa menyalakannya (butuh aplikasi autentikator di ponselnya) lewat Profil saya.</p>}
           {acc.totp_on && (
             <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/2fa-off`, {}); onChanged(`2FA ${acc.name} dimatikan; ia dapat menyalakannya lagi di Pengaturan.`); })}>
               Matikan 2FA (mis. ponsel hilang)

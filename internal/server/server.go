@@ -132,6 +132,7 @@ func Routes() []core.Route {
 		{Method: "GET", Path: "/api/redis/scan", Level: core.Full, H: redis.RedisScan},
 		{Method: "POST", Path: "/api/redis/get", Level: core.Full, H: redis.RedisGet},
 		{Method: "POST", Path: "/api/redis/del", Level: core.Full, H: redis.RedisDel},
+		{Method: "POST", Path: "/api/me/profile", Level: core.Full, H: auth.MyProfile},
 		{Method: "POST", Path: "/api/me/password", Level: core.Full, H: auth.MyPassword},
 		{Method: "GET", Path: "/api/me/devices", Level: core.Full, H: auth.Devices},
 		{Method: "GET", Path: "/api/docs", Level: core.Full, H: docs.Docs},

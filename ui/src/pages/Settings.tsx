@@ -2,7 +2,6 @@ import { useState } from "react";
 import { errText, fmtTime, get, post } from "../api";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { hasDevicePref, setDevicePref, setPublicSettings, useServerTheme, useThemePref, usePanelName, type Pref } from "../settings";
-import Account from "./Account";
 import AppearanceCard from "../features/appearance/AppearanceCard";
 import NotifyCard from "../features/notify/NotifyCard";
 import ThresholdsCard from "../features/hardware/ThresholdsCard";
@@ -423,8 +422,7 @@ export default function Settings() {
       <AppearanceCard />
       <NotifyCard />
       <ThresholdsCard />
-      <Account />
-      <TwoFactor />
+      <Card title="Akun saya"><p className="small muted">Nama, avatar, kata sandi, dan 2FA ada di <a href="#/profil">Profil saya</a>.</p></Card>
       <Tokens />
     </>
   );

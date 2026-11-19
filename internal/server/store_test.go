@@ -1451,3 +1451,29 @@ func TestAccountCreateWithChosenPassword(t *testing.T) {
 		t.Fatalf("tanpa sandi harus dibuat otomatis: %d %s", c, b)
 	}
 }
+
+func TestMyProfile(t *testing.T) {
+	o := testenv.NewP3Env(t)
+	png := "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+	ok := []string{`{"display_name":"Roki Anjas","avatar":"icon:rocket"}`, `{"display_name":"","avatar":""}`, `{"display_name":"R","avatar":"` + png + `"}`}
+	for _, b := range ok {
+		if c, r := o.Post("/api/me/profile", b); c != 200 {
+			t.Errorf("harus 200: %.80s -> %d %s", b, c, r)
+		}
+	}
+	bad := []string{
+		`{"display_name":"<script>","avatar":""}`, `{"display_name":"a\nb","avatar":""}`, `{"display_name":"` + strings.Repeat("x", 41) + `","avatar":""}`,
+		`{"display_name":"","avatar":"javascript:alert(1)"}`, `{"display_name":"","avatar":"https://evil/x.png"}`, `{"display_name":"","avatar":"data:image/svg+xml;base64,PHN2Zz4="}`,
+		`{"display_name":"","avatar":"data:image/png;base64,AAAA\" onerror=\"x"}`, `{"display_name":"","avatar":"icon:../x"}`, `{"display_name":"","avatar":"data:image/png;base64,` + strings.Repeat("A", 60001) + `"}`, `{"display_name":"","avatar":"","x":1}`,
+	}
+	for _, b := range bad {
+		if c, _ := o.Post("/api/me/profile", b); c != 400 && c != 413 {
+			t.Errorf("harus ditolak: %.90s -> %d", b, c)
+		}
+	}
+	o.Post("/api/me/profile", `{"display_name":"Roki Anjas","avatar":"icon:rocket"}`)
+	c, b := o.As(o.Cookie, o.Csrf, "GET", "/api/me", "")
+	if c != 200 || !strings.Contains(b, `"display_name":"Roki Anjas"`) || !strings.Contains(b, `"avatar":"icon:rocket"`) {
+		t.Fatalf("/api/me: %d %s", c, b)
+	}
+}

@@ -1428,6 +1428,18 @@
         "x-token": false
       }
     },
+    "/api/me/profile": {
+      "post": {
+        "operationId": "post_api_me_profile",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
     "/api/me/tokens": {
       "get": {
         "operationId": "get_api_me_tokens",

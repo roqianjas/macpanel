@@ -174,7 +174,8 @@ func StepUp(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sessi
 }
 
 func Me(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session) {
-	core.WriteJSON(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.Now().Unix(), "role": ss.Role, "via": ss.Via, "scope": ss.Scope, "must_change": ss.MustChange})
+	dn, av := a.Store.Profile(ss.User)
+	core.WriteJSON(w, 200, map[string]any{"user": ss.User, "csrf": ss.CSRF, "stepup": ss.StepUp > a.Now().Unix(), "role": ss.Role, "via": ss.Via, "scope": ss.Scope, "must_change": ss.MustChange, "display_name": dn, "avatar": av})
 }
 
 func Audit(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session) {

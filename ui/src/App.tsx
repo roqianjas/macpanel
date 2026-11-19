@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BookOpen, Bell, Boxes, Container, Database, DatabaseBackup, Download, Globe, History, LayoutDashboard, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
+import { Activity, BookOpen, Bell, Boxes, Container, Database, DatabaseBackup, Download, Globe, History, LayoutDashboard, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Server, Settings as SettingsIcon, Users as UsersIcon, ShieldCheck, Sun, Timer, X, type LucideIcon } from "lucide-react";
 import { UNAUTH, api, errText, get, post, setCsrf, setRole, setStepUpHandler } from "./api";
 import { useAlerts } from "./data";
 import { Alert, Chip, Field, Modal, statusTone } from "./ui";
@@ -7,6 +7,9 @@ import ErrorBoundary from "./ErrorBoundary";
 import { setDevicePref, useAccent, usePanelName, useSkin, useThemePref } from "./settings";
 import { BrandMark, useFavicon } from "./features/appearance/logo";
 import GlobalSearch from "./features/search/Search";
+import ProfileMenu from "./features/profile/ProfileMenu";
+import { setMe } from "./features/profile/avatar";
+import Profile from "./pages/Profile";
 import Settings, { TwoFactor } from "./pages/Settings";
 import Users from "./pages/Users";
 import Account from "./pages/Account";
@@ -187,14 +190,14 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
   { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "docker", label: "Docker", icon: Container }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
   { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "pengaturan", label: "Pengaturan", icon: SettingsIcon }, { id: "pengguna", label: "Pengguna", icon: UsersIcon }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
 ];
-const ALL = GROUPS.flatMap((g) => g.items);
+const ALL = [...GROUPS.flatMap((g) => g.items), { id: "profil" } as { id: string }];
 
 function parseHash(): { page: string; sub: string } {
   const [page, sub = ""] = location.hash.replace(/^#\/?/, "").split("/");
   return { page: ALL.some((n) => n.id === page) ? page : "ringkasan", sub: decodeURIComponent(sub) };
 }
 
-function Shell({ user, role, onLogout }: { user: string; role: string; onLogout: () => void }) {
+function Shell({ role, onLogout }: { user: string; role: string; onLogout: () => void }) {
   const panelName = usePanelName();
   const look = `${useSkin()}|${useAccent()}|${useThemePref()}`;
   useFavicon(look);
@@ -234,6 +237,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
       case "aktivitas": return <ActivityPage />;
       case "pengaturan": return <Settings />;
       case "pengguna": return <Users />;
+      case "profil": return <Profile />;
       case "dokumen": return <Docs sub={route.sub} />;
       default: return <Overview />;
     }
@@ -284,9 +288,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
             <Menu size={20} aria-hidden="true" />
           </button>
           <GlobalSearch role={role} />
-          <span className="top-info">
-            Masuk sebagai <strong className="mono">{user}</strong> {role === "viewer" && <Chip tone="info">Hanya-baca</Chip>}
-          </span>
+          <span className="top-info" />
           <div className="top-actions">
             {nAlerts > 0 && (
               <a className={`btn ${nBad ? "btn-danger-ghost" : ""}`} href="#/ringkasan" aria-label={`${nAlerts} peringatan${nBad ? `, ${nBad} penting` : ""}. Buka Ringkasan`}>
@@ -298,10 +300,7 @@ function Shell({ user, role, onLogout }: { user: string; role: string; onLogout:
               <ThemeIcon size={18} aria-hidden="true" />
               <span className="btn-text">{themeLabel}</span>
             </button>
-            <button className="btn" onClick={onLogout} aria-label="Keluar">
-              <LogOut size={18} aria-hidden="true" />
-              <span className="btn-text">Keluar</span>
-            </button>
+            <ProfileMenu role={role} onLogout={onLogout} />
           </div>
         </header>
         <main id="main" className="main" tabIndex={-1}>
@@ -340,8 +339,8 @@ export default function App() {
     setStepUpHandler(() => new Promise<boolean>((resolve) => setStepUp(() => (ok: boolean) => { setStepUp(null); resolve(ok); })));
     const un = () => setUser(null);
     addEventListener(UNAUTH, un);
-    get<{ user: string; csrf: string; role?: string; must_change?: boolean }>("/api/me")
-      .then((r) => { setMustChange(!!r.must_change); setCsrf(r.csrf); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); setUser(r.user); })
+    get<{ user: string; csrf: string; role?: string; must_change?: boolean; display_name?: string; avatar?: string }>("/api/me")
+      .then((r) => { setMe({ user: r.user, display_name: r.display_name ?? "", avatar: r.avatar ?? "" }); setMustChange(!!r.must_change); setCsrf(r.csrf); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); setUser(r.user); })
       .catch(() => setUser(null));
     return () => removeEventListener(UNAUTH, un);
   }, []);
