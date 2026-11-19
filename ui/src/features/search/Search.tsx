@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { BookOpen, Compass, Cog, Database, Globe, Search as SearchIcon, Server, CornerDownLeft } from "lucide-react";
 import { get } from "../../api";
 import { Modal, Skeleton } from "../../ui";
+import { useT } from "../../i18n";
 import { fromDatabases, fromDocs, fromServices, fromSites, fromTasks, GROUP_ORDER, PAGES, rank, type Group, type Item } from "./model";
 
 // Ikon per jenis hasil, dipilih sesuai isinya: Compass = halaman, Globe = situs, Server = layanan, Database, Cog = tugas, BookOpen = dokumen.
@@ -43,12 +44,13 @@ export default function GlobalSearch({ role }: { role: string }) {
     addEventListener("keydown", k);
     return () => removeEventListener("keydown", k);
   }, []);
+  const t = useT();
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
     <>
-      <button className="top-search" onClick={() => setOpen(true)} aria-label="Cari (pintasan: Ctrl K atau /)" aria-haspopup="dialog">
+      <button className="top-search" onClick={() => setOpen(true)} aria-label={t("common.search.aria")} aria-haspopup="dialog">
         <SearchIcon size={18} aria-hidden="true" />
-        <span className="top-search-text">Cari halaman, situs, layanan…</span>
+        <span className="top-search-text">{t("common.search.short")}</span>
         <kbd className="kbd" aria-hidden="true">{mac ? "⌘K" : "Ctrl K"}</kbd>
       </button>
       {open && <SearchDialog role={role} onClose={() => setOpen(false)} />}

@@ -236,3 +236,18 @@ func (s *Store) SetProfile(name, display, avatar string) bool {
 	n, _ := r.RowsAffected()
 	return n == 1
 }
+
+// Lang: kode bahasa pilihan akun ("" = ikut browser). Divalidasi di handler terhadap daftar kode yang dikenal.
+func (s *Store) Lang(name string) (l string) {
+	_ = s.DB.QueryRow("SELECT lang FROM users WHERE name=?", name).Scan(&l)
+	return
+}
+
+func (s *Store) SetLang(name, lang string) bool {
+	r, err := s.DB.Exec("UPDATE users SET lang=? WHERE name=?", lang, name)
+	if err != nil {
+		return false
+	}
+	n, _ := r.RowsAffected()
+	return n == 1
+}

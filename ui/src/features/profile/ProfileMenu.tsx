@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
 import { Avatar, useMe } from "./avatar";
+import LanguageSelect from "./LanguageSelect";
+import { useT } from "../../i18n";
 
 /** Profil di pojok kanan atas: avatar + nama, menu berisi Profil saya, Pengaturan, dan Keluar. */
 export default function ProfileMenu({ role, onLogout }: { role: string; onLogout: () => void }) {
   const me = useMe();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
@@ -27,23 +30,24 @@ export default function ProfileMenu({ role, onLogout }: { role: string; onLogout
   };
   return (
     <div className="pmenu" ref={box}>
-      <button ref={btn} className="pmenu-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} aria-label={`Menu profil ${shown}`}>
+      <button ref={btn} className="pmenu-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} aria-label={t("profile.menu.aria", { name: shown })}>
         <Avatar name={me.user} display={me.display_name} avatar={me.avatar} size={32} />
         <span className="pmenu-name">{shown}</span>
         <ChevronDown size={16} aria-hidden="true" className="pmenu-chev" />
       </button>
       {open && (
-        <div className="pmenu-pop" role="menu" aria-label="Profil" onKeyDown={arrows}>
+        <div className="pmenu-pop" role="menu" aria-label={t("profile.menu")} onKeyDown={arrows}>
           <div className="pmenu-head">
             <Avatar name={me.user} display={me.display_name} avatar={me.avatar} size={40} />
             <div>
               <p className="pmenu-title">{shown}</p>
-              <p className="small muted mono">@{me.user} · {role === "admin" ? "Admin" : "Hanya-baca"}</p>
+              <p className="small muted mono">@{me.user} · {role === "admin" ? t("role.admin") : t("role.viewer")}</p>
             </div>
           </div>
-          <a role="menuitem" className="pmenu-item" href="#/profil" onClick={() => setOpen(false)}><UserRound size={18} aria-hidden="true" /> Profil saya</a>
-          <a role="menuitem" className="pmenu-item" href="#/pengaturan" onClick={() => setOpen(false)}><Settings size={18} aria-hidden="true" /> Pengaturan</a>
-          <button role="menuitem" className="pmenu-item" onClick={() => { setOpen(false); onLogout(); }}><LogOut size={18} aria-hidden="true" /> Keluar</button>
+          <div className="pmenu-lang"><LanguageSelect /></div>
+          <a role="menuitem" className="pmenu-item" href="#/profil" onClick={() => setOpen(false)}><UserRound size={18} aria-hidden="true" /> {t("profile.mine")}</a>
+          <a role="menuitem" className="pmenu-item" href="#/pengaturan" onClick={() => setOpen(false)}><Settings size={18} aria-hidden="true" /> {t("profile.settings")}</a>
+          <button role="menuitem" className="pmenu-item" onClick={() => { setOpen(false); onLogout(); }}><LogOut size={18} aria-hidden="true" /> {t("common.logout")}</button>
         </div>
       )}
     </div>

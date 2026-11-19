@@ -122,6 +122,7 @@ export type PostPath =
   | "/api/me/2fa/enable"
   | "/api/me/2fa/setup"
   | "/api/me/devices/revoke"
+  | "/api/me/lang"
   | "/api/me/password"
   | "/api/me/profile"
   | "/api/me/tokens"
@@ -195,6 +196,7 @@ export const TOKEN_BLOCKED: readonly string[] = [
   "POST /api/me/2fa/setup",
   "GET /api/me/devices",
   "POST /api/me/devices/revoke",
+  "POST /api/me/lang",
   "POST /api/me/password",
   "POST /api/me/profile",
   "GET /api/me/tokens",

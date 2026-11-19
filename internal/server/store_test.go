@@ -1477,3 +1477,21 @@ func TestMyProfile(t *testing.T) {
 		t.Fatalf("/api/me: %d %s", c, b)
 	}
 }
+
+func TestMyLang(t *testing.T) {
+	o := testenv.NewP3Env(t)
+	for _, ok := range []string{`{"lang":"en"}`, `{"lang":"pt-br"}`, `{"lang":""}`} {
+		if c, _ := o.Post("/api/me/lang", ok); c != 200 {
+			t.Errorf("harus 200: %s -> %d", ok, c)
+		}
+	}
+	for _, bad := range []string{`{"lang":"EN"}`, `{"lang":"en;drop"}`, `{"lang":"../x"}`, `{"lang":"abcdefgh"}`, `{"x":1}`} {
+		if c, _ := o.Post("/api/me/lang", bad); c != 400 {
+			t.Errorf("harus 400: %s -> %d", bad, c)
+		}
+	}
+	o.Post("/api/me/lang", `{"lang":"en"}`)
+	if _, b := o.As(o.Cookie, o.Csrf, "GET", "/api/me", ""); !strings.Contains(b, `"lang":"en"`) {
+		t.Fatalf("/api/me: %s", b)
+	}
+}

@@ -6,7 +6,9 @@ import { Skeleton, Alert, Chip, Field, Modal, statusTone } from "./ui";
 import ErrorBoundary from "./ErrorBoundary";
 import { setDevicePref, useAccent, usePanelName, useSkin, useThemePref } from "./settings";
 import { BrandMark, useFavicon } from "./features/appearance/logo";
+import { isLang, setLang, useT, type Key } from "./i18n";
 import GlobalSearch from "./features/search/Search";
+import LanguageSelect from "./features/profile/LanguageSelect";
 import ProfileMenu from "./features/profile/ProfileMenu";
 import { setMe } from "./features/profile/avatar";
 import Profile from "./pages/Profile";
@@ -80,6 +82,7 @@ function Login({ onDone }: { onDone: (user: string) => void }) {
   };
   return (
     <main className="login" id="main">
+      <div className="login-lang"><LanguageSelect signedIn={false} compact /></div>
       <div className="login-card card">
         <div className="brand">
           <span className="brand-ic">
@@ -182,13 +185,13 @@ function JobTray() {
 
 interface NavItem {
   id: string;
-  label: string;
+  tk: Key;
   icon: LucideIcon;
 }
-const GROUPS: { label: string; items: NavItem[] }[] = [
-  { label: "Gambaran", items: [{ id: "ringkasan", label: "Ringkasan", icon: LayoutDashboard }, { id: "pantau", label: "Pantau", icon: Activity }] },
-  { label: "Kelola", items: [{ id: "website", label: "Website", icon: Globe }, { id: "aplikasi", label: "Aplikasi", icon: Server }, { id: "database", label: "Database", icon: Database }, { id: "runtime", label: "PHP dan runtime", icon: Boxes }, { id: "docker", label: "Docker", icon: Container }, { id: "tugas", label: "Worker dan cron", icon: Timer }] },
-  { label: "Sistem", items: [{ id: "sistem", label: "Sistem", icon: ShieldCheck }, { id: "backup", label: "Backup", icon: DatabaseBackup }, { id: "pembaruan", label: "Pembaruan", icon: Download }, { id: "aktivitas", label: "Aktivitas", icon: History }, { id: "pengaturan", label: "Pengaturan", icon: SettingsIcon }, { id: "pengguna", label: "Pengguna", icon: UsersIcon }, { id: "dokumen", label: "Dokumentasi", icon: BookOpen }] },
+const GROUPS: { tk: Key; items: NavItem[] }[] = [
+  { tk: "nav.overview.group", items: [{ id: "ringkasan", tk: "nav.overview", icon: LayoutDashboard }, { id: "pantau", tk: "nav.monitor", icon: Activity }] },
+  { tk: "nav.manage.group", items: [{ id: "website", tk: "nav.websites", icon: Globe }, { id: "aplikasi", tk: "nav.apps", icon: Server }, { id: "database", tk: "nav.databases", icon: Database }, { id: "runtime", tk: "nav.runtimes", icon: Boxes }, { id: "docker", tk: "nav.docker", icon: Container }, { id: "tugas", tk: "nav.tasks", icon: Timer }] },
+  { tk: "nav.system.group", items: [{ id: "sistem", tk: "nav.system", icon: ShieldCheck }, { id: "backup", tk: "nav.backup", icon: DatabaseBackup }, { id: "pembaruan", tk: "nav.updates", icon: Download }, { id: "aktivitas", tk: "nav.activity", icon: History }, { id: "pengaturan", tk: "nav.settings", icon: SettingsIcon }, { id: "pengguna", tk: "nav.users", icon: UsersIcon }, { id: "dokumen", tk: "nav.docs", icon: BookOpen }] },
 ];
 const ALL = [...GROUPS.flatMap((g) => g.items), { id: "profil" } as { id: string }];
 
@@ -198,6 +201,7 @@ function parseHash(): { page: string; sub: string } {
 }
 
 function Shell({ role, onLogout }: { user: string; role: string; onLogout: () => void }) {
+  const t = useT();
   const panelName = usePanelName();
   const look = `${useSkin()}|${useAccent()}|${useThemePref()}`;
   useFavicon(look);
@@ -221,7 +225,7 @@ function Shell({ role, onLogout }: { user: string; role: string; onLogout: () =>
   useEffect(() => localStorage.setItem("panel-collapsed", collapsed ? "1" : "0"), [collapsed]);
 
   const ThemeIcon = theme.pref === "dark" ? Moon : theme.pref === "light" ? Sun : Monitor;
-  const themeLabel = theme.pref === "dark" ? "Gelap" : theme.pref === "light" ? "Terang" : "Ikuti sistem";
+  const themeLabel = t(theme.pref === "dark" ? "theme.dark" : theme.pref === "light" ? "theme.light" : "theme.system");
   const page = (() => {
     switch (route.page) {
       case "pantau": return <Monitoring />;
@@ -246,9 +250,9 @@ function Shell({ role, onLogout }: { user: string; role: string; onLogout: () =>
   return (
     <div className={`app ${collapsed ? "is-collapsed" : ""} ${sheet ? "sheet-open" : ""}`}>
       <a href="#main" className="skip" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>
-        Lompat ke konten
+        {t("common.skip")}
       </a>
-      <nav className="side" aria-label="Navigasi utama">
+      <nav className="side" aria-label={t("common.nav")}>
         <div className="side-top">
           <span className="brand">
             <span className="brand-ic">
@@ -256,19 +260,19 @@ function Shell({ role, onLogout }: { user: string; role: string; onLogout: () =>
             </span>
             <span className="brand-text">{panelName}</span>
           </span>
-          <button className="btn btn-ghost btn-icon sheet-close" onClick={() => setSheet(false)} aria-label="Tutup menu">
+          <button className="btn btn-ghost btn-icon sheet-close" onClick={() => setSheet(false)} aria-label={t("common.menu.close")}>
             <X size={18} aria-hidden="true" />
           </button>
         </div>
         {GROUPS.map((g) => (
-          <div key={g.label} className="side-group">
-            <p className="side-label">{g.label}</p>
+          <div key={g.tk} className="side-group">
+            <p className="side-label">{t(g.tk)}</p>
             <ul>
               {g.items.filter((n) => n.id !== "pengguna" || role === "admin").map((n) => (
                 <li key={n.id}>
                   <a href={`#/${n.id}`} className={route.page === n.id ? "on" : ""} aria-current={route.page === n.id ? "page" : undefined}>
                     <n.icon size={20} aria-hidden="true" />
-                    <span className="side-text">{n.label}</span>
+                    <span className="side-text">{t(n.tk)}</span>
                   </a>
                 </li>
               ))}
@@ -276,27 +280,27 @@ function Shell({ role, onLogout }: { user: string; role: string; onLogout: () =>
           </div>
         ))}
         <div className="side-bottom">
-          <button className="side-collapse" onClick={() => setCollapsed((c) => !c)} aria-expanded={!collapsed} aria-label={collapsed ? "Perlebar menu" : "Ciutkan menu"}>
+          <button className="side-collapse" onClick={() => setCollapsed((c) => !c)} aria-expanded={!collapsed} aria-label={collapsed ? t("common.expand") : t("common.collapse.aria")}>
             {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
-            <span className="side-text">Ciutkan</span>
+            <span className="side-text">{t("common.collapse")}</span>
           </button>
         </div>
       </nav>
       <div className="col">
         <header className="top">
-          <button className="btn btn-ghost btn-icon menu-btn" onClick={() => setSheet(true)} aria-label="Buka menu" aria-expanded={sheet}>
+          <button className="btn btn-ghost btn-icon menu-btn" onClick={() => setSheet(true)} aria-label={t("common.menu.open")} aria-expanded={sheet}>
             <Menu size={20} aria-hidden="true" />
           </button>
           <GlobalSearch role={role} />
           <span className="top-info" />
           <div className="top-actions">
             {nAlerts > 0 && (
-              <a className={`btn ${nBad ? "btn-danger-ghost" : ""}`} href="#/ringkasan" aria-label={`${nAlerts} peringatan${nBad ? `, ${nBad} penting` : ""}. Buka Ringkasan`}>
+              <a className={`btn ${nBad ? "btn-danger-ghost" : ""}`} href="#/ringkasan" aria-label={t("common.alerts", { n: nAlerts })}>
                 <Bell size={18} aria-hidden="true" />
-                <span className="btn-text">{nAlerts} peringatan</span>
+                <span className="btn-text">{t("common.alerts", { n: nAlerts })}</span>
               </a>
             )}
-            <button className="btn" onClick={theme.next} aria-label={`Tema: ${themeLabel}. Klik untuk mengganti`}>
+            <button className="btn" onClick={theme.next} aria-label={t("theme.aria", { name: themeLabel })}>
               <ThemeIcon size={18} aria-hidden="true" />
               <span className="btn-text">{themeLabel}</span>
             </button>
@@ -307,7 +311,7 @@ function Shell({ role, onLogout }: { user: string; role: string; onLogout: () =>
           <ErrorBoundary resetKey={`${route.page}/${route.sub ?? ""}`}>{page}</ErrorBoundary>
         </main>
       </div>
-      <button className="scrim-side" aria-label="Tutup menu" tabIndex={-1} onClick={() => setSheet(false)} />
+      <button className="scrim-side" aria-label={t("common.menu.close")} tabIndex={-1} onClick={() => setSheet(false)} />
       <JobTray />
     </div>
   );
@@ -339,8 +343,8 @@ export default function App() {
     setStepUpHandler(() => new Promise<boolean>((resolve) => setStepUp(() => (ok: boolean) => { setStepUp(null); resolve(ok); })));
     const un = () => setUser(null);
     addEventListener(UNAUTH, un);
-    get<{ user: string; csrf: string; role?: string; must_change?: boolean; display_name?: string; avatar?: string }>("/api/me")
-      .then((r) => { setMe({ user: r.user, display_name: r.display_name ?? "", avatar: r.avatar ?? "" }); setMustChange(!!r.must_change); setCsrf(r.csrf); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); setUser(r.user); })
+    get<{ user: string; csrf: string; role?: string; must_change?: boolean; display_name?: string; avatar?: string; lang?: string }>("/api/me")
+      .then((r) => { if (r.lang && isLang(r.lang)) setLang(r.lang); setMe({ user: r.user, display_name: r.display_name ?? "", avatar: r.avatar ?? "" }); setMustChange(!!r.must_change); setCsrf(r.csrf); setRole(r.role ?? "admin"); setRoleState(r.role ?? "admin"); setUser(r.user); })
       .catch(() => setUser(null));
     return () => removeEventListener(UNAUTH, un);
   }, []);

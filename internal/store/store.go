@@ -103,6 +103,7 @@ func OpenStore(path string) (*Store, error) {
 		"ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'",
 		"ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE users ADD COLUMN lang TEXT NOT NULL DEFAULT ''",
 	} {
 		if _, err := db.Exec(m); err != nil && !strings.Contains(err.Error(), "duplicate column") {
 			return nil, err

@@ -3,11 +3,14 @@ import { Check, ImageUp, UserRound } from "lucide-react";
 import { errText, post } from "../../api";
 import { Alert, Card, Field } from "../../ui";
 import { fileToLogo } from "../appearance/logo";
+import LanguageSelect from "./LanguageSelect";
+import { useT } from "../../i18n";
 import { Avatar, AVATARS, setMe, useMe } from "./avatar";
 
 // Ikon: UserRound = profil, ImageUp = unggah foto, Check = pilihan aktif.
 export default function ProfileCard() {
   const me = useMe();
+  const t = useT();
   const [name, setName] = useState(me.display_name);
   const [avatar, setAvatar] = useState(me.avatar);
   const [busy, setBusy] = useState(false);
@@ -71,6 +74,8 @@ export default function ProfileCard() {
           </div>
           <p className="small muted">Foto (PNG, JPG, WebP, maks 2 MB) dipotong persegi dan dikecilkan ke 96 px. Disimpan di server untuk akun ini, jadi tampil di semua perangkat.</p>
         </div>
+        <LanguageSelect />
+        <p className="small muted">{t("lang.hint")}</p>
         {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
         <div className="row-end">
           <button className="btn btn-primary" disabled={busy || !dirty}>{busy ? "Menyimpan…" : "Simpan profil"}</button>

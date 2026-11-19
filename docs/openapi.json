@@ -1416,6 +1416,18 @@
         "x-token": false
       }
     },
+    "/api/me/lang": {
+      "post": {
+        "operationId": "post_api_me_lang",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": false
+      }
+    },
     "/api/me/password": {
       "post": {
         "operationId": "post_api_me_password",
