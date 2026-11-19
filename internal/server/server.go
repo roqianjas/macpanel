@@ -63,7 +63,7 @@ func NewApp(st *store.Store, key []byte, cfg core.Config) *core.App {
 		root = filepath.Join(home, "MacPanel")
 	}
 	return &core.App{Store: st, Key: key, Cfg: cfg, Dummy: crypto.HashPassword("dummy-untuk-menyamakan-waktu"), Now: time.Now,
-		LabBin: "/opt/homebrew/bin/lab", Home: home, Root: root, Wwwroot: filepath.Join(root, "wwwroot"), SitesDir: filepath.Join(root, "server/nginx/sites"), TLD: "lab", ProbeAddr: core.EnvOr("MACPANEL_PROBE_ADDR", "127.0.0.1:443"), Timeout: 120 * time.Second, LongTimeout: 30 * time.Minute,
+		LabBin: "/opt/homebrew/bin/lab", Home: home, Root: root, Wwwroot: filepath.Join(root, "wwwroot"), SitesDir: filepath.Join(root, "server/nginx/sites"), ApacheDir: filepath.Join(root, "server/apache/sites"), TLD: "lab", ProbeAddr: core.EnvOr("MACPANEL_PROBE_ADDR", "127.0.0.1:443"), Timeout: 120 * time.Second, LongTimeout: 30 * time.Minute,
 		NginxDir: filepath.Join(root, "server/nginx"), CertDir: "/opt/homebrew/etc/nginx/certs", LogDir: "/opt/homebrew/var/log/nginx/sites", ErrLog: "/opt/homebrew/var/log/nginx/error.log"}
 }
 

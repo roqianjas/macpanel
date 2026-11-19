@@ -53,5 +53,5 @@ def site(a):
     if a.act == "cert":
         cert(a.name, a.aliases)
         return
-    cmd = [s, a.name, a.target] + (["--php", a.php] if a.php else []) + (["--wordpress"] if getattr(a, "wordpress", False) else [])
+    cmd = [s, a.name, a.target] + (["--php", a.php] if a.php else []) + (["--wordpress"] if getattr(a, "wordpress", False) else []) + (["--apache"] if getattr(a, "apache", False) else [])
     sys.exit(stream(cmd))

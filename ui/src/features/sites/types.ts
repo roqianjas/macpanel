@@ -32,7 +32,7 @@ export interface Model {
   allow_ips?: string[];
 }
 
-export const MODE_LABEL: Record<string, string> = { php: "PHP", proxy: "Proxy", statis: "Statis", kustom: "Kustom" };
+export const MODE_LABEL: Record<string, string> = { php: "PHP", proxy: "Proxy", statis: "Statis", apache: "Apache", kustom: "Kustom" };
 export const PHP_VERSIONS = ["8.2", "8.3", "8.4", "8.5"];
 
 export function health(s: Site): { tone: Tone; text: string } {

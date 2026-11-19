@@ -102,6 +102,17 @@ CATALOG = [
         log=str(HOME / "Library/Logs/9router.log"),
         desc="Router/proxy model AI lokal (127.0.0.1:20128, lewat 9router.lab di tailnet). Password bawaan hanya bisa diganti dari Mac ini sendiri di http://127.0.0.1:20128",
     ),
+    S(
+        "httpd",
+        "Apache",
+        "Web server",
+        "brew",
+        "httpd",
+        port=8080,
+        optional=True,
+        log=str(NGINX_LOG_ROOT / "httpd/error.log"),
+        desc="Web server untuk situs yang butuh .htaccess. Hanya 127.0.0.1:8080 di belakang nginx",
+    ),
     S("mailpit", "Mailpit", "Alat pengembangan", "brew", "mailpit", port=8025, optional=True, desc="Penangkap email dev: SMTP 1025, UI 127.0.0.1:8025"),
     S("netdata", "Netdata", "Monitoring", "brew", "netdata", port=19999, log=str(NGINX_LOG_ROOT / "netdata/daemon.log"), desc="Metrik sistem real-time (stats.lab)"),
     S("uptime-kuma", "Uptime Kuma", "Monitoring", "launchd", "com.macminiops.uptime-kuma", port=3001, log=str(HOME / "Library/Logs/uptime-kuma.log"), desc="Pemantau uptime (kuma.lab)"),
@@ -235,6 +246,8 @@ def service(a):
         extra = []
         if c["name"] == "mailpit" and a.act in ("start", "restart"):
             extra = [f"--file={mailpit_plist()}"]
+        if c["name"] == "httpd" and a.act in ("start", "restart"):
+            extra = [f"--file={httpd_plist()}"]
         r = sh([BREW, "services", a.act, c["name"], *extra])
     else:
         plist = str(LAUNCH / f"{c['name']}.plist")
@@ -289,6 +302,34 @@ def mailpit_plist():
                 "ProgramArguments": ["/opt/homebrew/opt/mailpit/bin/mailpit", "--listen", "127.0.0.1:8025", "--smtp", "127.0.0.1:1025"],
                 "StandardOutPath": "/opt/homebrew/var/log/mailpit.log",
                 "StandardErrorPath": "/opt/homebrew/var/log/mailpit.log",
+            }
+        )
+    )
+    os.chmod(f, 0o600)
+    return str(f)
+
+
+def httpd_plist():
+    """Plist bawaan Homebrew memakai config bawaan (Listen 8080 di semua antarmuka). Pakai config sendiri yang terikat ke loopback."""
+    import plistlib
+
+    from labcli import apache
+
+    apache.write_conf()
+    r = apache.check()
+    if r.returncode:
+        die("config Apache tidak valid: " + (r.stderr or r.stdout).strip()[-300:])
+    f = HOME / ".config/macminiops/httpd.plist"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_bytes(
+        plistlib.dumps(
+            {
+                "Label": "sh.brew.httpd",
+                "KeepAlive": True,
+                "RunAtLoad": True,
+                "ProgramArguments": [apache.HTTPD, "-f", str(apache.CONF), "-D", "FOREGROUND"],
+                "StandardOutPath": "/opt/homebrew/var/log/httpd/launchd.log",
+                "StandardErrorPath": "/opt/homebrew/var/log/httpd/launchd.log",
             }
         )
     )

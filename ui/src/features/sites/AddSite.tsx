@@ -9,6 +9,7 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
   const [mode, setMode] = useState("php");
   const [target, setTarget] = useState("");
   const [php, setPhp] = useState("8.4");
+  const [apache, setApache] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const submit = async (e: React.FormEvent) => {
@@ -16,8 +17,9 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
     setBusy(true);
     setErr("");
     try {
-      const body: Record<string, string> = { name, target };
+      const body: Record<string, string | boolean> = { name, target };
       if (mode === "php") body.php = php;
+      if (apache && mode !== "proxy") body.apache = true;
       await post("/api/sites", body);
       if (dbEngine) {
         try {
@@ -42,7 +44,7 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
         </Field>
         <Field label="Jenis situs">
           {(id) => (
-            <select id={id} value={mode} onChange={(e) => { setMode(e.target.value); setTarget(""); }}>
+            <select id={id} value={mode} onChange={(e) => { setMode(e.target.value); setTarget(""); if (e.target.value === "proxy") setApache(false); }}>
               <option value="php">PHP atau Laravel (folder public)</option>
               <option value="statis">Statis (folder berisi index.html)</option>
               <option value="proxy">Proxy ke aplikasi yang sudah berjalan (port)</option>
@@ -52,6 +54,12 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
         <Field label={mode === "proxy" ? "Port aplikasi" : "Folder"} hint={mode === "proxy" ? "1024 sampai 65535. Aplikasi harus mendengarkan di 127.0.0.1." : "Path absolut atau diawali ~/ dan harus di bawah ~/MacPanel/wwwroot."}>
           {(id, d) => <input id={id} aria-describedby={d} className="mono" value={target} onChange={(e) => setTarget(e.target.value)} required placeholder={mode === "proxy" ? "3000" : "~/MacPanel/wwwroot/org/proyek/public"} />}
         </Field>
+        {mode !== "proxy" && (
+          <label className="check">
+            <input type="checkbox" checked={apache} onChange={(e) => setApache(e.target.checked)} />
+            Layani dengan Apache (untuk .htaccess). Apache harus dinyalakan di menu Aplikasi; nginx tetap memegang HTTPS.
+          </label>
+        )}
         {mode === "php" && (
           <Field label="Versi PHP">
             {(id) => (

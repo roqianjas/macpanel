@@ -6,6 +6,7 @@ export const SITE_FACETS: Facet<Site>[] = [
   { id: "php", label: "PHP", test: (s) => s.mode === "php" },
   { id: "proxy", label: "Proxy", test: (s) => s.mode === "proxy" },
   { id: "statis", label: "Statis", test: (s) => s.mode === "statis" },
+  { id: "apache", label: "Apache", test: (s) => s.mode === "apache" },
   { id: "kustom", label: "Kustom", test: (s) => s.mode === "kustom" },
   { id: "sistem", label: "Sistem", test: (s) => s.system },
   { id: "jeda", label: "Dijeda", test: (s) => !s.enabled },

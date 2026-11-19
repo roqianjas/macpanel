@@ -1910,3 +1910,47 @@ func TestTaskTypesAndCron(t *testing.T) {
 		t.Fatal("lab terpanggil oleh input buruk")
 	}
 }
+
+func TestSiteAddApacheArgvAndRejections(t *testing.T) {
+	o := testenv.NewOpsEnv(t, "")
+	dir := filepath.Join(o.Home, "Developer/proj/public")
+	if c, b := o.Post("/api/sites", `{"name":"blog","target":"`+dir+`","php":"8.4","apache":true}`); c != 200 {
+		t.Fatalf("%d %s", c, b)
+	}
+	want := "CALL:[site][add][blog][" + dir + "][--php][8.4][--apache]"
+	if !strings.Contains(o.Calls(), want) {
+		t.Fatalf("argv salah.\nada: %s\nmau: %s", o.Calls(), want)
+	}
+	before := o.Calls()
+	if c, _ := o.Post("/api/sites", `{"name":"x1","target":"3001","apache":true}`); c != 400 {
+		t.Errorf("Apache + port harus 400, dapat %d", c)
+	}
+	if o.Calls() != before {
+		t.Fatal("lab terpanggil untuk Apache + port")
+	}
+}
+
+func TestListSitesDetectsApacheVhost(t *testing.T) {
+	o := testenv.NewOpsEnv(t, "")
+	dir := filepath.Join(o.Home, "Developer/proj/public")
+	conf := "server {\n    listen 443 ssl;\n    server_name blog.lab;\n    location / {\n        proxy_pass http://127.0.0.1:8080;\n    }\n}\n"
+	if err := os.WriteFile(filepath.Join(o.App.SitesDir, "blog.conf"), []byte(conf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ad := filepath.Join(o.Home, "apache", "sites")
+	_ = os.MkdirAll(ad, 0o755)
+	vh := "<VirtualHost 127.0.0.1:8080>\n  ServerName blog.lab\n  DocumentRoot \"" + dir + "\"\n  SetHandler \"proxy:unix:/x/php-fpm-dev-8.4.sock|fcgi://localhost\"\n</VirtualHost>\n"
+	_ = os.WriteFile(filepath.Join(ad, "blog.conf"), []byte(vh), 0o644)
+	b := o.Do("GET", "/api/sites", "", o.Cookie, "", nil).Body.String()
+	for _, s := range []string{`"name":"blog"`, `"mode":"apache"`, `"php":"8.4"`, `"target":"` + dir + `"`} {
+		if !strings.Contains(b, s) {
+			t.Errorf("daftar situs tanpa %s: %s", s, b)
+		}
+	}
+	// proxy biasa ke port 8080 TANPA vhost Apache tetap proxy
+	_ = os.Remove(filepath.Join(ad, "blog.conf"))
+	b = o.Do("GET", "/api/sites", "", o.Cookie, "", nil).Body.String()
+	if strings.Contains(b, `"mode":"apache"`) {
+		t.Errorf("tanpa vhost Apache tidak boleh bermode apache: %s", b)
+	}
+}

@@ -33,6 +33,7 @@ type App struct {
 	Root        string // MACPANEL_HOME (bawaan ~/MacPanel)
 	Wwwroot     string // batas folder situs: <root>/wwwroot // HOME user; batas ~/MacPanel/wwwroot dihitung dari sini
 	SitesDir    string // folder konfigurasi situs nginx (hanya dibaca panel)
+	ApacheDir   string // folder vhost Apache (hanya dibaca panel; ditulis oleh `lab apache`)
 	TLD         string
 	NginxDir    string // folder config nginx (snippets)
 	CertDir     string

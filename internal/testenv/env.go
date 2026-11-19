@@ -347,6 +347,7 @@ func NewOpsEnv(t *testing.T, fakeBody string) *opsEnv {
 	bin := filepath.Join(home, "lab")
 	os.WriteFile(bin, []byte(script), 0o755)
 	e.App.LabBin, e.App.Home, e.App.SitesDir = bin, home, filepath.Join(home, "sites")
+	e.App.ApacheDir = filepath.Join(home, "apache", "sites")
 	e.App.Root, e.App.Wwwroot = home, filepath.Join(home, "Developer")
 	e.App.Timeout = 5 * time.Second
 	e.App.ProbeAddr = "" // tes tidak boleh menyentuh jaringan

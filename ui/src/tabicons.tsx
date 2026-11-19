@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Activity, Archive, ArrowRightLeft, Boxes, Box, Calendar, Circle, CircleStop, Clock, Cog, Cpu, Database, DatabaseBackup, Eraser, FileCode, FileText, Globe, HardDrive, KeyRound, Layers, LayoutGrid, Lock, LogIn, Network, Package, Pause, Play, Power, RefreshCw, ScrollText, ShieldCheck, SlidersHorizontal, Trash2, TriangleAlert, Wrench, Zap, Terminal, Route, Settings, Gauge, Rocket, Waypoints, CalendarClock, type LucideIcon } from "lucide-react";
+import { Feather, Activity, Archive, ArrowRightLeft, Boxes, Box, Calendar, Circle, CircleStop, Clock, Cog, Cpu, Database, DatabaseBackup, Eraser, FileCode, FileText, Globe, HardDrive, KeyRound, Layers, LayoutGrid, Lock, LogIn, Network, Package, Pause, Play, Power, RefreshCw, ScrollText, ShieldCheck, SlidersHorizontal, Trash2, TriangleAlert, Wrench, Zap, Terminal, Route, Settings, Gauge, Rocket, Waypoints, CalendarClock, type LucideIcon } from "lucide-react";
 
 // Ikon dekoratif tab dan filter, dipetakan dari id supaya tab baru otomatis ikut tanpa mengubah tiap daftar.
 // Setiap ikon dipilih karena relevan dengan isinya (aria-hidden: label teks tetap ada). Id tak dikenal: titik netral, bukan ikon asal.
 const MAP: Record<string, LucideIcon> = {
   // filter umum
-  all: LayoutGrid, php: FileCode, proxy: ArrowRightLeft, statis: FileText, kustom: SlidersHorizontal, sistem: ShieldCheck, jeda: Pause,
+  all: LayoutGrid, php: FileCode, proxy: ArrowRightLeft, statis: FileText, apache: Feather, kustom: SlidersHorizontal, sistem: ShieldCheck, jeda: Pause,
   "Web server": Globe, PHP: FileCode, Database: Database, "Cache dan antrean": Layers, Monitoring: Activity, Jaringan: Network, "Alat pengembangan": Wrench, Sistem: ShieldCheck,
   _bermasalah: TriangleAlert, _opsional: Power,
   mariadb: Database, mysql: Database, pgsql: Database, redis: Zap,

@@ -159,11 +159,21 @@ type SiteInfo struct {
 	System bool   `json:"system"`
 }
 
+// apacheRootRE membaca DocumentRoot dari vhost Apache yang dibuat `lab apache` (satu-satunya penulisnya).
+var apacheRootRE = regexp.MustCompile(`(?m)^\s*DocumentRoot\s+"([^"]+)"`)
+
 var phpSockRE = regexp.MustCompile(`php-fpm-dev-(8\.[0-9])\.sock`)
 
 var proxyRE = regexp.MustCompile(`proxy_pass http://127\.0\.0\.1:(\d+)`)
 
 var rootRE = regexp.MustCompile(`(?m)^\s*root\s+([^;]+);`)
+
+func readApacheVhost(a *core.App, name string) ([]byte, error) {
+	if a.ApacheDir == "" {
+		return nil, os.ErrNotExist
+	}
+	return os.ReadFile(filepath.Join(a.ApacheDir, name+".conf"))
+}
 
 func listSites(a *core.App) []SiteInfo {
 	out := []SiteInfo{}
@@ -174,7 +184,15 @@ func listSites(a *core.App) []SiteInfo {
 		b, _ := os.ReadFile(f)
 		s := SiteInfo{Name: name, Host: name + "." + a.TLD, Mode: "kustom", System: core.ProtectedSites[name]}
 		txt := string(b)
-		if m := phpSockRE.FindStringSubmatch(txt); m != nil {
+		if ab, err := readApacheVhost(a, name); err == nil && proxyRE.MatchString(txt) {
+			s.Mode = "apache"
+			if m := apacheRootRE.FindStringSubmatch(string(ab)); m != nil {
+				s.Target = m[1]
+			}
+			if m := phpSockRE.FindStringSubmatch(string(ab)); m != nil {
+				s.PHP = m[1]
+			}
+		} else if m := phpSockRE.FindStringSubmatch(txt); m != nil {
 			s.Mode, s.PHP = "php", m[1]
 		} else if m := proxyRE.FindStringSubmatch(txt); m != nil {
 			s.Mode, s.Target = "proxy", m[1]
@@ -190,7 +208,10 @@ func listSites(a *core.App) []SiteInfo {
 }
 
 func SiteAdd(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session) {
-	var in struct{ Name, Target, PHP string }
+	var in struct {
+		Name, Target, PHP string
+		Apache            bool
+	}
 	if !core.DecodeJSON(w, r, &in) {
 		return
 	}
@@ -210,6 +231,13 @@ func SiteAdd(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Sess
 			return
 		}
 		args = append(args, "--php", in.PHP)
+	}
+	if in.Apache {
+		if core.NumRE.MatchString(target) {
+			core.WriteError(w, 400, "Apache butuh folder, bukan port")
+			return
+		}
+		args = append(args, "--apache")
 	}
 	a.Record(w, ss, a.ClientIP(r), "site_add", in.Name, a.Mutate(args, ""))
 }

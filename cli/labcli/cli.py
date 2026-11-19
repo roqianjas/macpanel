@@ -8,6 +8,7 @@ import argparse
 import json
 import sys
 
+from labcli.apache import apache
 from labcli.backup import backup
 from labcli.clean import clean_cmd, mem_cmd
 from labcli.composer import composer
@@ -126,6 +127,7 @@ def reg_sys(top):
     p.add_argument("target")
     p.add_argument("--php", choices=PHPS)
     p.add_argument("--wordpress", action="store_true")
+    p.add_argument("--apache", action="store_true", help="layani lewat Apache (.htaccess) di belakang nginx")
     s.add_parser("remove").add_argument("name")
     q = s.add_parser("cert")
     q.add_argument("name")
@@ -144,6 +146,15 @@ def reg_sys(top):
     ap_.add_parser("list")
     for x in ("install", "remove"):
         ap_.add_parser(x).add_argument("id")
+    ax = top.add_parser("apache").add_subparsers(dest="act", required=True)
+    ax.add_parser("config")
+    ax.add_parser("sites")
+    q = ax.add_parser("site-add")
+    q.add_argument("name")
+    q.add_argument("host")
+    q.add_argument("dir")
+    q.add_argument("--php", choices=PHPS)
+    ax.add_parser("site-remove").add_argument("name")
     ng = top.add_parser("nginx").add_subparsers(dest="act", required=True)
     ng.add_parser("test")
     ng.add_parser("reload")
@@ -363,6 +374,7 @@ HANDLERS = {
     "php": php,
     "runtime": runtime,
     "nginx": nginx,
+    "apache": apache,
     "service": service,
     "app": app,
     "update": lambda a: check(a) if a.act == "check" else apply(a),
