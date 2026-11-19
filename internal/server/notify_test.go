@@ -388,3 +388,11 @@ func TestTokenAllowedBlocksNotifyRoutes(t *testing.T) {
 		t.Error("data pemantauan hanya-baca tetap boleh untuk token")
 	}
 }
+
+func TestAlertsEndpointExposesNotifyCode(t *testing.T) {
+	o := testenv.NewOpsEnv(t, "")
+	w := o.Do("GET", "/api/alerts", "", o.Cookie, "", nil)
+	if !strings.Contains(w.Body.String(), `"notify_code":"panel"`) {
+		t.Fatalf("tanpa notify_code panel: %s", w.Body.String())
+	}
+}

@@ -10,13 +10,14 @@ Keywords: macOS server panel, Mac mini home server, nginx panel for Mac, aaPanel
 
 ## Screenshots
 
-Captured from a throwaway demo instance (fake sites, empty database list, no real hostnames or IPs).
+Captured from a throwaway demo instance (fake sites; hostname, IP and account name replaced; no real data). Four different styles and both themes are shown.
 
 | | |
 |---|---|
 | ![Overview](docs/screenshots/overview.png) | ![Websites](docs/screenshots/websites.png) |
 | ![Apps](docs/screenshots/apps.png) | ![PHP and runtimes](docs/screenshots/php.png) |
-| ![Backups](docs/screenshots/backups.png) | ![Monitoring](docs/screenshots/monitoring.png) |
+| ![Monitor](docs/screenshots/monitoring.png) | ![Backups](docs/screenshots/backups.png) |
+| ![Settings and styles](docs/screenshots/settings.png) | ![Global search](docs/screenshots/search.png) |
 
 ## Features
 - **Websites:** add/remove/pause sites (PHP, static, reverse proxy), per-site PHP version, rewrite/redirect rules, nginx config editor with version history and automatic rollback on `nginx -t` failure, local HTTPS (mkcert), logs, HTTP health + certificate expiry.
@@ -60,7 +61,7 @@ Tested: a clean copy of this repo installed into an empty HOME (`--no-brew --no-
 
 ## Known gaps
 - macOS on Apple Silicon with Homebrew only; no Linux support. The `~/MacPanel/server` layout is fixed (the installer creates it).
-- Translation is partial: the interface shell and the most-used pages are Indonesian and English, other pages and all server-produced text (alert titles, service descriptions, error messages) are Indonesian only. The in-panel user guide is Indonesian.
+- Translation: the whole interface is Indonesian and English. Still Indonesian only: the in-panel user guide, hardware/network/disk-forecast alert texts, the disk-cleanup catalog descriptions, and error messages returned by the server.
 - Backups are local; no offsite upload. Local HTTPS uses mkcert; no ACME. Alerts: in panel and optional ntfy push; no email, Telegram or webhook.
 - macOS Homebrew PHP compiles bundled extensions statically, so only PECL extensions can be toggled.
 - No file manager and no web terminal, by design. Anything needing `sudo` is shown as a command for you to run.

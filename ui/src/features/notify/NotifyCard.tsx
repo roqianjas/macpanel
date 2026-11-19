@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BellRing } from "lucide-react";
 import { errText, get, post } from "../../api";
 import { Alert, Card, Chip, ConfirmDialog, Field, State, useLoad } from "../../ui";
+import { useT } from "../../i18n";
 import { genTopic, lastText, serverError, topicError, type NotifyCfg } from "./model";
 
 // Ikon BellRing: kartu ini tentang pesan ke ponsel, jadi lonceng relevan dengan isinya.
@@ -10,6 +11,7 @@ import { genTopic, lastText, serverError, topicError, type NotifyCfg } from "./m
 type Note = { tone: "ok" | "bad" | "warn"; text: string } | null;
 
 export default function NotifyCard() {
+  const t = useT();
   const q = useLoad(() => get<NotifyCfg>("/api/notify"));
   const c = q.data;
   const [server, setServer] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function NotifyCard() {
     if (server !== null) body.server = srv.trim();
     if (topic !== "") body.topic = topic;
     if (min !== null) body.min = min;
-    save(body, topic !== "" ? "Tersimpan. Salin topik ke aplikasi ntfy sekarang, panel tidak menampilkannya lagi." : "Tersimpan.");
+    save(body, topic !== "" ? t("settings.notify.savedTopic") : t("settings.notify.saved"));
   };
 
   const test = async () => {
@@ -58,7 +60,7 @@ export default function NotifyCard() {
     setNote(null);
     try {
       const r = await post<{ ok: boolean; error?: string }>("/api/notify/test", {});
-      setNote(r.ok ? { tone: "ok", text: "Pesan uji terkirim. Periksa ponsel Anda." } : { tone: "bad", text: `Pesan uji gagal: ${r.error ?? "alasan tidak diketahui"}` });
+      setNote(r.ok ? { tone: "ok", text: t("settings.notify.testOk") } : { tone: "bad", text: t("settings.notify.testFail", { reason: r.error ?? t("settings.notify.unknown") }) });
       await q.reload();
     } catch (e) {
       setNote({ tone: "bad", text: errText(e) });
@@ -69,33 +71,33 @@ export default function NotifyCard() {
 
   if (adminOnly)
     return (
-      <Card title={<><BellRing size={18} className="icon" aria-hidden="true" /> Notifikasi ponsel</>}>
-        <p className="small muted">Hanya admin yang dapat melihat dan mengubah pengaturan notifikasi.</p>
+      <Card title={<><BellRing size={18} className="icon" aria-hidden="true" /> {t("settings.notify.title")}</>}>
+        <p className="small muted">{t("settings.notify.adminOnly")}</p>
       </Card>
     );
 
   return (
-    <Card title={<><BellRing size={18} className="icon" aria-hidden="true" /> Notifikasi ponsel</>}>
+    <Card title={<><BellRing size={18} className="icon" aria-hidden="true" /> {t("settings.notify.title")}</>}>
       <State loading={q.loading && !c} error={q.error} onRetry={q.reload}>
         {c && (
           <div className="stack">
             {note && <Alert tone={note.tone}>{note.text}</Alert>}
             {shown && (
               <Alert tone="warn">
-                {`Topik Anda: ${shown}\nBuka aplikasi ntfy di ponsel, pilih langganan topik, lalu tempel topik ini. Panel tidak akan menampilkannya lagi.`}{" "}
-                <button type="button" className="btn btn-sm" onClick={() => navigator.clipboard.writeText(shown).then(() => setNote({ tone: "ok", text: "Topik disalin." }), () => setNote({ tone: "bad", text: "Gagal menyalin; salin manual." }))}>
-                  Salin topik
+                {t("settings.notify.yourTopic", { topic: shown })}{" "}
+                <button type="button" className="btn btn-sm" onClick={() => navigator.clipboard.writeText(shown).then(() => setNote({ tone: "ok", text: t("settings.notify.topicCopied") }), () => setNote({ tone: "bad", text: t("settings.copyFail") }))}>
+                  {t("settings.notify.copyTopic")}
                 </button>{" "}
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShown("")}>
-                  Sudah saya salin
+                  {t("settings.notify.copiedIt")}
                 </button>
               </Alert>
             )}
             <p>
-              <Chip tone={c.enabled ? "ok" : "mute"}>{c.enabled ? "Aktif" : "Nonaktif"}</Chip> <span className="small muted">{lastText(c.last, Math.floor(Date.now() / 1000))}</span>
+              <Chip tone={c.enabled ? "ok" : "mute"}>{c.enabled ? t("settings.enabled") : t("settings.disabled")}</Chip> <span className="small muted">{lastText(c.last, Math.floor(Date.now() / 1000))}</span>
             </p>
             <p className="small muted">
-              Saat aktif, peringatan penting dikirim ke ponsel lewat ntfy, termasuk pesan "pulih" saat masalah selesai. Pesan hanya berisi judul dan detail peringatan, tanpa kata sandi atau jalur file. Pesan melewati server ntfy yang Anda pilih; di ntfy.sh publik, siapa pun yang tahu topik dapat membaca pesannya, jadi topik harus sulit ditebak.
+              {t("settings.notify.help")}
             </p>
             <form
               className="stack"
@@ -104,42 +106,42 @@ export default function NotifyCard() {
                 onSave();
               }}
             >
-              <Field label="Server ntfy" hint={sErr || "Harus https. Bawaan ntfy.sh; bisa diganti ke server ntfy milik sendiri."}>
+              <Field label={t("settings.notify.server")} hint={sErr || t("settings.notify.serverHint")}>
                 {(id, dd) => <input id={id} aria-describedby={dd} aria-invalid={!!sErr} value={srv} onChange={(e) => setServer(e.target.value)} placeholder={c.default_server} autoComplete="off" spellCheck={false} />}
               </Field>
-              <Field label="Topik (rahasia)" hint={tErr || (c.topic_set ? "Sudah diisi. Kosongkan untuk tidak mengubah, atau isi untuk menggantinya." : "16-64 karakter. Gunakan tombol di bawah untuk membuat yang acak.")}>
-                {(id, dd) => <input id={id} className="mono" aria-describedby={dd} aria-invalid={!!tErr} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={c.topic_set ? "tidak diubah" : "isi topik"} autoComplete="off" spellCheck={false} />}
+              <Field label={t("settings.notify.topic")} hint={tErr || (c.topic_set ? t("settings.notify.topicSetHint") : t("settings.notify.topicHint"))}>
+                {(id, dd) => <input id={id} className="mono" aria-describedby={dd} aria-invalid={!!tErr} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={c.topic_set ? t("settings.notify.topicUnchanged") : t("settings.notify.topicFill")} autoComplete="off" spellCheck={false} />}
               </Field>
               <div className="row-end">
                 <button type="button" className="btn btn-sm" onClick={() => setTopic(genTopic())}>
-                  Buat topik acak
+                  {t("settings.notify.genTopic")}
                 </button>
               </div>
-              <Field label="Kirim peringatan" hint="Penting saja menjaga ponsel tidak berisik; 'Penting dan perhatian' juga mengirim peringatan tingkat perhatian.">
+              <Field label={t("settings.notify.level")} hint={t("settings.notify.levelHint")}>
                 {(id, dd) => (
                   <select id={id} aria-describedby={dd} value={lvl} onChange={(e) => setMin(e.target.value as "bad" | "warn")}>
-                    <option value="bad">Hanya yang penting</option>
-                    <option value="warn">Penting dan perhatian</option>
+                    <option value="bad">{t("settings.notify.levelBad")}</option>
+                    <option value="warn">{t("settings.notify.levelWarn")}</option>
                   </select>
                 )}
               </Field>
               <div className="row-end">
                 <button className="btn btn-primary" disabled={busy || !dirty || !!sErr || !!tErr}>
-                  {busy ? "Menyimpan…" : "Simpan"}
+                  {busy ? t("settings.saving") : t("common.save")}
                 </button>
               </div>
             </form>
             <div className="row-end">
               {c.topic_set && (
                 <>
-                  <button type="button" className="btn" disabled={busy} onClick={() => save({ enabled: !c.enabled }, c.enabled ? "Notifikasi dinonaktifkan." : "Notifikasi diaktifkan. Peringatan yang sudah ada saat ini tidak dikirim; hanya yang baru.")}>
-                    {c.enabled ? "Nonaktifkan" : "Aktifkan"}
+                  <button type="button" className="btn" disabled={busy} onClick={() => save({ enabled: !c.enabled }, c.enabled ? t("settings.notify.disabledDone") : t("settings.notify.enabledDone"))}>
+                    {c.enabled ? t("settings.notify.disable") : t("settings.notify.enable")}
                   </button>
                   <button type="button" className="btn" disabled={busy} onClick={test}>
-                    Kirim pesan uji
+                    {t("settings.notify.sendTest")}
                   </button>
                   <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setClearing(true)}>
-                    Hapus topik
+                    {t("settings.notify.clear")}
                   </button>
                 </>
               )}
@@ -149,14 +151,14 @@ export default function NotifyCard() {
       </State>
       {clearing && (
         <ConfirmDialog
-          title="Hapus topik notifikasi?"
-          body="Notifikasi dinonaktifkan dan topik dihapus dari panel. Untuk mengaktifkan lagi, Anda perlu mengisi topik baru dan berlangganan ulang di ponsel."
-          word="hapus"
-          verb="Hapus topik"
+          title={t("settings.notify.clearTitle")}
+          body={t("settings.notify.clearBody")}
+          word={t("settings.notify.clearWord")}
+          verb={t("settings.notify.clear")}
           onConfirm={async () => {
             await post("/api/notify", { clear_topic: true });
             setClearing(false);
-            setNote({ tone: "ok", text: "Topik dihapus dan notifikasi dinonaktifkan." });
+            setNote({ tone: "ok", text: t("settings.notify.clearDone") });
             await q.reload();
           }}
           onClose={() => setClearing(false)}

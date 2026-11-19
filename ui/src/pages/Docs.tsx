@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Search } from "lucide-react";
 import { get } from "../api";
 import { Card, PageHead, State, useLoad } from "../ui";
+import { useT } from "../i18n";
 
 interface Doc { name: string; title: string; content: string }
 
@@ -111,23 +112,24 @@ export function renderMarkdown(src: string): ReactNode[] {
 // ---------- halaman ----------
 
 export default function Docs({ sub }: { sub: string }) {
+  const t = useT();
   const q = useLoad(() => get<{ docs: Doc[] }>("/api/docs"));
   const [term, setTerm] = useState("");
   const docs = q.data?.docs ?? [];
-  const t = term.trim().toLowerCase();
-  const shown = useMemo(() => (t ? docs.filter((d) => d.title.toLowerCase().includes(t) || d.content.toLowerCase().includes(t)) : docs), [docs, t]);
-  const cur = docs.find((d) => d.name === sub) ?? (t ? shown[0] : docs[0]);
+  const needle = term.trim().toLowerCase();
+  const shown = useMemo(() => (needle ? docs.filter((d) => d.title.toLowerCase().includes(needle) || d.content.toLowerCase().includes(needle)) : docs), [docs, needle]);
+  const cur = docs.find((d) => d.name === sub) ?? (needle ? shown[0] : docs[0]);
   const body = useMemo(() => (cur ? renderMarkdown(cur.content.replace(/^\s*#\s+[^\n]*\n/, "")) : []), [cur]);
   return (
     <>
-      <PageHead title="Dokumentasi" desc="Panduan menggunakan panel: website, database, backup, aplikasi, dan keamanan." />
-      <State loading={q.loading && !q.data} error={q.error} empty={!q.loading && docs.length === 0} emptyText="Belum ada dokumen di folder docs." onRetry={q.reload}>
+      <PageHead title={t("nav.docs")} desc={t("ops.dc.desc")} />
+      <State loading={q.loading && !q.data} error={q.error} empty={!q.loading && docs.length === 0} emptyText={t("ops.dc.empty")} onRetry={q.reload}>
         <div className="docs-layout">
-          <nav className="docs-nav" aria-label="Daftar dokumen">
+          <nav className="docs-nav" aria-label={t("ops.dc.list")}>
             <label className="docs-search">
               <Search size={16} aria-hidden="true" />
-              <span className="sr">Cari di dokumentasi</span>
-              <input type="search" placeholder="Cari…" value={term} onChange={(e) => setTerm(e.target.value)} maxLength={80} />
+              <span className="sr">{t("ops.dc.search")}</span>
+              <input type="search" placeholder={t("ops.search")} value={term} onChange={(e) => setTerm(e.target.value)} maxLength={80} />
             </label>
             <ul className="docs-index">
               {shown.map((d) => (
@@ -135,10 +137,10 @@ export default function Docs({ sub }: { sub: string }) {
                   <a href={`#/dokumen/${d.name}`} aria-current={cur?.name === d.name ? "page" : undefined}>{d.title}</a>
                 </li>
               ))}
-              {shown.length === 0 && <li className="small muted">Tidak ada yang cocok.</li>}
+              {shown.length === 0 && <li className="small muted">{t("ops.noMatch")}</li>}
             </ul>
           </nav>
-          <Card title={cur?.title ?? "Dokumen"}>
+          <Card title={cur?.title ?? t("ops.dc.doc")}>
             <article className="docs-body">{body}</article>
           </Card>
         </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eraser, Eye, HardDrive, ScanSearch, ShieldCheck, Trash2, TriangleAlert } from "lucide-react";
 import { errText, get, post } from "../../api";
 import { fmtBytes } from "../../lib";
+import { useT } from "../../i18n";
 import { trackJob } from "../../jobs";
 import { Alert, Card, ConfirmDialog, State, useLoad } from "../../ui";
 import { ageLabel, estimate, group, isStale, parseRun, runSummary, scanAge, sizeLabel, type RunResult, type Scan, type ScanRow } from "./model";
@@ -16,6 +17,7 @@ interface Review {
 }
 
 export default function CleanSection() {
+  const t = useT();
   const q = useLoad(() => get<{ scan: Scan | null }>("/api/clean"));
   const scan = q.data?.scan ?? null;
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -32,7 +34,7 @@ export default function CleanSection() {
     setErr("");
     post("/api/clean/scan", {})
       .then((r: { job: number }) =>
-        trackJob(r.job, "Analisis disk", () => {
+        trackJob(r.job, t("system.cl.job.scan"), () => {
           setBusy(false);
           setPicked(new Set());
           q.reload();
@@ -77,27 +79,27 @@ export default function CleanSection() {
       <Card
         title={
           <span className="with-icon">
-            <ScanSearch aria-hidden="true" size={18} /> Analisis ruang disk
+            <ScanSearch aria-hidden="true" size={18} /> {t("system.cl.title")}
           </span>
         }
         action={
           <button className="btn btn-primary" onClick={rescan} disabled={busy}>
-            {busy ? "Bekerja…" : scan ? "Analisis ulang" : "Analisis sekarang"}
+            {busy ? t("system.cl.working") : scan ? t("system.cl.rescan") : t("system.cl.scanNow")}
           </button>
         }
       >
         <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
           {!scan ? (
-            <p className="muted">Belum ada analisis. Tekan “Analisis sekarang”: panel mengukur lokasi yang dikenal (cache, folder backup lama) dan tidak mengubah apa pun. Butuh 1 sampai 3 menit.</p>
+            <p className="muted">{t("system.cl.none")}</p>
           ) : (
             <>
               <ul className="list">
-                <li className="list-row"><span>Disk bebas saat analisis</span><span className="mono">{fmtBytes(scan.disk_free)}</span></li>
-                <li className="list-row"><span>Aman dibersihkan (cache, dibuat ulang otomatis)</span><span className="mono">{fmtBytes(scan.safe_bytes)}</span></li>
-                <li className="list-row"><span>Perlu persetujuan Anda (folder backup sekali pakai)</span><span className="mono">{fmtBytes(scan.careful_bytes)}</span></li>
+                <li className="list-row"><span>{t("system.cl.free")}</span><span className="mono">{fmtBytes(scan.disk_free)}</span></li>
+                <li className="list-row"><span>{t("system.cl.safeTotal")}</span><span className="mono">{fmtBytes(scan.safe_bytes)}</span></li>
+                <li className="list-row"><span>{t("system.cl.carefulTotal")}</span><span className="mono">{fmtBytes(scan.careful_bytes)}</span></li>
               </ul>
-              <p className="small muted">Dianalisis {scanAge(scan.at, now)}. Angka adalah hasil pengukuran, bukan janji: ruang yang kembali bergantung pada apa yang Anda pilih.</p>
-              {isStale(scan.at, now) && <Alert tone="warn">Analisis ini lebih dari sehari. Ukuran bisa sudah berubah; analisis ulang sebelum membersihkan.</Alert>}
+              <p className="small muted">{t("system.cl.analyzed", { age: scanAge(scan.at, now) })}</p>
+              {isStale(scan.at, now) && <Alert tone="warn">{t("system.cl.stale")}</Alert>}
             </>
           )}
           {err && <Alert>{err}</Alert>}
@@ -110,11 +112,11 @@ export default function CleanSection() {
           <Card
             title={
               <span className="with-icon">
-                <ShieldCheck aria-hidden="true" size={18} /> Aman dibersihkan
+                <ShieldCheck aria-hidden="true" size={18} /> {t("system.cl.safe")}
               </span>
             }
           >
-            <p className="small muted">Semua ini dibuat ulang otomatis oleh alatnya. Harga yang dibayar hanya waktu: unduhan atau kompilasi pertama berikutnya lebih lambat.</p>
+            <p className="small muted">{t("system.cl.safeHint")}</p>
             {(() => {
               const filled = g.safe.filter((r) => r.bytes > 0).sort((x, y) => y.bytes - x.bytes);
               const empty = g.safe.filter((r) => r.bytes === 0);
@@ -124,7 +126,7 @@ export default function CleanSection() {
                     {filled.map((r) => (
                       <li key={r.id} className="crow">
                         <label className="clean-pick">
-                          <input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Pilih ${r.label}`} />
+                          <input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} aria-label={t("system.cl.pick", { label: r.label })} />
                           <span>
                             <span className="clean-name">{r.label}</span>
                             <span className="small muted block">{r.why} {r.cost}</span>
@@ -134,10 +136,10 @@ export default function CleanSection() {
                       </li>
                     ))}
                   </ul>
-                  {filled.length === 0 && <p className="muted">Semua lokasi aman sudah kosong.</p>}
+                  {filled.length === 0 && <p className="muted">{t("system.cl.allEmpty")}</p>}
                   {empty.length > 0 && (
                     <details className="small muted">
-                      <summary>{empty.length} lokasi sudah kosong</summary>
+                      <summary>{t("system.cl.emptyN", { n: empty.length })}</summary>
                       <p>{empty.map((r) => r.label).join(", ")}.</p>
                     </details>
                   )}
@@ -145,13 +147,13 @@ export default function CleanSection() {
               );
             })()}
             <div className="sticky-bar">
-              <span className="small" aria-live="polite">{picked.size === 0 ? "Belum ada yang dipilih" : `${picked.size} dipilih · ±${fmtBytes(est)}`}</span>
+              <span className="small" aria-live="polite">{picked.size === 0 ? t("system.cl.noneSel") : t("system.cl.sel", { n: picked.size, size: fmtBytes(est) })}</span>
               <span className="row-end">
                 <button className="btn" onClick={() => setPicked(new Set(g.safe.filter((r) => r.bytes > 0).map((r) => r.id)))} disabled={busy}>
-                  Pilih semua
+                  {t("system.cl.selAll")}
                 </button>
                 <button className="btn btn-primary" onClick={openReview} disabled={busy || picked.size === 0}>
-                  <Eraser aria-hidden="true" size={16} /> Tinjau pembersihan
+                  <Eraser aria-hidden="true" size={16} /> {t("system.cl.review")}
                 </button>
               </span>
             </div>
@@ -160,13 +162,13 @@ export default function CleanSection() {
           <Card
             title={
               <span className="with-icon">
-                <TriangleAlert aria-hidden="true" size={18} /> Perlu persetujuan Anda
+                <TriangleAlert aria-hidden="true" size={18} /> {t("system.cl.careful")}
               </span>
             }
           >
-            <p className="small muted">Folder ini dibuat saat migrasi atau unduhan, bukan backup rutin. Sebagian mungkin satu-satunya salinan; pastikan pemiliknya (agen terkait) sudah selesai. Dihapus satu per satu, dan tidak bisa dikembalikan.</p>
+            <p className="small muted">{t("system.cl.carefulHint")}</p>
             {g.careful.length === 0 ? (
-              <p className="muted">Tidak ada folder yang cocok.</p>
+              <p className="muted">{t("system.cl.noMatch")}</p>
             ) : (
               <ul className="cgrid">
                 {[...g.careful].sort((x, y) => y.bytes - x.bytes).map((r) => {
@@ -175,11 +177,11 @@ export default function CleanSection() {
                     <li key={r.id} className="crow crow-act">
                       <div>
                         <p className="mono clean-name">{shortId(r.id)}</p>
-                        <p className="small muted">{ageLabel(r.age_days)} · {it.length ? `${it.slice(0, 3).join(", ")}${it.length > 3 ? ` +${it.length - 3} lainnya` : ""}` : "kosong"}</p>
+                        <p className="small muted">{ageLabel(r.age_days)} · {it.length ? `${it.slice(0, 3).join(", ")}${it.length > 3 ? ` ${t("system.cl.more", { n: it.length - 3 })}` : ""}` : t("system.cl.emptyWord")}</p>
                       </div>
                       <span className="mono csize">{sizeLabel(r)}</span>
                       <button className="btn btn-danger" onClick={() => setCareful(r)} disabled={busy}>
-                        <Trash2 aria-hidden="true" size={16} /> Hapus…
+                        <Trash2 aria-hidden="true" size={16} /> {t("system.cl.del")}
                       </button>
                     </li>
                   );
@@ -191,11 +193,11 @@ export default function CleanSection() {
           <Card
             title={
               <span className="with-icon">
-                <Eye aria-hidden="true" size={18} /> Hanya ditampilkan, tidak pernah dihapus panel
+                <Eye aria-hidden="true" size={18} /> {t("system.cl.show")}
               </span>
             }
           >
-            <p className="small muted">Ini milik Anda, Hermes, atau layanan. Dilihat supaya Anda tahu ke mana ruang pergi; bersihkan lewat alatnya masing-masing.</p>
+            <p className="small muted">{t("system.cl.showHint")}</p>
             <ul className="bars">
               {(() => {
                 const max = Math.max(1, ...g.show.map((r) => r.bytes));
@@ -208,33 +210,33 @@ export default function CleanSection() {
                 ));
               })()}
             </ul>
-            <p className="small muted">Bagian sistem macOS (puluhan GB) tidak terbaca tanpa izin Full Disk Access, jadi tidak ikut dihitung di sini.</p>
+            <p className="small muted">{t("system.cl.fda")}</p>
           </Card>
         </>
       )}
 
       {review && (
         <ConfirmDialog
-          title="Tinjau pembersihan"
-          word="bersihkan"
-          verb="Bersihkan"
+          title={t("system.cl.review")}
+          word={t("system.cl.word")}
+          verb={t("system.cl.verb")}
           onClose={() => setReview(null)}
           body={
             <div className="stack">
-              <p>Akan dibersihkan sekitar <strong>{fmtBytes(review.preview.bytes)}</strong>:</p>
+              <p>{t("system.cl.about1")} <strong>{fmtBytes(review.preview.bytes)}</strong>{t("system.cl.about2")}</p>
               <ul className="bullets">
                 {review.preview.items.map((i) => <li key={i.id}>{i.label}: {fmtBytes(i.bytes)}</li>)}
               </ul>
               {review.preview.skipped.length > 0 && (
-                <Alert tone="warn">Dilewati: {review.preview.skipped.map((s) => `${s.id} (${s.reason})`).join("; ")}</Alert>
+                <Alert tone="warn">{t("system.cl.skipped", { list: review.preview.skipped.map((s) => `${s.id} (${s.reason})`).join("; ") })}</Alert>
               )}
-              <p className="small muted">Perlu verifikasi kata sandi ulang. Hanya isi cache yang dihapus, foldernya tetap ada.</p>
+              <p className="small muted">{t("system.cl.reauth")}</p>
             </div>
           }
           onConfirm={async () => {
             const r = await post<{ job: number }>("/api/clean/run", { ids: review.ids });
             setBusy(true);
-            trackJob(r.job, "Pembersihan disk", (j) => {
+            trackJob(r.job, t("system.cl.job.clean"), (j) => {
               setBusy(false);
               afterRun(j.output);
             });
@@ -244,22 +246,22 @@ export default function CleanSection() {
 
       {careful && (
         <ConfirmDialog
-          title={`Hapus ${shortId(careful.id)}?`}
+          title={t("system.cl.delTitle", { name: shortId(careful.id) })}
           word={shortId(careful.id)}
-          verb="Hapus permanen"
+          verb={t("system.cl.delVerb")}
           onClose={() => setCareful(null)}
           body={
             <div className="stack">
-              <p>{sizeLabel(careful)} akan dihapus permanen. {ageLabel(careful.age_days)}.</p>
+              <p>{t("system.cl.delBody", { size: sizeLabel(careful), age: ageLabel(careful.age_days) })}</p>
               <p className="small">{careful.cost}</p>
-              <p className="small muted">Isi: {(careful.items ?? []).join(", ") || "kosong"}</p>
+              <p className="small muted">{t("system.cl.contents", { list: (careful.items ?? []).join(", ") || t("system.cl.emptyWord") })}</p>
             </div>
           }
           onConfirm={async () => {
             const name = shortId(careful.id);
             const r = await post<{ job: number }>("/api/clean/run", { ids: [careful.id], typed: name });
             setBusy(true);
-            trackJob(r.job, `Hapus ${name}`, (j) => {
+            trackJob(r.job, t("apps.job.remove", { name }), (j) => {
               setBusy(false);
               afterRun(j.output);
             });

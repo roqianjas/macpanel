@@ -1,5 +1,6 @@
 // Model analisis disk dan memori: tipe, pengelompokan, perkiraan, dan ringkasan hasil job. Keputusan tingkat keamanan dibuat CLI; UI hanya menampilkan.
 import { fmtBytes } from "../../lib";
+import { t } from "../../i18n";
 
 export type Tier = "safe" | "careful" | "show";
 
@@ -58,23 +59,23 @@ export function estimate(scan: Scan | null, ids: Iterable<string>): number {
 
 export function scanAge(at: number, now: number): string {
   const s = Math.max(0, now - at);
-  if (s < 90) return "baru saja";
-  if (s < 3600) return `${Math.round(s / 60)} menit lalu`;
-  if (s < 86400) return `${Math.round(s / 3600)} jam lalu`;
-  return `${Math.round(s / 86400)} hari lalu`;
+  if (s < 90) return t("system.cl.justNow");
+  if (s < 3600) return t("fmt.ago", { span: t("fmt.min", { n: Math.round(s / 60) }) });
+  if (s < 86400) return t("fmt.ago", { span: t("fmt.hour", { n: Math.round(s / 3600) }) });
+  return t("fmt.ago", { span: t("fmt.day", { n: Math.round(s / 86400) }) });
 }
 
 /** Hasil analisis lebih dari 1 hari dianggap basi: ukuran bisa sudah berubah. */
 export const isStale = (at: number, now: number) => now - at > 86400;
 
 export function ageLabel(days: number | null | undefined): string {
-  if (days == null) return "umur tidak terbaca";
-  if (days < 1) return "dibuat hari ini";
-  return `${days} hari lalu`;
+  if (days == null) return t("system.cl.noAge");
+  if (days < 1) return t("system.cl.today");
+  return t("fmt.ago", { span: t("fmt.day", { n: days }) });
 }
 
 export function sizeLabel(r: Pick<ScanRow, "bytes" | "complete">): string {
-  return r.complete ? fmtBytes(r.bytes) : `≥ ${fmtBytes(r.bytes)} (sebagian tidak terbaca)`;
+  return r.complete ? fmtBytes(r.bytes) : `≥ ${t("system.cl.partial", { size: fmtBytes(r.bytes) })}`;
 }
 
 /** Keluaran job `lab clean run`: JSON di baris terakhir. Null bila tidak terbaca (jangan menebak). */
@@ -92,12 +93,12 @@ export function parseRun(output: string): RunResult | null {
 }
 
 export function runSummary(r: RunResult | null): { tone: "ok" | "warn" | "bad"; text: string } {
-  if (!r) return { tone: "warn", text: "Selesai, tetapi hasilnya tidak terbaca. Jalankan analisis ulang untuk melihat keadaan sebenarnya." };
+  if (!r) return { tone: "warn", text: t("system.cl.runUnreadable") };
   const errs = r.items.filter((i) => i.error).length;
   const done = r.items.length - errs;
-  const parts = [`${fmtBytes(r.bytes)} dibebaskan dari ${done} entri`];
-  if (errs) parts.push(`${errs} entri sebagian gagal`);
-  if (r.skipped.length) parts.push(`${r.skipped.length} dilewati (${r.skipped.map((s) => s.reason).join("; ")})`);
+  const parts = [t("system.cl.freed", { size: fmtBytes(r.bytes), n: done })];
+  if (errs) parts.push(t("system.cl.failed", { n: errs }));
+  if (r.skipped.length) parts.push(t("system.cl.skippedN", { n: r.skipped.length, reasons: r.skipped.map((s) => s.reason).join("; ") }));
   return { tone: errs || r.skipped.length ? "warn" : "ok", text: parts.join(", ") + "." };
 }
 
@@ -127,10 +128,10 @@ export interface MemView {
 
 /** Tekanan memori dari "persentase memori bebas" macOS (makin tinggi makin lega). Ambang adalah pedoman, bukan angka Apple. */
 export function pressure(freePct: number | undefined): { label: string; tone: "ok" | "warn" | "bad" | "mute" } {
-  if (freePct == null) return { label: "Tidak terbaca", tone: "mute" };
-  if (freePct >= 40) return { label: "Lega", tone: "ok" };
-  if (freePct >= 20) return { label: "Sedang", tone: "warn" };
-  return { label: "Tertekan", tone: "bad" };
+  if (freePct == null) return { label: t("system.mem.pr.unknown"), tone: "mute" };
+  if (freePct >= 40) return { label: t("system.mem.pr.ok"), tone: "ok" };
+  if (freePct >= 20) return { label: t("system.mem.pr.warn"), tone: "warn" };
+  return { label: t("system.mem.pr.bad"), tone: "bad" };
 }
 
 /** Bagian yang dipakai aplikasi (bukan cache): wired + active + compressed. inactive adalah cache yang bisa dilepas macOS kapan saja. */

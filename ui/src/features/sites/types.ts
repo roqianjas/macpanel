@@ -1,4 +1,5 @@
 import type { Tone } from "../../ui";
+import { t } from "../../i18n";
 
 export interface Site {
   name: string;
@@ -32,13 +33,19 @@ export interface Model {
   allow_ips?: string[];
 }
 
-export const MODE_LABEL: Record<string, string> = { php: "PHP", proxy: "Proxy", statis: "Statis", apache: "Apache", kustom: "Kustom" };
+export const MODE_LABEL: Record<string, string> = {
+  php: "PHP",
+  proxy: "Proxy",
+  get statis() { return t("dev.site.mode.statis"); },
+  apache: "Apache",
+  get kustom() { return t("dev.site.mode.kustom"); },
+};
 export const PHP_VERSIONS = ["8.2", "8.3", "8.4", "8.5"];
 
 export function health(s: Site): { tone: Tone; text: string } {
-  if (!s.enabled) return { tone: "mute", text: "Dijeda" };
-  if (s.http === 0) return { tone: "bad", text: "Tidak menjawab" };
-  if (s.http >= 500) return { tone: "bad", text: `Galat ${s.http}` };
+  if (!s.enabled) return { tone: "mute", text: t("dev.site.paused") };
+  if (s.http === 0) return { tone: "bad", text: t("dev.site.noReply") };
+  if (s.http >= 500) return { tone: "bad", text: t("dev.site.httpErr", { code: s.http }) };
   if (s.http >= 400) return { tone: "warn", text: `${s.http}` };
   return { tone: "ok", text: `${s.http} · ${s.ms} ms` };
 }

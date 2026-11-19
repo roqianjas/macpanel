@@ -161,18 +161,19 @@ function StepUpDialog({ resolve }: { resolve: (ok: boolean) => void }) {
 }
 
 function JobTray() {
+  const t = useT();
   const jobs = useTrackedJobs().filter((j) => !j.dismissed);
   if (!jobs.length) return null;
   return (
-    <div className="tray" aria-live="polite" aria-label="Aksi yang berjalan">
+    <div className="tray" aria-live="polite" aria-label={t("tray.aria")}>
       {jobs.slice(0, 4).map((j) => (
         <div key={j.id} className="tray-item">
           <div className="tray-top">
             <Chip tone={statusTone(j.status)} busy={j.status === "berjalan"}>
-              {j.status === "berjalan" ? "Berjalan" : j.status === "ok" ? "Selesai" : j.status}
+              {j.status === "berjalan" ? t("svc.state.running") : j.status === "ok" ? t("tray.done") : j.status}
             </Chip>
             <span className="tray-label">{j.label}</span>
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => dismissJob(j.id)} aria-label={`Sembunyikan ${j.label}`}>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => dismissJob(j.id)} aria-label={t("tray.hide", { label: j.label })}>
               <X size={16} aria-hidden="true" />
             </button>
           </div>
@@ -322,16 +323,17 @@ function Shell({ role, onLogout }: { user: string; role: string; onLogout: () =>
 }
 
 function ForcedChange({ onLogout }: { onLogout: () => void }) {
+  const t = useT();
   const panelName = usePanelName();
   return (
     <main id="main" tabIndex={-1} style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
       <div className="stack">
-        <h1>{panelName}: ganti kata sandi sementara</h1>
-        <Alert tone="warn">Akun ini memakai kata sandi sementara dari admin. Ganti sekarang untuk melanjutkan. Anda juga dapat menyalakan verifikasi dua langkah (2FA) di bawah.</Alert>
+        <h1>{t("forced.title", { name: panelName })}</h1>
+        <Alert tone="warn">{t("forced.body")}</Alert>
         <Account forced onDone={() => location.reload()} />
         <TwoFactor />
         <div className="row-end">
-          <button className="btn" onClick={onLogout}>Keluar</button>
+          <button className="btn" onClick={onLogout}>{t("common.logout")}</button>
         </div>
       </div>
     </main>

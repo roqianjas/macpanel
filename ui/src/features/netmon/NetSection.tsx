@@ -1,5 +1,6 @@
 import { Globe, Network } from "lucide-react";
 import { LineChart } from "../../charts";
+import { useT } from "../../i18n";
 import { niceTop, RANGES, type RangeKey } from "../../lib";
 import { Card, Chip, State } from "../../ui";
 import { dnsStatus, fmtMs, internetStatus, netFreshness, tailscaleStatus, uptimePct } from "./model";
@@ -9,6 +10,7 @@ import { useNetmon } from "./useNetmon";
 // Pertanyaan tiap grafik ada di judulnya. Persen ketersediaan dihitung dari sampel yang ada, bukan dari waktu.
 
 export default function NetSection({ range }: { range: RangeKey }) {
+  const t = useT();
   const nm = useNetmon(range);
   const d = nm.data;
   const label = RANGES.find((r) => r.key === range)?.label ?? "";
@@ -23,74 +25,74 @@ export default function NetSection({ range }: { range: RangeKey }) {
   return (
     <>
       <h2 className="card-title" style={{ marginTop: 8 }}>
-        <Network size={18} className="icon" aria-hidden="true" /> Konektivitas
+        <Network size={18} className="icon" aria-hidden="true" /> {t("system.net.title")}
       </h2>
       <State loading={nm.loading && !d} error={nm.error} onRetry={nm.reload}>
         {d && (
           <>
             <p className="small muted">
-              {fresh.tone !== "ok" && <Chip tone={fresh.tone === "mute" ? "mute" : "warn"}>{fresh.tone === "mute" ? "Menunggu" : "Perhatian"}</Chip>} {fresh.text}
+              {fresh.tone !== "ok" && <Chip tone={fresh.tone === "mute" ? "mute" : "warn"}>{fresh.tone === "mute" ? t("system.hw.waiting") : t("system.hw.attention")}</Chip>} {fresh.text}
             </p>
             <div className="grid2">
-              <Card title={<><Network size={18} className="icon" aria-hidden="true" /> Tailscale: apakah mesin ini bisa dijangkau dari luar?</>}>
+              <Card title={<><Network size={18} className="icon" aria-hidden="true" /> {t("system.net.ts.title")}</>}>
                 <dl className="kv">
                   <div>
-                    <dt>Status</dt>
+                    <dt>{t("apps.col.status")}</dt>
                     <dd>
                       <Chip tone={ts.tone}>{ts.text}</Chip>
                     </dd>
                   </div>
                   <div>
-                    <dt>Perangkat online</dt>
-                    <dd>{s?.tailscale ? `${s.tailscale.peers_online} dari ${s.tailscale.peers} perangkat lain` : "n/a"}</dd>
+                    <dt>{t("system.net.peersOnline")}</dt>
+                    <dd>{s?.tailscale ? t("system.net.peersVal", { online: s.tailscale.peers_online, peers: s.tailscale.peers }) : t("fmt.na")}</dd>
                   </div>
                   <div>
-                    <dt>Putus dalam {label}</dt>
-                    <dd>{d.ts_down === 0 ? "tidak ada" : `${d.ts_down} dari ${d.samples} sampel`}</dd>
+                    <dt>{t("system.net.down", { label })}</dt>
+                    <dd>{d.ts_down === 0 ? t("system.net.none") : t("system.net.downVal", { n: d.ts_down, samples: d.samples })}</dd>
                   </div>
                   {s?.tailscale && s.tailscale.health.length > 0 && (
                     <div>
-                      <dt>Peringatan</dt>
+                      <dt>{t("system.net.warn")}</dt>
                       <dd className="small">{s.tailscale.health.join("; ")}</dd>
                     </div>
                   )}
                 </dl>
               </Card>
-              <Card title={<><Globe size={18} className="icon" aria-hidden="true" /> Internet dan DNS: apakah keluar dan nama terjawab?</>}>
+              <Card title={<><Globe size={18} className="icon" aria-hidden="true" /> {t("system.net.inet.title")}</>}>
                 <dl className="kv">
                   <div>
                     <dt>Internet</dt>
                     <dd>
-                      <Chip tone={inet.tone}>{inet.text}</Chip> <span className="small muted">{fmtMs(s?.internet.ms)} (sambung TCP)</span>
+                      <Chip tone={inet.tone}>{inet.text}</Chip> <span className="small muted">{t("system.net.tcp", { ms: fmtMs(s?.internet.ms) })}</span>
                     </dd>
                   </div>
                   <div>
-                    <dt>DNS lokal</dt>
+                    <dt>{t("system.net.dns")}</dt>
                     <dd>
-                      <Chip tone={dl.tone}>{dl.text}</Chip> <span className="small muted">{s?.dns_local ? `${s.dns_local.name}, ${fmtMs(s.dns_local.ms)}` : "tidak dites"}</span>
+                      <Chip tone={dl.tone}>{dl.text}</Chip> <span className="small muted">{s?.dns_local ? `${s.dns_local.name}, ${fmtMs(s.dns_local.ms)}` : t("system.net.notTested")}</span>
                     </dd>
                   </div>
                   <div>
-                    <dt>Ketersediaan internet</dt>
+                    <dt>{t("system.net.avail")}</dt>
                     <dd>
-                      {uptimePct(d.inet_down, d.samples)} <span className="small muted">dari {d.samples} sampel dalam {label}</span>
+                      {uptimePct(d.inet_down, d.samples)} <span className="small muted">{t("system.net.availOf", { samples: d.samples, label })}</span>
                     </dd>
                   </div>
                 </dl>
               </Card>
             </div>
-            <Card title={<>Latensi internet: seberapa cepat koneksi keluar? ({label})</>}>
+            <Card title={t("system.net.lat.title", { label })}>
               <LineChart
-                title="Latensi internet"
+                title={t("system.net.lat.chart")}
                 rangeKey={range}
                 domain={[0, top]}
                 tickFmt={(v) => `${Math.round(v)} ms`}
                 series={[
                   { key: "internet", label: "Internet", pts: d.series.internet ?? [], fmt: (v) => fmtMs(v) },
-                  { key: "dns_local", label: "DNS lokal", pts: d.series.dns_local ?? [], fmt: (v) => fmtMs(v) },
+                  { key: "dns_local", label: t("system.net.dns"), pts: d.series.dns_local ?? [], fmt: (v) => fmtMs(v) },
                 ]}
               />
-              <p className="small muted">Diukur dengan waktu sambung TCP ke dua server publik, bukan ping. Titik yang gagal diukur dibiarkan kosong, bukan ditulis 0 ms. Puncak dalam rentang ini: {fmtMs(d.inet_max_ms || null)}.</p>
+              <p className="small muted">{t("system.net.lat.note", { max: fmtMs(d.inet_max_ms || null) })}</p>
             </Card>
           </>
         )}

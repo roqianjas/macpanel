@@ -3,6 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { errText, fmtTime, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, useLoad } from "../ui";
+import { useT } from "../i18n";
 
 interface U {
   source: string;
@@ -14,6 +15,7 @@ interface U {
 }
 
 export default function Updates() {
+  const t = useT();
   const { data, error, loading, reload } = useLoad(() => get<{ updates: U[]; pins: string[]; checked: number }>("/api/updates"));
   const [pick, setPick] = useState<U | null>(null);
   const [note, setNote] = useState("");
@@ -21,28 +23,28 @@ export default function Updates() {
   return (
     <>
       <PageHead
-        title="Pembaruan"
-        desc="Upgrade dilakukan satu per satu dengan backup terlebih dulu. Upgrade versi mayor ditolak; database diberi pin."
+        title={t("nav.updates")}
+        desc={t("ops.up.desc")}
         action={
           <button className="btn" onClick={reload} disabled={loading}>
             <RefreshCw size={18} aria-hidden="true" className={loading ? "spin" : ""} />
-            {loading ? "Memeriksa…" : "Periksa lagi"}
+            {loading ? t("ops.checking") : t("ops.up.recheck")}
           </button>
         }
       />
       {note && <Alert tone="warn">{note}</Alert>}
-      <Card title="Tersedia">
-        <State loading={loading && !data} error={error} empty={!!data && data.updates.length === 0} emptyText="Semua paket sudah versi terbaru." onRetry={reload}>
+      <Card title={t("ops.up.available")}>
+        <State loading={loading && !data} error={error} empty={!!data && data.updates.length === 0} emptyText={t("ops.up.empty")} onRetry={reload}>
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th scope="col">Paket</th>
-                  <th scope="col">Sumber</th>
-                  <th scope="col">Versi</th>
-                  <th scope="col">Catatan</th>
+                  <th scope="col">{t("ops.col.package")}</th>
+                  <th scope="col">{t("ops.col.source")}</th>
+                  <th scope="col">{t("apps.col.version")}</th>
+                  <th scope="col">{t("ops.col.notes")}</th>
                   <th scope="col">
-                    <span className="sr">Aksi</span>
+                    <span className="sr">{t("ops.col.actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -56,13 +58,13 @@ export default function Updates() {
                     </td>
                     <td>
                       <div className="row">
-                        {u.pinned && <Chip tone="warn">Pin</Chip>}
-                        {u.major && <Chip tone="bad">Mayor: butuh dump dan restore manual</Chip>}
+                        {u.pinned && <Chip tone="warn">{t("ops.up.pin")}</Chip>}
+                        {u.major && <Chip tone="bad">{t("ops.up.major")}</Chip>}
                       </div>
                     </td>
                     <td className="cell-end">
                       <button className="btn" onClick={() => setPick(u)} disabled={u.major}>
-                        Upgrade<span className="sr"> {u.name}</span>
+                        {t("ops.up.upgrade")}<span className="sr"> {u.name}</span>
                       </button>
                     </td>
                   </tr>
@@ -70,26 +72,26 @@ export default function Updates() {
               </tbody>
             </table>
           </div>
-          {data && <p className="small muted">Diperiksa {fmtTime(data.checked)}. Pin aktif: {data.pins.length ? data.pins.join(", ") : "tidak ada"}.</p>}
+          {data && <p className="small muted">{t("ops.up.checked", { time: fmtTime(data.checked), pins: data.pins.length ? data.pins.join(", ") : t("ops.none") })}</p>}
         </State>
       </Card>
       {pick && (
         <ConfirmDialog
-          title={`Upgrade ${pick.name}`}
+          title={t("ops.up.title", { name: pick.name })}
           word={target(pick)}
-          verb="Upgrade"
+          verb={t("ops.up.upgrade")}
           body={
             <>
               <p>
-                {pick.from} → {pick.to}. Backup dibuat dulu; bila backup gagal, upgrade dibatalkan.
+                {t("ops.up.body", { from: pick.from, to: pick.to })}
               </p>
-              {pick.pinned && <p className="alert alert-warn">Paket ini diberi pin (database). Upgrade patch tetap perlu dicek; layanan akan restart sebentar. Pin dipasang ulang setelahnya.</p>}
+              {pick.pinned && <p className="alert alert-warn">{t("ops.up.pinned")}</p>}
             </>
           }
           onConfirm={async () => {
             try {
               const r = await post<{ job: number }>("/api/updates/apply", { target: target(pick), confirm: target(pick), allow_pinned: pick.pinned });
-              trackJob(r.job, `Upgrade ${pick.name}`, reload);
+              trackJob(r.job, t("ops.up.title", { name: pick.name }), reload);
               setNote("");
             } catch (x) {
               throw new Error(errText(x));

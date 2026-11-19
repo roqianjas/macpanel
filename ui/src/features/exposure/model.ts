@@ -1,5 +1,6 @@
 // Model paparan layanan: tipe, label status, dan pengurutan. Keputusan "perlu perhatian" dibuat server (status), UI hanya menampilkan.
 import type { Tone } from "../../ui";
+import { t } from "../../i18n";
 
 export type Scope = "loopback" | "tailnet" | "all" | "lan";
 export type Status = "loopback" | "tailnet" | "system" | "guarded" | "blocked" | "unknown" | "allowed" | "flagged";
@@ -35,21 +36,21 @@ export interface ExView {
 export function statusInfo(s: Status): { label: string; tone: Tone; hint: string } {
   switch (s) {
     case "flagged":
-      return { label: "Perlu perhatian", tone: "bad", hint: "Terbuka ke jaringan rumah dan tidak ada di daftar izin." };
+      return { label: t("system.ex.st.flagged"), tone: "bad", hint: t("system.ex.st.flagged.hint") };
     case "allowed":
-      return { label: "Diizinkan", tone: "ok", hint: "Terbuka ke jaringan rumah, tetapi Anda menandainya disengaja." };
+      return { label: t("system.ex.st.allowed"), tone: "ok", hint: t("system.ex.st.allowed.hint") };
     case "system":
-      return { label: "Sistem macOS", tone: "mute", hint: "Layanan bawaan macOS." };
+      return { label: t("system.ex.st.system"), tone: "mute", hint: t("system.ex.st.system.hint") };
     case "tailnet":
-      return { label: "Hanya tailnet", tone: "ok", hint: "Hanya mendengar di alamat Tailscale." };
+      return { label: t("system.ex.st.tailnet"), tone: "ok", hint: t("system.ex.st.tailnet.hint") };
     case "guarded":
-      return { label: "Dijaga pf", tone: "warn", hint: "Ada aturan firewall pf untuk port ini, tetapi uji dari mesin sendiri tidak bisa membuktikan aturannya aktif. Periksa dengan: sudo pfctl -s Anchors" };
+      return { label: t("system.ex.st.guarded"), tone: "warn", hint: t("system.ex.st.guarded.hint") };
     case "blocked":
-      return { label: "Diblokir", tone: "ok", hint: "Mendengar di semua antarmuka, tetapi sambungan dari LAN gagal (mis. firewall)." };
+      return { label: t("system.ex.st.blocked"), tone: "ok", hint: t("system.ex.st.blocked.hint") };
     case "unknown":
-      return { label: "Belum teruji", tone: "warn", hint: "Keterjangkauan dari LAN tidak dapat diuji." };
+      return { label: t("system.ex.st.unknown"), tone: "warn", hint: t("system.ex.st.unknown.hint") };
     default:
-      return { label: "Loopback", tone: "ok", hint: "Hanya dari mesin ini." };
+      return { label: t("system.ex.st.loopback"), tone: "ok", hint: t("system.ex.st.loopback.hint") };
   }
 }
 
@@ -66,19 +67,19 @@ export const loopbackCount = (items: readonly ExItem[]): number => items.filter(
 
 /** Nama yang dibaca manusia: proses, atau tebakan layanan bagi proses yang tidak terlihat. */
 export function displayName(i: Pick<ExItem, "proc" | "hidden" | "service">): string {
-  if (i.hidden) return i.service ? `Proses tidak terlihat (${i.service})` : "Proses tidak terlihat";
+  if (i.hidden) return i.service ? t("system.ex.hiddenSvc", { service: i.service }) : t("system.ex.hidden");
   return i.proc;
 }
 
 /** Kalimat ringkasan di atas tabel. */
 export function summary(v: Pick<ExView, "now" | "stale" | "findings" | "items">): string {
-  if (!v.now) return "Belum ada pemeriksaan. Pertama dijalankan beberapa menit setelah panel menyala.";
-  if (v.stale) return "Pemeriksaan berhenti; data di bawah sudah lama.";
-  if (v.now.lan_ip === null) return "IP LAN tidak terbaca, jadi keterjangkauan dari jaringan rumah tidak dapat diuji.";
+  if (!v.now) return t("system.ex.sum.none");
+  if (v.stale) return t("system.ex.sum.stale");
+  if (v.now.lan_ip === null) return t("system.ex.sum.noip");
   const flagged = v.items.filter((i) => i.status === "flagged").length;
-  if (flagged > 0) return `${flagged} layanan terbuka ke jaringan rumah dan perlu perhatian.`;
-  if (v.findings > 0) return `${v.findings} layanan terbuka ke jaringan rumah dan menunggu konfirmasi pemeriksaan berikutnya.`;
-  return "Tidak ada layanan tak disengaja yang terbuka ke jaringan rumah.";
+  if (flagged > 0) return t("system.ex.sum.flagged", { n: flagged });
+  if (v.findings > 0) return t("system.ex.sum.pending", { n: v.findings });
+  return t("system.ex.sum.ok");
 }
 
 /** Entri daftar izin untuk satu item ("mailpit:8025"); sama dengan Key di server. */

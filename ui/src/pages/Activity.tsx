@@ -3,6 +3,7 @@ import { fmtTime } from "../api";
 import { FacetBar } from "../features/list/ListTools";
 import { useCursorList } from "../features/list/useCursorList";
 import { Card, Chip, PageHead, State, statusTone } from "../ui";
+import { useT } from "../i18n";
 
 interface Row {
   id: number;
@@ -24,24 +25,26 @@ const PAGE = 25;
 // Pintasan pencarian ke server (bukan memfilter baris yang sudah dimuat, yang akan menyesatkan pada daftar berhalaman).
 // Tanpa garis bawah: "_" adalah wildcard pada pencarian LIKE.
 const JOB_SHORTCUTS = [
-  { id: "gagal", label: "Gagal" },
-  { id: "berjalan", label: "Berjalan" },
-  { id: "timeout", label: "Timeout" },
+  { id: "gagal", label: "ops.act.failed" },
+  { id: "berjalan", label: "svc.state.running" },
+  { id: "timeout", label: "ops.act.timeout" },
 ];
 const AUDIT_SHORTCUTS = [
-  { id: "login", label: "Login" },
-  { id: "fail", label: "Gagal" },
-  { id: "backup", label: "Backup" },
-  { id: "clean", label: "Pembersihan" },
-  { id: "token", label: "Token" },
+  { id: "login", label: "ops.act.login" },
+  { id: "fail", label: "ops.act.failed" },
+  { id: "backup", label: "nav.backup" },
+  { id: "clean", label: "ops.act.cleanup" },
+  { id: "token", label: "ops.act.token" },
 ];
 
 function Shortcuts({ items, q, setQ, label }: { items: { id: string; label: string }[]; q: string; setQ: (s: string) => void; label: string }) {
+  const t = useT();
   const value = items.some((i) => i.id === q.trim()) ? q.trim() : "all";
-  return <FacetBar label={label} value={value} onChange={(id) => setQ(id === "all" ? "" : id)} facets={[{ id: "all", label: "Semua", count: 0 }, ...items.map((i) => ({ ...i, count: 0 }))]} counts={false} />;
+  return <FacetBar label={label} value={value} onChange={(id) => setQ(id === "all" ? "" : id)} facets={[{ id: "all", label: t("list.all"), count: 0 }, ...items.map((i) => ({ ...i, label: t(i.label), count: 0 }))]} counts={false} />;
 }
 
 function Tools({ id, label, hint, q, setQ, shown, total, searching }: { id: string; label: string; hint: string; q: string; setQ: (s: string) => void; shown: number; total: number; searching: boolean }) {
+  const t = useT();
   return (
     <div className="list-tools">
       <div className="field list-search">
@@ -52,41 +55,43 @@ function Tools({ id, label, hint, q, setQ, shown, total, searching }: { id: stri
         </div>
       </div>
       <p className="small muted" role="status" aria-live="polite">
-        {total === 0 ? (searching ? "Tidak ada yang cocok." : "Kosong.") : shown >= total ? `${total} ${searching ? "cocok" : "catatan"}.` : `Menampilkan ${shown} dari ${total}${searching ? " yang cocok" : ""}.`}
+        {total === 0 ? (searching ? t("ops.noMatch") : t("list.empty")) : shown >= total ? t(searching ? "ops.act.countMatch" : "ops.act.countRec", { n: total }) : t(searching ? "ops.act.showingMatch" : "ops.act.showing", { shown, total })}
       </p>
     </div>
   );
 }
 
 function More({ hasMore, busy, onMore, what }: { hasMore: boolean; busy: boolean; onMore: () => void; what: string }) {
+  const t = useT();
   if (!hasMore) return null;
   return (
     <div className="pager">
       <button type="button" className="btn" disabled={busy} onClick={onMore}>
-        {busy ? "Memuat…" : `Muat ${what} lebih lama`}
+        {busy ? t("state.loading") : t(what)}
       </button>
     </div>
   );
 }
 
 export default function Activity() {
+  const t = useT();
   const audit = useCursorList<Row>("/api/audit", PAGE);
   const jobs = useCursorList<Job>("/api/jobs", PAGE);
   return (
     <>
-      <PageHead title="Aktivitas" desc="Jejak audit berantai: setiap login, percobaan gagal, dan perubahan tercatat. Verifikasi integritas dengan: panel audit verify." />
-      <Card title="Audit">
-        <Shortcuts items={AUDIT_SHORTCUTS} q={audit.q} setQ={audit.setQ} label="Pintasan jenis catatan" />
-        <Tools id="audit-q" label="Cari audit" hint="Pengguna, aksi, atau detail" q={audit.q} setQ={audit.setQ} shown={audit.rows.length} total={audit.total} searching={audit.searching} />
-        <State loading={audit.loading && audit.rows.length === 0} error={audit.error} empty={!audit.loading && audit.rows.length === 0} emptyText={audit.searching ? "Tidak ada catatan yang cocok dengan pencarian ini." : "Belum ada catatan."} onRetry={audit.reload}>
+      <PageHead title={t("nav.activity")} desc={t("ops.act.desc")} />
+      <Card title={t("ops.act.audit")}>
+        <Shortcuts items={AUDIT_SHORTCUTS} q={audit.q} setQ={audit.setQ} label={t("ops.act.auditShortcuts")} />
+        <Tools id="audit-q" label={t("ops.act.auditSearch")} hint={t("ops.act.auditHint")} q={audit.q} setQ={audit.setQ} shown={audit.rows.length} total={audit.total} searching={audit.searching} />
+        <State loading={audit.loading && audit.rows.length === 0} error={audit.error} empty={!audit.loading && audit.rows.length === 0} emptyText={audit.searching ? t("ops.act.auditNoMatch") : t("ops.act.auditEmpty")} onRetry={audit.reload}>
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th scope="col">Waktu</th>
-                  <th scope="col">Pengguna</th>
-                  <th scope="col">Aksi</th>
-                  <th scope="col">Detail</th>
+                  <th scope="col">{t("ops.col.time")}</th>
+                  <th scope="col">{t("ops.col.user")}</th>
+                  <th scope="col">{t("ops.col.action")}</th>
+                  <th scope="col">{t("ops.col.detail")}</th>
                   <th scope="col">IP</th>
                 </tr>
               </thead>
@@ -105,13 +110,13 @@ export default function Activity() {
               </tbody>
             </table>
           </div>
-          <More hasMore={audit.hasMore} busy={audit.loadingMore} onMore={audit.more} what="catatan" />
+          <More hasMore={audit.hasMore} busy={audit.loadingMore} onMore={audit.more} what="ops.act.moreRec" />
         </State>
       </Card>
-      <Card title="Aksi terakhir">
-        <Shortcuts items={JOB_SHORTCUTS} q={jobs.q} setQ={jobs.setQ} label="Pintasan status aksi" />
-        <Tools id="jobs-q" label="Cari aksi" hint="Nama aksi atau status" q={jobs.q} setQ={jobs.setQ} shown={jobs.rows.length} total={jobs.total} searching={jobs.searching} />
-        <State loading={jobs.loading && jobs.rows.length === 0} error={jobs.error} empty={!jobs.loading && jobs.rows.length === 0} emptyText={jobs.searching ? "Tidak ada aksi yang cocok dengan pencarian ini." : "Belum ada aksi."} onRetry={jobs.reload}>
+      <Card title={t("ops.act.jobs")}>
+        <Shortcuts items={JOB_SHORTCUTS} q={jobs.q} setQ={jobs.setQ} label={t("ops.act.jobShortcuts")} />
+        <Tools id="jobs-q" label={t("ops.act.jobSearch")} hint={t("ops.act.jobHint")} q={jobs.q} setQ={jobs.setQ} shown={jobs.rows.length} total={jobs.total} searching={jobs.searching} />
+        <State loading={jobs.loading && jobs.rows.length === 0} error={jobs.error} empty={!jobs.loading && jobs.rows.length === 0} emptyText={jobs.searching ? t("ops.act.jobNoMatch") : t("ops.act.jobEmpty")} onRetry={jobs.reload}>
           <ul className="list">
             {jobs.rows.map((j) => (
               <li key={j.id} className="list-row">
@@ -125,7 +130,7 @@ export default function Activity() {
               </li>
             ))}
           </ul>
-          <More hasMore={jobs.hasMore} busy={jobs.loadingMore} onMore={jobs.more} what="aksi" />
+          <More hasMore={jobs.hasMore} busy={jobs.loadingMore} onMore={jobs.more} what="ops.act.moreJob" />
         </State>
       </Card>
     </>

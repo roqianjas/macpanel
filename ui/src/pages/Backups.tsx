@@ -8,6 +8,7 @@ import type { Facet } from "../features/list/paging";
 import { newestName } from "../features/list/paging";
 import { Alert, Card, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { CleanupCard, ExtrasCard } from "./BackupCleanup";
+import { useT } from "../i18n";
 
 interface Row {
   name: string;
@@ -19,12 +20,13 @@ interface Row {
 const DAY = 86400;
 const age = (at: number) => Date.now() / 1000 - at;
 const AGE_FACETS: Facet<{ at: number }>[] = [
-  { id: "baru", label: "7 hari terakhir", test: (r) => age(r.at) <= 7 * DAY },
-  { id: "bulan", label: "8 sampai 30 hari", test: (r) => age(r.at) > 7 * DAY && age(r.at) <= 30 * DAY },
-  { id: "lama", label: "Lebih dari 30 hari", test: (r) => age(r.at) > 30 * DAY },
+  { id: "baru", label: "ops.bk.age.recent", test: (r) => age(r.at) <= 7 * DAY },
+  { id: "bulan", label: "ops.bk.age.month", test: (r) => age(r.at) > 7 * DAY && age(r.at) <= 30 * DAY },
+  { id: "lama", label: "ops.bk.age.old", test: (r) => age(r.at) > 30 * DAY },
 ];
 
 export default function Backups() {
+  const t = useT();
   const q = useLoad(() => get<{ backups: Row[]; offsite: boolean }>("/api/backups"));
   const [busy, setBusy] = useState(false);
   const [browse, setBrowse] = useState<string | null>(null);
@@ -36,9 +38,9 @@ export default function Backups() {
     setNote(null);
     try {
       const r = await post<{ job: number }>("/api/backups/run", {});
-      trackJob(r.job, "Backup lokal", (j) => {
+      trackJob(r.job, t("ops.bk.job"), (j) => {
         setBusy(false);
-        setNote(j.status === "ok" ? { tone: "ok", text: "Backup selesai." } : { tone: "bad", text: j.output || "Backup gagal." });
+        setNote(j.status === "ok" ? { tone: "ok", text: t("ops.bk.finished") } : { tone: "bad", text: j.output || t("ops.bk.failed") });
         q.reload();
       });
     } catch (x) {
@@ -53,42 +55,42 @@ export default function Backups() {
   return (
     <>
       <PageHead
-        title="Backup"
-        desc="Berjalan otomatis tiap hari (jam, jumlah simpanan, dan batas umur diatur di kartu Jadwal di bawah). Isi: dump semua database, folder ~/MacPanel/wwwroot (tanpa node_modules dan .env), dotfile, dan database panel."
+        title={t("nav.backup")}
+        desc={t("ops.bk.desc")}
         action={
           <button className="btn btn-primary" disabled={busy} onClick={run}>
             <DatabaseBackup size={18} aria-hidden="true" />
-            {busy ? "Berjalan…" : "Jalankan sekarang"}
+            {busy ? t("ops.running") : t("ops.bk.runNow")}
           </button>
         }
       />
       {q.data && !q.data.offsite && (
         <Alert tone="warn">
-          Semua backup ini tersimpan di disk yang sama dengan Mac mini. Jika disk rusak atau Mac hilang, backup ikut hilang. Salinan ke disk eksternal atau cloud belum disiapkan. Private key SSH dan kunci TOTP panel sengaja tidak ikut.
+          {t("ops.bk.offsite")}
         </Alert>
       )}
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <Schedule />
-      <Card title="Daftar backup" action={sel.length > 0 ? <button className="btn btn-danger-ghost" onClick={() => setDelAsk(true)}>Hapus {sel.length} terpilih</button> : undefined}>
-        <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && rows.length === 0} emptyText="Belum ada backup. Jalankan yang pertama." onRetry={q.reload}>
-          <FilterTabs lv={lv} label="Filter umur backup" />
-          <ListSearch lv={lv} label="Cari backup" hint="Tanggal, nama, atau isi" />
+      <Card title={t("ops.bk.list")} action={sel.length > 0 ? <button className="btn btn-danger-ghost" onClick={() => setDelAsk(true)}>{t("ops.bk.delSel", { n: sel.length })}</button> : undefined}>
+        <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && rows.length === 0} emptyText={t("ops.bk.empty")} onRetry={q.reload}>
+          <FilterTabs lv={{ ...lv, facets: lv.facets.map((f) => ({ ...f, label: f.id === "all" ? t("list.all") : t(f.label) })) }} label={t("ops.bk.filter")} />
+          <ListSearch lv={lv} label={t("ops.bk.search")} hint={t("ops.bk.searchHint")} />
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th scope="col"><span className="sr">Pilih</span></th>
-                  <th scope="col">Waktu</th>
-                  <th scope="col">Ukuran</th>
-                  <th scope="col">Isi</th>
-                  <th scope="col"><span className="sr">Aksi</span></th>
+                  <th scope="col"><span className="sr">{t("ops.col.select")}</span></th>
+                  <th scope="col">{t("ops.col.time")}</th>
+                  <th scope="col">{t("ops.col.size")}</th>
+                  <th scope="col">{t("ops.col.contents")}</th>
+                  <th scope="col"><span className="sr">{t("ops.col.actions")}</span></th>
                 </tr>
               </thead>
               <tbody>
                 {lv.view.rows.map((r) => (
                   <tr key={r.name}>
                     <td>
-                      <input type="checkbox" className="rowcheck" disabled={r.name === newest} checked={sel.includes(r.name)} onChange={(e) => setSel((p) => (e.target.checked ? [...p, r.name] : p.filter((x) => x !== r.name)))} aria-label={r.name === newest ? `Backup ${r.name} (terbaru, tidak bisa dihapus)` : `Pilih backup ${r.name}`} title={r.name === newest ? "Backup terbaru tidak bisa dihapus" : undefined} />
+                      <input type="checkbox" className="rowcheck" disabled={r.name === newest} checked={sel.includes(r.name)} onChange={(e) => setSel((p) => (e.target.checked ? [...p, r.name] : p.filter((x) => x !== r.name)))} aria-label={r.name === newest ? t("ops.bk.newestAria", { name: r.name }) : t("ops.bk.pick", { name: r.name })} title={r.name === newest ? t("ops.bk.newestNoDel") : undefined} />
                     </td>
                     <td className="nowrap">{fmtTime(r.at)}</td>
                     <td className="nowrap">{fmtBytes(r.size)}</td>
@@ -98,7 +100,7 @@ export default function Backups() {
                     <td className="cell-end">
                       {r.files.includes("developer.tar.gz") && (
                         <button className="btn btn-sm" onClick={() => setBrowse(r.name)}>
-                          Jelajahi<span className="sr"> backup {r.name}</span>
+                          {t("ops.bk.browse")}<span className="sr"> {t("ops.bk.ofBackup", { name: r.name })}</span>
                         </button>
                       )}
                     </td>
@@ -114,10 +116,10 @@ export default function Backups() {
       <ExtrasCard />
       {delAsk && (
         <ConfirmDialog
-          title={`Hapus ${sel.length} backup`}
+          title={t("ops.bk.delN", { n: sel.length })}
           word="hapus"
-          verb={`Hapus ${sel.length} backup`}
-          body={<p>Backup terpilih dihapus permanen dari disk ini. Meminta kata sandi ulang.</p>}
+          verb={t("ops.bk.delN", { n: sel.length })}
+          body={<p>{t("ops.bk.delBody")}</p>}
           onConfirm={async () => {
             await post("/api/backups/delete", { names: sel });
             setSel([]);
@@ -127,14 +129,15 @@ export default function Backups() {
         />
       )}
       {browse && <Browse name={browse} onClose={() => setBrowse(null)} />}
-      <Card title="Memulihkan">
-        <p className="small">Database proyek: halaman Database, tombol Dump dan Pulihkan (hanya ke database kosong). Berkas dan konfigurasi: tombol Jelajahi di daftar backup mengekstrak ke <span className="mono">~/MacPanel/backup/restore/</span>; panel sengaja tidak menimpa berkas asli, salin manual bila perlu.</p>
+      <Card title={t("ops.bk.restore")}>
+        <p className="small">{t("ops.bk.restoreA")} <span className="mono">~/MacPanel/backup/restore/</span>{t("ops.bk.restoreB")}</p>
       </Card>
     </>
   );
 }
 
 function Schedule() {
+  const t = useT();
   const q = useLoad(() => get<{ time: string; keep: number; days: number; extra_days: number; enabled: boolean; every_days: number }>("/api/backups/config"));
   const [time, setTime] = useState("");
   const [keep, setKeep] = useState("");
@@ -146,7 +149,7 @@ function Schedule() {
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const on = enabled ?? q.data?.enabled ?? true;
   const ev = every || String(q.data?.every_days ?? 1);
-  const t = time || q.data?.time || "02:30";
+  const tm = time || q.data?.time || "02:30";
   const k = keep || String(q.data?.keep ?? 7);
   const dy = days || String(q.data?.days ?? 0);
   const ex = extra || String(q.data?.extra_days ?? 0);
@@ -155,8 +158,8 @@ function Schedule() {
     setBusy(true);
     setMsg(null);
     try {
-      await post("/api/backups/config", { time: t, keep: Number(k), days: Number(dy), extra_days: Number(ex), enabled: on, every_days: Number(ev) });
-      setMsg({ tone: "ok", text: on ? "Jadwal diperbarui di launchd." : "Backup otomatis dimatikan. Backup manual tetap bisa dijalankan." });
+      await post("/api/backups/config", { time: tm, keep: Number(k), days: Number(dy), extra_days: Number(ex), enabled: on, every_days: Number(ev) });
+      setMsg({ tone: "ok", text: on ? t("ops.bk.sched.on") : t("ops.bk.sched.off") });
       setTime("");
       setEnabled(null);
       setEvery("");
@@ -171,24 +174,24 @@ function Schedule() {
     }
   };
   return (
-    <Card title="Jadwal dan retensi">
+    <Card title={t("ops.bk.sched.title")}>
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         <form onSubmit={save} className="stack">
           <label className="check">
             <input type="checkbox" checked={on} onChange={(e) => setEnabled(e.target.checked)} />
-            Backup otomatis aktif
+            {t("ops.bk.sched.enable")}
           </label>
-          {!on && <p className="callout">Backup otomatis mati. Tidak ada salinan baru sampai Anda menyalakannya lagi atau menekan "Jalankan sekarang".</p>}
+          {!on && <p className="callout">{t("ops.bk.sched.offNote")}</p>}
           <div className="grid2">
-            <Field label="Ulangi setiap (hari)" hint="1 = harian. Makin jarang, makin hemat disk (maks 30).">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={30} placeholder="1" value={ev} onChange={(e) => setEvery(e.target.value)} disabled={!on} required />}</Field>
-            <Field label="Jam backup" hint="Zona waktu Mac mini">{(id, dd) => <input id={id} aria-describedby={dd} type="time" value={t} onChange={(e) => setTime(e.target.value)} required />}</Field>
-            <Field label="Simpan backup terakhir" hint="1-60. Yang lebih lama dihapus otomatis.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={60} placeholder="10" value={k} onChange={(e) => setKeep(e.target.value)} required />}</Field>
-            <Field label="Hapus otomatis backup lebih tua dari (hari)" hint="0 = hanya pakai jumlah simpanan. Backup terbaru selalu aman.">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="30" value={dy} onChange={(e) => setDays(e.target.value)} required />}</Field>
-            <Field label="Hapus otomatis dump DB dan hasil ekstrak lebih tua dari (hari)" hint="0 = jangan dibersihkan otomatis">{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="7" value={ex} onChange={(e) => setExtra(e.target.value)} required />}</Field>
+            <Field label={t("ops.bk.every")} hint={t("ops.bk.everyHint")}>{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={30} placeholder="1" value={ev} onChange={(e) => setEvery(e.target.value)} disabled={!on} required />}</Field>
+            <Field label={t("ops.bk.hour")} hint={t("ops.bk.hourHint")}>{(id, dd) => <input id={id} aria-describedby={dd} type="time" value={tm} onChange={(e) => setTime(e.target.value)} required />}</Field>
+            <Field label={t("ops.bk.keep")} hint={t("ops.bk.keepHint")}>{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={1} max={60} placeholder="10" value={k} onChange={(e) => setKeep(e.target.value)} required />}</Field>
+            <Field label={t("ops.bk.autoDel")} hint={t("ops.bk.autoDelHint")}>{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="30" value={dy} onChange={(e) => setDays(e.target.value)} required />}</Field>
+            <Field label={t("ops.bk.autoDelExtra")} hint={t("ops.bk.autoDelExtraHint")}>{(id, dd) => <input id={id} aria-describedby={dd} type="number" min={0} max={3650} placeholder="7" value={ex} onChange={(e) => setExtra(e.target.value)} required />}</Field>
           </div>
           {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
           <div>
-            <button className="btn" disabled={busy}>{busy ? "Menyimpan…" : "Simpan jadwal"}</button>
+            <button className="btn" disabled={busy}>{busy ? t("ops.saving") : t("ops.bk.saveSched")}</button>
           </div>
         </form>
       </State>
@@ -197,6 +200,7 @@ function Schedule() {
 }
 
 function Browse({ name, onClose }: { name: string; onClose: () => void }) {
+  const t = useT();
   const [part, setPart] = useState<"developer" | "dotfiles">("developer");
   const [prefix, setPrefix] = useState("");
   const q = useLoad(() => get<{ entries: { name: string; dir: boolean }[] }>(`/api/backups/ls?name=${name}&part=${part}&prefix=${encodeURIComponent(prefix)}`), [name, part, prefix]);
@@ -205,19 +209,19 @@ function Browse({ name, onClose }: { name: string; onClose: () => void }) {
     setMsg(null);
     try {
       const r = await post<{ job: number }>("/api/backups/extract", { name, part, path });
-      trackJob(r.job, `Ekstrak ${path}`, (j) => setMsg(j.status === "ok" ? { tone: "ok", text: j.output.split("\n").filter(Boolean).pop() ?? "Selesai." } : { tone: "bad", text: j.output || "Gagal." }));
+      trackJob(r.job, t("ops.bk.extractJob", { path }), (j) => setMsg(j.status === "ok" ? { tone: "ok", text: j.output.split("\n").filter(Boolean).pop() ?? t("ops.done") } : { tone: "bad", text: j.output || t("ops.failed") }));
     } catch (x) {
       setMsg({ tone: "bad", text: errText(x) });
     }
   };
   const crumbs = prefix ? prefix.split("/") : [];
   return (
-    <Modal title={`Jelajahi backup ${name}`} onClose={onClose} wide>
+    <Modal title={t("ops.bk.browseTitle", { name })} onClose={onClose} wide>
       <div className="stack">
-        <div className="seg" role="group" aria-label="Bagian backup">
+        <div className="seg" role="group" aria-label={t("ops.bk.section")}>
           {(["developer", "dotfiles"] as const).map((p) => (
             <button key={p} type="button" className={`seg-btn ${part === p ? "on" : ""}`} aria-pressed={part === p} onClick={() => { setPart(p); setPrefix(""); }}>
-              {p === "developer" ? "Folder Developer" : "Dotfile"}
+              {p === "developer" ? t("ops.bk.devFolder") : t("ops.bk.dotfiles")}
             </button>
           ))}
         </div>
@@ -228,7 +232,7 @@ function Browse({ name, onClose }: { name: string; onClose: () => void }) {
           ))}
         </p>
         {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
-        <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && q.data.entries.length === 0} emptyText="Kosong." onRetry={q.reload}>
+        <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && q.data.entries.length === 0} emptyText={t("list.empty")} onRetry={q.reload}>
           <ul className="list ext-list">
             {q.data?.entries.map((e) => {
               const full = prefix ? `${prefix}/${e.name}` : e.name;
@@ -240,14 +244,14 @@ function Browse({ name, onClose }: { name: string; onClose: () => void }) {
                     <span className="mono">{e.name}</span>
                   )}
                   <button className="btn btn-sm" onClick={() => extract(full)}>
-                    Ekstrak<span className="sr"> {full}</span>
+                    {t("ops.bk.extract")}<span className="sr"> {full}</span>
                   </button>
                 </li>
               );
             })}
           </ul>
         </State>
-        <p className="small muted">Ekstrak menyalin ke <span className="mono">~/MacPanel/backup/restore/&lt;waktu&gt;/</span>. Berkas asli tidak pernah ditimpa; salin manual bila perlu. Meminta kata sandi ulang.</p>
+        <p className="small muted">{t("ops.bk.extractA")} <span className="mono">{t("ops.bk.restorePath")}</span>{t("ops.bk.extractB")}</p>
       </div>
     </Modal>
   );

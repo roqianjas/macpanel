@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 // Gaya (skin) panel dan warna aksen. Murni (tanpa React/DOM) agar bisa diuji langsung.
 //
 // Gaya mengganti token warna, huruf, bentuk garis, dan bayangan lewat atribut data-skin di <html>. Tata letak dan fungsi tidak berubah.
@@ -21,7 +22,9 @@ export const SKINS: SkinInfo[] = [
   {
     id: "kertas",
     label: "Kertas Teknis",
-    desc: "Editorial dan tenang. Huruf serif, garis tipis seperti buku besar, aksen jingga bata.",
+    get desc() {
+      return t("settings.skin.kertas");
+    },
     preview: {
       light: { bg: "#f6f1e7", surface: "#fffaf0", ink: "#1c1a16", accent: "#c2410c" },
       dark: { bg: "#1b1813", surface: "#232018", ink: "#efe7d6", accent: "#fb923c" },
@@ -30,7 +33,9 @@ export const SKINS: SkinInfo[] = [
   {
     id: "bengkel",
     label: "Bengkel",
-    desc: "Berani dan ramai. Garis tebal, bayangan keras, hijau limau dan biru langit.",
+    get desc() {
+      return t("settings.skin.bengkel");
+    },
     preview: {
       light: { bg: "#fffdf5", surface: "#ffffff", ink: "#111111", accent: "#c6f432" },
       dark: { bg: "#14140f", surface: "#1e1e17", ink: "#f5f3e6", accent: "#c6f432" },
@@ -39,7 +44,9 @@ export const SKINS: SkinInfo[] = [
   {
     id: "mesin",
     label: "Ruang Mesin",
-    desc: "Seperti instrumen perangkat keras. Grafit hangat, lampu status, aksen kuning ambar.",
+    get desc() {
+      return t("settings.skin.mesin");
+    },
     preview: {
       light: { bg: "#efeae0", surface: "#faf7f0", ink: "#25211a", accent: "#b45309" },
       dark: { bg: "#15130f", surface: "#1c1913", ink: "#ece6d8", accent: "#f2b13c" },
@@ -48,7 +55,9 @@ export const SKINS: SkinInfo[] = [
   {
     id: "kaca",
     label: "Kaca Dingin",
-    desc: "Modern dan lembut. Hijau teal, satu strip kaca buram di ringkasan, kartu bersih.",
+    get desc() {
+      return t("settings.skin.kaca");
+    },
     preview: {
       light: { bg: "#eef3f1", surface: "#ffffff", ink: "#10302c", accent: "#0f766e" },
       dark: { bg: "#0c1a18", surface: "#132624", ink: "#e3f2ef", accent: "#2dd4bf" },
@@ -59,14 +68,14 @@ export const SKINS: SkinInfo[] = [
 export const isSkin = (v: unknown): v is Skin => SKINS.some((s) => s.id === v);
 
 export const ACCENTS: { id: string; label: string; hex: string }[] = [
-  { id: "jingga", label: "Jingga bata", hex: "#c2410c" },
-  { id: "limau", label: "Hijau limau", hex: "#c6f432" },
-  { id: "ambar", label: "Kuning ambar", hex: "#f2b13c" },
-  { id: "teal", label: "Teal", hex: "#0f766e" },
-  { id: "biru", label: "Biru", hex: "#1d4ed8" },
-  { id: "hijau", label: "Hijau", hex: "#15803d" },
-  { id: "magenta", label: "Magenta", hex: "#be185d" },
-  { id: "grafit", label: "Grafit", hex: "#374151" },
+  { id: "jingga", get label() { return t("settings.accent.jingga"); }, hex: "#c2410c" },
+  { id: "limau", get label() { return t("settings.accent.limau"); }, hex: "#c6f432" },
+  { id: "ambar", get label() { return t("settings.accent.ambar"); }, hex: "#f2b13c" },
+  { id: "teal", get label() { return t("settings.accent.teal"); }, hex: "#0f766e" },
+  { id: "biru", get label() { return t("settings.accent.biru"); }, hex: "#1d4ed8" },
+  { id: "hijau", get label() { return t("settings.accent.hijau"); }, hex: "#15803d" },
+  { id: "magenta", get label() { return t("settings.accent.magenta"); }, hex: "#be185d" },
+  { id: "grafit", get label() { return t("settings.accent.grafit"); }, hex: "#374151" },
 ];
 
 // ---------------------------------------------------------------- warna

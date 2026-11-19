@@ -2,8 +2,10 @@ import { useState } from "react";
 import { errText, post } from "../../api";
 import { Alert, Field, Modal } from "../../ui";
 import { PHP_VERSIONS } from "./types";
+import { useT } from "../../i18n";
 
 export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (name: string) => void }) {
+  const t = useT();
   const [name, setName] = useState("");
   const [dbEngine, setDbEngine] = useState("");
   const [mode, setMode] = useState("php");
@@ -25,7 +27,7 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
         try {
           await post("/api/db", { name: name.replace(/-/g, "_"), engine: dbEngine });
         } catch (x) {
-          setErr(`Situs dibuat, tetapi database gagal dibuat: ${errText(x)}`);
+          setErr(t("dev.site.dbFail", { err: errText(x) }));
           setBusy(false);
           return;
         }
@@ -37,31 +39,31 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
     }
   };
   return (
-    <Modal title="Tambah situs" onClose={onClose}>
+    <Modal title={t("dev.site.add")} onClose={onClose}>
       <form onSubmit={submit} className="stack">
-        <Field label="Nama" hint={`Menjadi alamat https://${name || "nama"}.lab. Huruf kecil, angka, dan tanda hubung.`}>
-          {(id, d) => <input id={id} aria-describedby={d} data-autofocus placeholder="toko-saya" maxLength={40} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} required pattern="[a-z0-9]([a-z0-9\-]{0,38}[a-z0-9])?" />}
+        <Field label={t("dev.col.name")} hint={t("dev.site.nameHint", { name: name || t("dev.site.nameWord") })}>
+          {(id, d) => <input id={id} aria-describedby={d} data-autofocus placeholder={t("dev.site.namePh")} maxLength={40} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} required pattern="[a-z0-9]([a-z0-9\-]{0,38}[a-z0-9])?" />}
         </Field>
-        <Field label="Jenis situs">
+        <Field label={t("dev.site.kind")}>
           {(id) => (
             <select id={id} value={mode} onChange={(e) => { setMode(e.target.value); setTarget(""); if (e.target.value === "proxy") setApache(false); }}>
-              <option value="php">PHP atau Laravel (folder public)</option>
-              <option value="statis">Statis (folder berisi index.html)</option>
-              <option value="proxy">Proxy ke aplikasi yang sudah berjalan (port)</option>
+              <option value="php">{t("dev.site.opt.php")}</option>
+              <option value="statis">{t("dev.site.opt.static")}</option>
+              <option value="proxy">{t("dev.site.opt.proxy")}</option>
             </select>
           )}
         </Field>
-        <Field label={mode === "proxy" ? "Port aplikasi" : "Folder"} hint={mode === "proxy" ? "1024 sampai 65535. Aplikasi harus mendengarkan di 127.0.0.1." : "Path absolut atau diawali ~/ dan harus di bawah ~/MacPanel/wwwroot."}>
-          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={target} onChange={(e) => setTarget(e.target.value)} required placeholder={mode === "proxy" ? "3000" : "~/MacPanel/wwwroot/org/proyek/public"} />}
+        <Field label={mode === "proxy" ? t("dev.site.appPort") : t("dev.site.folder")} hint={mode === "proxy" ? t("dev.site.portHint") : t("dev.site.pathHint")}>
+          {(id, d) => <input id={id} aria-describedby={d} className="mono" value={target} onChange={(e) => setTarget(e.target.value)} required placeholder={mode === "proxy" ? "3000" : t("dev.site.folderPh")} />}
         </Field>
         {mode !== "proxy" && (
           <label className="check">
             <input type="checkbox" checked={apache} onChange={(e) => setApache(e.target.checked)} />
-            Layani dengan Apache (untuk .htaccess). Apache harus dinyalakan di menu Aplikasi; nginx tetap memegang HTTPS.
+            {t("dev.site.apache")}
           </label>
         )}
         {mode === "php" && (
-          <Field label="Versi PHP">
+          <Field label={t("dev.site.phpVer")}>
             {(id) => (
               <select id={id} value={php} onChange={(e) => setPhp(e.target.value)}>
                 {PHP_VERSIONS.map((v) => <option key={v}>{v}</option>)}
@@ -70,10 +72,10 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
           </Field>
         )}
         {mode !== "statis" && (
-          <Field label="Database (opsional)" hint={dbEngine ? `Membuat database dan user "${name.replace(/-/g, "_") || "nama"}" dengan kata sandi acak. Kredensial disimpan di ~/.config/macminiops/projects/ (tidak ditampilkan di sini).` : "Buat database kosong untuk proyek ini sekaligus."}>
+          <Field label={t("dev.site.dbOpt")} hint={dbEngine ? t("dev.site.dbHintOn", { name: name.replace(/-/g, "_") || t("dev.site.nameWord") }) : t("dev.site.dbHintOff")}>
             {(id, dd) => (
               <select id={id} aria-describedby={dd} value={dbEngine} onChange={(e) => setDbEngine(e.target.value)}>
-                <option value="">Tanpa database</option>
+                <option value="">{t("dev.site.noDb")}</option>
                 <option value="mariadb">MariaDB (3306)</option>
                 <option value="mysql">MySQL (3307)</option>
                 <option value="pgsql">PostgreSQL</option>
@@ -83,8 +85,8 @@ export function AddSite({ onClose, onDone }: { onClose: () => void; onDone: (nam
         )}
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
-          <button type="button" className="btn" onClick={onClose}>Batal</button>
-          <button className="btn btn-primary" disabled={busy || !name || !target}>{busy ? "Membuat…" : "Buat situs"}</button>
+          <button type="button" className="btn" onClick={onClose}>{t("common.cancel")}</button>
+          <button className="btn btn-primary" disabled={busy || !name || !target}>{busy ? t("dev.task.creating") : t("dev.site.create")}</button>
         </div>
       </form>
     </Modal>

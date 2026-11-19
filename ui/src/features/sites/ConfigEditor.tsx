@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { errText, fmtTime, get, post } from "../../api";
 import { Alert, Card, State, useLoad } from "../../ui";
+import { useT } from "../../i18n";
 
 export function ConfigEditor({ name, system, onSaved }: { name: string; system: boolean; onSaved: () => void }) {
+  const t = useT();
   const { data, error, loading, reload } = useLoad(() => get<{ content: string; sha: string; versions: { id: number; at: number; user: string; note: string }[] }>(`/api/sites/${name}/config`), [name]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,7 +18,7 @@ export function ConfigEditor({ name, system, onSaved }: { name: string; system: 
     setMsg(null);
     try {
       await post(`/api/sites/${name}/config`, { content: text, sha: data.sha });
-      setMsg({ tone: "ok", text: "Config diterapkan dan nginx dimuat ulang." });
+      setMsg({ tone: "ok", text: t("dev.conf.applied") });
       reload();
       onSaved();
     } catch (x) {
@@ -30,7 +32,7 @@ export function ConfigEditor({ name, system, onSaved }: { name: string; system: 
     setMsg(null);
     try {
       await post(`/api/sites/${name}/restore`, { id });
-      setMsg({ tone: "ok", text: `Versi #${id} dipulihkan.` });
+      setMsg({ tone: "ok", text: t("dev.conf.restored", { id }) });
       reload();
       onSaved();
     } catch (x) {
@@ -41,35 +43,35 @@ export function ConfigEditor({ name, system, onSaved }: { name: string; system: 
   };
   return (
     <div className="stack-l">
-      <Card title="Config nginx">
+      <Card title={t("dev.conf.title")}>
         <State loading={loading && !data} error={error} onRetry={reload}>
           <p className="small muted">
-            Editor lanjutan. Hanya direktif yang diizinkan diterima, dan setiap blok server wajib mempertahankan <span className="mono">include .../tailnet_only.conf</span>. Config diuji dengan <span className="mono">nginx -t</span>; bila gagal, config lama dikembalikan otomatis.
+            {t("dev.conf.note1")} <span className="mono">include .../tailnet_only.conf</span>. {t("dev.conf.note2")} <span className="mono">nginx -t</span>{t("dev.conf.note3")}
           </p>
-          <label className="sr" htmlFor="conf-text">Isi config nginx</label>
+          <label className="sr" htmlFor="conf-text">{t("dev.conf.content")}</label>
           <textarea id="conf-text" className="mono editor" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} readOnly={system} rows={22} />
           {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
           {!system && (
             <div>
-              <button className="btn btn-primary" onClick={save} disabled={busy || !data || text === data.content}>{busy ? "Menerapkan…" : "Simpan dan terapkan"}</button>
+              <button className="btn btn-primary" onClick={save} disabled={busy || !data || text === data.content}>{busy ? t("dev.conf.applying") : t("dev.conf.saveApply")}</button>
             </div>
           )}
         </State>
       </Card>
       {data && (
-        <Card title="Riwayat versi">
+        <Card title={t("dev.conf.history")}>
           {data.versions.length === 0 ? (
-            <div className="state"><p className="muted">Belum ada versi tersimpan. Versi dibuat setiap config diubah lewat panel.</p></div>
+            <div className="state"><p className="muted">{t("dev.conf.noHistory")}</p></div>
           ) : (
             <ul className="list">
               {data.versions.map((v) => (
                 <li key={v.id} className="list-row">
                   <div>
                     <p><span className="mono">#{v.id}</span> {v.note}</p>
-                    <p className="small muted">{fmtTime(v.at)} oleh {v.user}</p>
+                    <p className="small muted">{t("dev.conf.by", { time: fmtTime(v.at), user: v.user })}</p>
                   </div>
                   {!system && (
-                    <button className="btn" onClick={() => restore(v.id)} disabled={busy}>Pulihkan<span className="sr"> versi {v.id}</span></button>
+                    <button className="btn" onClick={() => restore(v.id)} disabled={busy}>{t("dev.conf.restore")}<span className="sr"> {t("dev.conf.versionN", { id: v.id })}</span></button>
                   )}
                 </li>
               ))}

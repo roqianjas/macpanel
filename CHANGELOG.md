@@ -14,12 +14,12 @@ MacPanel is a self-hosted web control panel for a Mac (Apple Silicon) used as a 
 
 **Security:** loopback bind, password + TOTP (per account), step-up for destructive actions, hash-chained audit log, admin/viewer roles, scoped API tokens with `panelctl`, strict CSP, no web shell, no `sudo` from the web.
 
-**Interface:** four styles (Kertas Teknis, Bengkel, Ruang Mesin, Kaca Dingin) with light/dark and accent colour, global search (Ctrl K), profile menu with avatar or photo, per-account language (Indonesian and English), skeleton loading, responsive down to 320 px, accessible (keyboard, 44 px targets, reduced motion), configurable panel logo and favicon.
+**Interface:** four styles (Kertas Teknis, Bengkel, Ruang Mesin, Kaca Dingin) with light/dark and accent colour, global search (Ctrl K), profile menu with avatar or photo, per-account language (Indonesian and English, more can be added with one file), skeleton loading, responsive down to 320 px, accessible (keyboard, 44 px targets, reduced motion), configurable panel logo and favicon.
 
 **Install:** `./install.sh` (never uses `sudo`; `--dry-run` shows the plan), with a guided finish for the admin account.
 
 ### Known limits
 - macOS on Apple Silicon with Homebrew only. No Linux support yet.
-- Some UI text and the in-panel user guide are in Indonesian; English covers the application shell and the most-used pages. Text produced by the server (alert titles, service descriptions, error messages) is not translated yet.
+- The interface is fully Indonesian/English, but the in-panel user guide, hardware/network/disk-forecast alert texts, the disk-cleanup catalog descriptions and server error messages are Indonesian only.
 - Backups are local only (no offsite upload). No ACME/Let's Encrypt (local mkcert only), no email/Telegram/webhook notifications (ntfy push exists).
 - The installer's system steps were verified on the author's machine, not on a freshly provisioned Mac.

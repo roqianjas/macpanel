@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t, useT } from "../i18n";
 import { errText, fmtTime, get, post } from "../api";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { hasDevicePref, setDevicePref, setPublicSettings, useServerTheme, useThemePref, usePanelName, type Pref } from "../settings";
@@ -6,10 +7,10 @@ import AppearanceCard from "../features/appearance/AppearanceCard";
 import NotifyCard from "../features/notify/NotifyCard";
 import ThresholdsCard from "../features/hardware/ThresholdsCard";
 
-const THEMES: { id: Pref; label: string }[] = [
-  { id: "system", label: "Ikuti sistem" },
-  { id: "light", label: "Terang" },
-  { id: "dark", label: "Gelap" },
+const THEMES: { id: Pref; key: string }[] = [
+  { id: "system", key: "theme.system" },
+  { id: "light", key: "theme.light" },
+  { id: "dark", key: "theme.dark" },
 ];
 
 type Note = { tone: "ok" | "bad"; text: string } | null;
@@ -17,14 +18,15 @@ type Note = { tone: "ok" | "bad"; text: string } | null;
 async function copy(v: string, set: (n: Note) => void, what: string) {
   try {
     await navigator.clipboard.writeText(v);
-    set({ tone: "ok", text: `${what} disalin.` });
+    set({ tone: "ok", text: t("settings.copied", { what }) });
   } catch {
-    set({ tone: "bad", text: "Gagal menyalin; salin manual." });
+    set({ tone: "bad", text: t("settings.copyFail") });
   }
 }
 
 // ---------- Panel: nama dan tema ----------
 function PanelCard() {
+  const t = useT();
   const q = useLoad(() => get<{ name: string; theme: Pref; can_edit: boolean }>("/api/settings"));
   const name = usePanelName();
   const pref = useThemePref();
@@ -48,7 +50,7 @@ function PanelCard() {
   };
   const shown = draft ?? name;
   return (
-    <Card title="Panel">
+    <Card title={t("settings.panel.title")}>
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         <div className="stack">
           {note && <Alert tone={note.tone}>{note.text}</Alert>}
@@ -56,45 +58,45 @@ function PanelCard() {
             className="stack"
             onSubmit={(e) => {
               e.preventDefault();
-              save({ name: shown }, "Nama panel diganti.");
+              save({ name: shown }, t("settings.name.saved"));
             }}
           >
-            <Field label="Nama panel" hint={canEdit ? "Tampil di halaman masuk, menu samping, dan judul tab. 1-40 karakter." : "Hanya admin yang dapat mengganti nama panel."}>
+            <Field label={t("settings.name.label")} hint={canEdit ? t("settings.name.hint.edit") : t("settings.name.hint.ro")}>
               {(id, dd) => <input id={id} aria-describedby={dd} placeholder="MacPanel" value={shown} maxLength={40} disabled={!canEdit} onChange={(e) => setDraft(e.target.value)} required />}
             </Field>
             {canEdit && (
               <div className="row-end">
                 <button className="btn btn-primary" disabled={busy || draft === null || draft.trim() === "" || draft === name}>
-                  {busy ? "Menyimpan…" : "Simpan nama"}
+                  {busy ? t("settings.saving") : t("settings.name.save")}
                 </button>
               </div>
             )}
           </form>
           <div className="stack">
-            <span className="field-label">Tema perangkat ini</span>
-            <div className="seg" role="group" aria-label="Tema perangkat ini">
-              {THEMES.map((t) => (
-                <button key={t.id} type="button" className={`seg-btn ${pref === t.id ? "on" : ""}`} aria-pressed={pref === t.id} onClick={() => setDevicePref(t.id)}>
-                  {t.label}
+            <span className="field-label">{t("settings.theme.device")}</span>
+            <div className="seg" role="group" aria-label={t("settings.theme.device")}>
+              {THEMES.map((th) => (
+                <button key={th.id} type="button" className={`seg-btn ${pref === th.id ? "on" : ""}`} aria-pressed={pref === th.id} onClick={() => setDevicePref(th.id)}>
+                  {t(th.key)}
                 </button>
               ))}
             </div>
             <p className="small muted">
-              Disimpan di browser ini saja.{" "}
+              {t("settings.theme.local")}{" "}
               {hasDevicePref() && (
                 <button type="button" className="btn btn-ghost" onClick={() => setDevicePref(null)}>
-                  Kembali ke bawaan panel
+                  {t("settings.theme.reset")}
                 </button>
               )}
             </p>
           </div>
           {canEdit && (
-            <Field label="Tema bawaan panel" hint="Dipakai perangkat yang belum memilih tema sendiri.">
+            <Field label={t("settings.theme.default")} hint={t("settings.theme.defaultHint")}>
               {(id, dd) => (
-                <select id={id} aria-describedby={dd} value={serverTheme} disabled={busy} onChange={(e) => save({ theme: e.target.value }, "Tema bawaan diganti.")}>
-                  {THEMES.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
+                <select id={id} aria-describedby={dd} value={serverTheme} disabled={busy} onChange={(e) => save({ theme: e.target.value }, t("settings.theme.defaultSaved"))}>
+                  {THEMES.map((th) => (
+                    <option key={th.id} value={th.id}>
+                      {t(th.key)}
                     </option>
                   ))}
                 </select>
@@ -109,6 +111,7 @@ function PanelCard() {
 
 // ---------- 2FA ----------
 export function TwoFactor() {
+  const t = useT();
   const q = useLoad(() => get<{ enabled: boolean; recovery_left: number }>("/api/me/2fa"));
   const [note, setNote] = useState<Note>(null);
   const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null);
@@ -128,25 +131,25 @@ export function TwoFactor() {
   };
   const on = q.data?.enabled;
   return (
-    <Card title="Verifikasi dua langkah (2FA)" action={q.data ? <Chip tone={on ? "ok" : "warn"}>{on ? "Aktif" : "Mati"}</Chip> : undefined}>
+    <Card title={t("settings.2fa.title")} action={q.data ? <Chip tone={on ? "ok" : "warn"}>{on ? t("settings.on") : t("settings.off")}</Chip> : undefined}>
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         <div className="stack">
           {note && <Alert tone={note.tone}>{note.text}</Alert>}
           {on ? (
             <>
-              <p className="small muted">Login meminta kode dari aplikasi autentikator. Recovery code tersisa: {q.data?.recovery_left}. Mematikan 2FA membutuhkan kata sandi dan kode saat ini, lalu mengeluarkan semua sesi lain dan mencabut semua perangkat tepercaya.</p>
+              <p className="small muted">{t("settings.2fa.onText", { left: q.data?.recovery_left ?? "" })}</p>
               <div className="row-end">
                 <button className="btn btn-danger-ghost" onClick={() => setOff(true)}>
-                  Matikan 2FA
+                  {t("settings.2fa.disable")}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <Alert tone="warn">2FA mati: akun ini masuk hanya dengan nama pengguna dan kata sandi. Nyalakan kembali agar login lebih aman.</Alert>
+              <Alert tone="warn">{t("settings.2fa.offWarn")}</Alert>
               <div className="row-end">
                 <button className="btn btn-primary" disabled={busy} onClick={start}>
-                  {busy ? "Menyiapkan…" : "Nyalakan 2FA"}
+                  {busy ? t("settings.preparing") : t("settings.2fa.enable")}
                 </button>
               </div>
             </>
@@ -155,12 +158,13 @@ export function TwoFactor() {
       </State>
       {setup && <EnableDialog setup={setup} onClose={() => setSetup(null)} onDone={(c) => { setSetup(null); setCodes(c); q.reload(); }} />}
       {codes && <CodesDialog codes={codes} onClose={() => setCodes(null)} />}
-      {off && <DisableDialog onClose={() => setOff(false)} onDone={() => { setOff(false); q.reload(); setNote({ tone: "ok", text: "2FA dimatikan. Sesi lain dan perangkat tepercaya sudah dicabut." }); }} />}
+      {off && <DisableDialog onClose={() => setOff(false)} onDone={() => { setOff(false); q.reload(); setNote({ tone: "ok", text: t("settings.2fa.disabledDone") }); }} />}
     </Card>
   );
 }
 
 function EnableDialog({ setup, onClose, onDone }: { setup: { secret: string; uri: string }; onClose: () => void; onDone: (codes: string[]) => void }) {
+  const t = useT();
   const [code, setCode] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -178,26 +182,26 @@ function EnableDialog({ setup, onClose, onDone }: { setup: { secret: string; uri
     }
   };
   return (
-    <Modal title="Nyalakan 2FA" onClose={onClose}>
+    <Modal title={t("settings.2fa.enable")} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
-        <p className="small muted">Di aplikasi autentikator (Google Authenticator, Authy, 1Password), pilih tambah akun lalu "Enter a setup key" (jenis berbasis waktu), dan masukkan kunci ini:</p>
+        <p className="small muted">{t("settings.2fa.setupHelp")}</p>
         <div className="row">
           <code className="mono" style={{ wordBreak: "break-all" }}>{setup.secret}</code>
-          <button type="button" className="btn" onClick={() => copy(setup.secret, setNote, "Kunci")}>
-            Salin
+          <button type="button" className="btn" onClick={() => copy(setup.secret, setNote, t("settings.copy.key"))}>
+            {t("settings.copy")}
           </button>
         </div>
         {note && <Alert tone={note.tone}>{note.text}</Alert>}
-        <Field label="Kode 6 digit dari aplikasi" hint="Memastikan kunci sudah benar sebelum 2FA diaktifkan.">
+        <Field label={t("settings.2fa.code")} hint={t("settings.2fa.codeHint")}>
           {(id, dd) => <input id={id} aria-describedby={dd} data-autofocus inputMode="numeric" autoComplete="one-time-code" className="mono code-input" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />}
         </Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>
-            Batal
+            {t("common.cancel")}
           </button>
           <button className="btn btn-primary" disabled={busy || code.trim().length < 6}>
-            {busy ? "Memeriksa…" : "Aktifkan"}
+            {busy ? t("login.checking") : t("settings.activate")}
           </button>
         </div>
       </form>
@@ -206,11 +210,12 @@ function EnableDialog({ setup, onClose, onDone }: { setup: { secret: string; uri
 }
 
 function CodesDialog({ codes, onClose }: { codes: string[]; onClose: () => void }) {
+  const t = useT();
   const [note, setNote] = useState<Note>(null);
   return (
-    <Modal title="Simpan recovery code" onClose={onClose}>
+    <Modal title={t("settings.codes.title")} onClose={onClose}>
       <div className="stack">
-        <Alert tone="warn">Kode ini hanya tampil sekali. Tiap kode dapat dipakai satu kali bila ponsel hilang. Simpan di pengelola kata sandi.</Alert>
+        <Alert tone="warn">{t("settings.codes.warn")}</Alert>
         <ul className="list mono">
           {codes.map((c) => (
             <li key={c} className="list-row">
@@ -220,11 +225,11 @@ function CodesDialog({ codes, onClose }: { codes: string[]; onClose: () => void 
         </ul>
         {note && <Alert tone={note.tone}>{note.text}</Alert>}
         <div className="row-end">
-          <button className="btn" onClick={() => copy(codes.join("\n"), setNote, "Recovery code")}>
-            Salin semua
+          <button className="btn" onClick={() => copy(codes.join("\n"), setNote, t("settings.codes.name"))}>
+            {t("settings.copyAll")}
           </button>
           <button className="btn btn-primary" onClick={onClose}>
-            Sudah saya simpan
+            {t("settings.savedIt")}
           </button>
         </div>
       </div>
@@ -233,6 +238,7 @@ function CodesDialog({ codes, onClose }: { codes: string[]; onClose: () => void 
 }
 
 function DisableDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const t = useT();
   const [pw, setPw] = useState("");
   const [code, setCode] = useState("");
   const [err, setErr] = useState("");
@@ -250,18 +256,18 @@ function DisableDialog({ onClose, onDone }: { onClose: () => void; onDone: () =>
     }
   };
   return (
-    <Modal title="Matikan 2FA" onClose={onClose}>
+    <Modal title={t("settings.2fa.disable")} onClose={onClose}>
       <form className="stack" onSubmit={submit} autoComplete="off">
-        <p className="small muted">Masukkan kata sandi dan kode 6 digit (atau satu recovery code) saat ini.</p>
-        <Field label="Kata sandi">{(id) => <input id={id} type="password" data-autofocus autoComplete="current-password" placeholder="kata sandi" value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
-        <Field label="Kode 6 digit atau recovery code">{(id) => <input id={id} autoComplete="one-time-code" className="mono code-input" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />}</Field>
+        <p className="small muted">{t("settings.2fa.disableHelp")}</p>
+        <Field label={t("login.pw")}>{(id) => <input id={id} type="password" data-autofocus autoComplete="current-password" placeholder={t("login.pw.ph")} value={pw} onChange={(e) => setPw(e.target.value)} required />}</Field>
+        <Field label={t("settings.2fa.codeOrRecovery")}>{(id) => <input id={id} autoComplete="one-time-code" className="mono code-input" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} required />}</Field>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>
-            Batal
+            {t("common.cancel")}
           </button>
           <button className="btn btn-danger" disabled={busy || !pw || code.trim().length < 6}>
-            {busy ? "Memeriksa…" : "Matikan 2FA"}
+            {busy ? t("login.checking") : t("settings.2fa.disable")}
           </button>
         </div>
       </form>
@@ -280,10 +286,12 @@ interface Tok {
   last_used: number;
   last_ip: string;
 }
-const SCOPE_LABEL: Record<string, string> = { read: "Baca-saja", operate: "Operasi", full: "Penuh" };
+const SCOPE_KEY: Record<string, string> = { read: "settings.scope.read", operate: "settings.scope.operate", full: "settings.scope.full" };
+const scopeLabel = (s: string) => (SCOPE_KEY[s] ? t(SCOPE_KEY[s]) : s);
 const SCOPE_TONE: Record<string, "ok" | "warn" | "bad"> = { read: "ok", operate: "warn", full: "bad" };
 
 function Tokens() {
+  const t = useT();
   const q = useLoad(() => get<{ tokens: Tok[]; max: number }>("/api/me/tokens"));
   const [name, setName] = useState("");
   const [scope, setScope] = useState("operate");
@@ -309,59 +317,59 @@ function Tokens() {
   };
   const list = q.data?.tokens ?? [];
   return (
-    <Card title="Token API (agen AI dan otomasi)">
+    <Card title={t("settings.tok.title")}>
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         <div className="stack">
           <p className="small muted">
-            Token memberi akses API tanpa login manusia, dipakai lewat perintah <span className="mono">panelctl</span> atau header <span className="mono">Authorization: Bearer</span>. Hanya hash yang disimpan, berlaku terbatas, dan dapat dicabut kapan saja. Baca-saja: hanya melihat. Operasi: tambah dan ubah (situs, database, deploy), tanpa aksi yang butuh verifikasi ulang. Penuh: juga hapus, config, dan pasang (penghapusan wajib mengetik nama target). Login, 2FA, kata sandi, kredensial database, dan isi .env tidak pernah tersedia lewat token.
+            {t("settings.tok.i1")}<span className="mono">panelctl</span>{t("settings.tok.i2")}<span className="mono">Authorization: Bearer</span>{t("settings.tok.i3")}
           </p>
           {note && <Alert tone={note.tone}>{note.text}</Alert>}
           <form className="stack" onSubmit={create}>
             <div className="grid2">
-              <Field label="Nama token" hint="Mis. nama agen atau mesin.">
-                {(id, dd) => <input id={id} aria-describedby={dd} placeholder="mis. laptop-hp" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required autoComplete="off" />}
+              <Field label={t("settings.tok.name")} hint={t("settings.tok.nameHint")}>
+                {(id, dd) => <input id={id} aria-describedby={dd} placeholder={t("settings.tok.namePh")} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required autoComplete="off" />}
               </Field>
-              <Field label="Tingkat">
+              <Field label={t("settings.tok.level")}>
                 {(id) => (
                   <select id={id} value={scope} onChange={(e) => setScope(e.target.value)}>
-                    <option value="read">Baca-saja</option>
-                    <option value="operate">Operasi</option>
-                    <option value="full">Penuh</option>
+                    <option value="read">{t("settings.scope.read")}</option>
+                    <option value="operate">{t("settings.scope.operate")}</option>
+                    <option value="full">{t("settings.scope.full")}</option>
                   </select>
                 )}
               </Field>
-              <Field label="Masa berlaku">
+              <Field label={t("settings.tok.validity")}>
                 {(id) => (
                   <select id={id} value={days} onChange={(e) => setDays(e.target.value)}>
-                    <option value="7">7 hari</option>
-                    <option value="30">30 hari</option>
-                    <option value="90">90 hari</option>
-                    <option value="365">365 hari</option>
+                    <option value="7">{t("fmt.day", { n: 7 })}</option>
+                    <option value="30">{t("fmt.day", { n: 30 })}</option>
+                    <option value="90">{t("fmt.day", { n: 90 })}</option>
+                    <option value="365">{t("fmt.day", { n: 365 })}</option>
                   </select>
                 )}
               </Field>
             </div>
             <div className="row-end">
               <button className="btn btn-primary" disabled={busy || name.trim() === "" || list.length >= (q.data?.max ?? 10)}>
-                {busy ? "Membuat…" : "Buat token"}
+                {busy ? t("settings.creating") : t("settings.tok.create")}
               </button>
             </div>
           </form>
           {list.length === 0 ? (
-            <p className="small muted">Belum ada token.</p>
+            <p className="small muted">{t("settings.tok.none")}</p>
           ) : (
             <ul className="list">
-              {list.map((t) => (
-                <li key={t.id} className="list-row">
+              {list.map((tk) => (
+                <li key={tk.id} className="list-row">
                   <span>
-                    {t.name} <Chip tone={SCOPE_TONE[t.scope] ?? "mute"}>{SCOPE_LABEL[t.scope] ?? t.scope}</Chip>
+                    {tk.name} <Chip tone={SCOPE_TONE[tk.scope] ?? "mute"}>{scopeLabel(tk.scope)}</Chip>
                     <br />
                     <span className="small muted">
-                      <span className="mono">{t.prefix}…</span> · berlaku sampai {fmtTime(t.expires)} · {t.last_used ? `terakhir dipakai ${fmtTime(t.last_used)}${t.last_ip ? ` dari ${t.last_ip}` : ""}` : "belum pernah dipakai"}
+                      <span className="mono">{tk.prefix}…</span>{t("settings.tok.until", { time: fmtTime(tk.expires) })}{tk.last_used ? `${t("settings.tok.lastUsed", { time: fmtTime(tk.last_used) })}${tk.last_ip ? t("settings.tok.lastFrom", { ip: tk.last_ip }) : ""}` : t("settings.tok.never")}
                     </span>
                   </span>
-                  <button className="btn btn-danger-ghost" onClick={() => setRev(t)}>
-                    Cabut
+                  <button className="btn btn-danger-ghost" onClick={() => setRev(tk)}>
+                    {t("settings.revoke")}
                   </button>
                 </li>
               ))}
@@ -372,10 +380,10 @@ function Tokens() {
       {made && <MadeDialog made={made} onClose={() => setMade(null)} />}
       {rev && (
         <ConfirmDialog
-          title="Cabut token"
-          body={<>Token "{rev.name}" langsung berhenti bekerja. Agen yang memakainya akan ditolak.</>}
+          title={t("settings.tok.revokeTitle")}
+          body={<>{t("settings.tok.revokeBody", { name: rev.name })}</>}
           word={rev.name}
-          verb="Cabut"
+          verb={t("settings.revoke")}
           onClose={() => setRev(null)}
           onConfirm={async () => {
             await post("/api/me/tokens/revoke", { id: rev.id });
@@ -389,24 +397,25 @@ function Tokens() {
 }
 
 function MadeDialog({ made, onClose }: { made: { token: string; scope: string }; onClose: () => void }) {
+  const t = useT();
   const [note, setNote] = useState<Note>(null);
   return (
-    <Modal title="Token dibuat" onClose={onClose} wide>
+    <Modal title={t("settings.tok.made")} onClose={onClose} wide>
       <div className="stack">
-        <Alert tone="warn">Token ini hanya tampil sekali. Simpan sekarang di tempat aman; jangan ditempel ke chat atau repo.</Alert>
+        <Alert tone="warn">{t("settings.tok.madeWarn")}</Alert>
         <div className="row">
           <code className="mono" style={{ wordBreak: "break-all" }}>{made.token}</code>
         </div>
         <p className="small muted">
-          Pakai di mesin klien: simpan ke <span className="mono">~/.config/macpanel/token</span> (chmod 600), lalu <span className="mono">panelctl whoami</span>. Tingkat: {SCOPE_LABEL[made.scope]}.
+          {t("settings.tok.m1")}<span className="mono">~/.config/macpanel/token</span>{t("settings.tok.m2")}<span className="mono">panelctl whoami</span>{t("settings.tok.m3", { scope: scopeLabel(made.scope) })}
         </p>
         {note && <Alert tone={note.tone}>{note.text}</Alert>}
         <div className="row-end">
-          <button className="btn" onClick={() => copy(made.token, setNote, "Token")}>
-            Salin token
+          <button className="btn" onClick={() => copy(made.token, setNote, t("settings.tok.name2"))}>
+            {t("settings.tok.copyToken")}
           </button>
           <button className="btn btn-primary" onClick={onClose}>
-            Sudah saya simpan
+            {t("settings.savedIt")}
           </button>
         </div>
       </div>
@@ -415,14 +424,15 @@ function MadeDialog({ made, onClose }: { made: { token: string; scope: string };
 }
 
 export default function Settings() {
+  const t = useT();
   return (
     <>
-      <PageHead title="Pengaturan" desc="Nama dan tema panel, kata sandi, verifikasi dua langkah, perangkat tepercaya, dan token API." />
+      <PageHead title={t("nav.settings")} desc={t("settings.page.desc")} />
       <PanelCard />
       <AppearanceCard />
       <NotifyCard />
       <ThresholdsCard />
-      <Card title="Akun saya"><p className="small muted">Nama, avatar, kata sandi, dan 2FA ada di <a href="#/profil">Profil saya</a>.</p></Card>
+      <Card title={t("settings.me.title")}><p className="small muted">{t("settings.me.text")}<a href="#/profil">{t("profile.mine")}</a>.</p></Card>
       <Tokens />
     </>
   );

@@ -1,5 +1,6 @@
 import { Fan, HardDrive, MemoryStick, Plug, Thermometer } from "lucide-react";
 import { LineChart } from "../../charts";
+import { useT } from "../../i18n";
 import { fmtBytes, niceTop, RANGES, type RangeKey } from "../../lib";
 import { Card, Chip, State } from "../../ui";
 import { fanText, forecastText, fmtTemp, freshness, num, smartStatus } from "./model";
@@ -9,6 +10,7 @@ import { useHw } from "./useHw";
 // Tiap grafik berjudul pertanyaan yang dijawabnya; grafik tanpa data tampil sebagai keterangan, bukan garis datar.
 
 export default function HardwareSection({ range }: { range: RangeKey }) {
+  const t = useT();
   const hw = useHw(range);
   const d = hw.data;
   const label = RANGES.find((r) => r.key === range)?.label ?? "";
@@ -24,18 +26,18 @@ export default function HardwareSection({ range }: { range: RangeKey }) {
   return (
     <>
       <h2 className="card-title" style={{ marginTop: 8 }}>
-        <Thermometer size={18} className="icon" aria-hidden="true" /> Perangkat keras
+        <Thermometer size={18} className="icon" aria-hidden="true" /> {t("system.hw.title")}
       </h2>
       <State loading={hw.loading && !d} error={hw.error} onRetry={hw.reload}>
         {d && (
           <>
             <p className="small muted">
-              {fresh.tone !== "ok" && <Chip tone={fresh.tone === "mute" ? "mute" : "warn"}>{fresh.tone === "mute" ? "Menunggu" : "Perhatian"}</Chip>} {fresh.text}
+              {fresh.tone !== "ok" && <Chip tone={fresh.tone === "mute" ? "mute" : "warn"}>{fresh.tone === "mute" ? t("system.hw.waiting") : t("system.hw.attention")}</Chip>} {fresh.text}
             </p>
 
-            <Card title={<>Suhu komponen: kapan mesin paling panas? ({label})</>}>
+            <Card title={t("system.hw.temp.title", { label })}>
               <LineChart
-                title="Suhu komponen"
+                title={t("system.hw.temp.chart")}
                 rangeKey={range}
                 domain={[20, 100]}
                 tickFmt={(v) => `${Math.round(v)}°`}
@@ -46,57 +48,57 @@ export default function HardwareSection({ range }: { range: RangeKey }) {
                 ]}
               />
               <p className="small muted">
-                Puncak dalam rentang ini: CPU {fmtTemp(pk.cpu)}, GPU {fmtTemp(pk.gpu)}, SSD {fmtTemp(pk.ssd)}. Grafik memakai rata-rata per ember waktu, jadi lonjakan singkat tampil lebih rendah daripada puncaknya.
-                {d.throttled_samples > 0 && ` macOS membatasi kecepatan CPU pada ${d.throttled_samples} dari ${d.samples} sampel.`}
+                {t("system.hw.temp.peak", { cpu: fmtTemp(pk.cpu), gpu: fmtTemp(pk.gpu), ssd: fmtTemp(pk.ssd) })}
+                {d.throttled_samples > 0 && ` ${t("system.hw.temp.throttled", { n: d.throttled_samples, samples: d.samples })}`}
               </p>
             </Card>
 
             <div className="grid2">
-              <Card title={<><Fan size={18} className="icon" aria-hidden="true" /> Kipas: seberapa keras bekerja?</>}>
-                <p className="small muted">Sekarang: {fanText(d.now?.fan ?? null)}.</p>
-                <LineChart title="Kecepatan kipas" rangeKey={range} domain={[0, fanTop]} tickFmt={(v) => `${Math.round(v)}`} series={[{ key: "fan", label: "Kipas", pts: ser.fan ?? [], fmt: (v) => `${Math.round(v)} rpm` }]} />
+              <Card title={<><Fan size={18} className="icon" aria-hidden="true" /> {t("system.hw.fan.title")}</>}>
+                <p className="small muted">{t("system.hw.now", { v: fanText(d.now?.fan ?? null) })}</p>
+                <LineChart title={t("system.hw.fan.chart")} rangeKey={range} domain={[0, fanTop]} tickFmt={(v) => `${Math.round(v)}`} series={[{ key: "fan", label: t("system.hw.fan.series"), pts: ser.fan ?? [], fmt: (v) => `${Math.round(v)} rpm` }]} />
               </Card>
-              <Card title={<><Plug size={18} className="icon" aria-hidden="true" /> Daya sistem: berapa watt dipakai?</>}>
-                <p className="small muted">Sekarang: {d.now?.power?.system != null ? `${num(d.now.power.system, 1)} W` : "n/a"}. Dibaca dari macmon.</p>
-                <LineChart title="Daya sistem" rangeKey={range} domain={[0, powTop]} tickFmt={(v) => `${Math.round(v)} W`} series={[{ key: "power", label: "Daya", pts: ser.power ?? [], fmt: (v) => `${num(v, 1)} W` }]} />
+              <Card title={<><Plug size={18} className="icon" aria-hidden="true" /> {t("system.hw.pow.title")}</>}>
+                <p className="small muted">{t("system.hw.pow.now", { v: d.now?.power?.system != null ? `${num(d.now.power.system, 1)} W` : t("fmt.na") })}</p>
+                <LineChart title={t("system.hw.pow.chart")} rangeKey={range} domain={[0, powTop]} tickFmt={(v) => `${Math.round(v)} W`} series={[{ key: "power", label: t("system.hw.pow.series"), pts: ser.power ?? [], fmt: (v) => `${num(v, 1)} W` }]} />
               </Card>
             </div>
 
             <div className="grid2">
-              <Card title={<><MemoryStick size={18} className="icon" aria-hidden="true" /> Tekanan memori: apakah RAM cukup?</>}>
-                <p className="small muted">Tekanan tinggi berarti macOS terpaksa memampatkan atau menukar isi memori ke disk, lebih berarti daripada persen memori terpakai.{d.now?.mem?.swap_used_mb != null && ` Swap terpakai ${num(d.now.mem.swap_used_mb, 1)} MB dari ${num(d.now.mem.swap_total_mb)} MB.`}</p>
-                <LineChart title="Tekanan memori" rangeKey={range} domain={[0, 100]} tickFmt={(v) => `${Math.round(v)}%`} series={[{ key: "pressure", label: "Tekanan", pts: ser.pressure ?? [], fmt: (v) => `${num(v, 0)}%` }]} />
+              <Card title={<><MemoryStick size={18} className="icon" aria-hidden="true" /> {t("system.hw.mem.title")}</>}>
+                <p className="small muted">{t("system.hw.mem.hint")}{d.now?.mem?.swap_used_mb != null && ` ${t("system.hw.mem.swap", { used: num(d.now.mem.swap_used_mb, 1), total: num(d.now.mem.swap_total_mb) })}`}</p>
+                <LineChart title={t("system.hw.mem.chart")} rangeKey={range} domain={[0, 100]} tickFmt={(v) => `${Math.round(v)}%`} series={[{ key: "pressure", label: t("system.hw.mem.series"), pts: ser.pressure ?? [], fmt: (v) => `${num(v, 0)}%` }]} />
               </Card>
-              <Card title={<><HardDrive size={18} className="icon" aria-hidden="true" /> SSD: sehat dan cukup lega?</>}>
+              <Card title={<><HardDrive size={18} className="icon" aria-hidden="true" /> {t("system.hw.ssd.title")}</>}>
                 {d.ssd ? (
                   <dl className="kv">
                     <div>
-                      <dt>Perangkat</dt>
-                      <dd>{d.ssd.name || "n/a"}</dd>
+                      <dt>{t("system.hw.ssd.device")}</dt>
+                      <dd>{d.ssd.name || t("fmt.na")}</dd>
                     </div>
                     <div>
-                      <dt>Status SMART</dt>
+                      <dt>{t("system.hw.ssd.smart")}</dt>
                       <dd>
-                        <Chip tone={smart.tone}>{smart.text}</Chip> <span className="small muted">{d.ssd.smart || "tidak ada status"}</span>
+                        <Chip tone={smart.tone}>{smart.text}</Chip> <span className="small muted">{d.ssd.smart || t("system.hw.ssd.noStatus")}</span>
                       </dd>
                     </div>
                     <div>
-                      <dt>Ruang</dt>
+                      <dt>{t("system.hw.ssd.space")}</dt>
                       <dd>
-                        {fmtBytes(d.ssd.free)} bebas dari {fmtBytes(d.ssd.total)}
+                        {t("system.hw.ssd.spaceVal", { free: fmtBytes(d.ssd.free), total: fmtBytes(d.ssd.total) })}
                       </dd>
                     </div>
                     <div>
-                      <dt>Keausan</dt>
-                      <dd className="small muted">Persen keausan tidak tersedia tanpa sudo, jadi tidak ditampilkan.</dd>
+                      <dt>{t("system.hw.ssd.wear")}</dt>
+                      <dd className="small muted">{t("system.hw.ssd.wearNote")}</dd>
                     </div>
                   </dl>
                 ) : (
-                  <p className="small muted">Info SSD belum terbaca. Panel membacanya saat start lalu tiap 10 menit.</p>
+                  <p className="small muted">{t("system.hw.ssd.none")}</p>
                 )}
                 {fc && (
                   <p className="small" style={{ marginTop: 10 }}>
-                    <strong>Perkiraan penuh:</strong> {fc.text}
+                    <strong>{t("system.hw.fc")}</strong> {fc.text}
                   </p>
                 )}
               </Card>

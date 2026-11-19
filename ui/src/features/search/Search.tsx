@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { BookOpen, Compass, Cog, Database, Globe, Search as SearchIcon, Server, CornerDownLeft } from "lucide-react";
 import { get } from "../../api";
 import { Modal, Skeleton } from "../../ui";
-import { useT } from "../../i18n";
+import { useLang, useT } from "../../i18n";
 import ErrorBoundary from "../../ErrorBoundary";
 import { fromDatabases, fromDocs, fromServices, fromSites, fromTasks, GROUP_ORDER, PAGES, rank, type Group, type Item } from "./model";
 
@@ -64,6 +64,8 @@ export default function GlobalSearch({ role }: { role: string }) {
 }
 
 function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) {
+  const t = useT();
+  const lang = useLang();
   const [q, setQ] = useState("");
   const [data, setData] = useState<{ items: Item[]; failed: number } | null>(cache);
   const [active, setActive] = useState(0);
@@ -74,7 +76,7 @@ function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) 
     void loadIndex().then((d) => alive && setData(d));
     return () => void (alive = false);
   }, []);
-  const hits = useMemo(() => rank([...PAGES, ...(data?.items ?? [])], q, role), [q, data, role]);
+  const hits = useMemo(() => rank([...PAGES, ...(data?.items ?? [])], q, role), [q, data, role, lang]);
   useEffect(() => {
     setActive(0);
   }, [q]);
@@ -94,7 +96,7 @@ function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) 
   };
   let last: Group | null = null;
   return (
-    <Modal title="Cari" onClose={onClose} wide>
+    <Modal title={t("list.search")} onClose={onClose} wide>
       <div className="stack">
         <div className="search-box">
           <SearchIcon size={18} aria-hidden="true" />
@@ -105,8 +107,8 @@ function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) 
             aria-expanded="true"
             aria-controls={listId}
             aria-activedescendant={hits[active] ? `${listId}-${active}` : undefined}
-            aria-label="Cari halaman, situs, layanan, database, atau tugas"
-            placeholder="Cari halaman, situs, layanan, database, tugas…"
+            aria-label={t("dev.search.aria")}
+            placeholder={t("dev.search.ph")}
             autoComplete="off"
             spellCheck={false}
             value={q}
@@ -114,10 +116,10 @@ function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) 
             onKeyDown={onKey}
           />
         </div>
-        <ul id={listId} ref={list} className="search-list" role="listbox" aria-label="Hasil pencarian">
+        <ul id={listId} ref={list} className="search-list" role="listbox" aria-label={t("dev.search.results")}>
           {hits.map((h, i) => {
             const Ic = ICON[h.item.group];
-            const head = h.item.group !== last ? ((last = h.item.group), h.item.group) : null;
+            const head = h.item.group !== last ? ((last = h.item.group), t(`dev.search.group.${h.item.group}`)) : null;
             return (
               <li key={h.item.id} role="presentation">
                 {head && <p className="search-head" aria-hidden="true">{head}</p>}
@@ -131,10 +133,10 @@ function SearchDialog({ role, onClose }: { role: string; onClose: () => void }) 
             );
           })}
         </ul>
-        {hits.length === 0 && <p className="state muted" role="status">Tidak ada hasil untuk “{q}”. Coba nama situs, layanan, atau menu.</p>}
+        {hits.length === 0 && <p className="state muted" role="status">{t("dev.search.none", { q })}</p>}
         {!data && <Skeleton />}
-        {data && data.failed > 0 && <p className="small muted" role="status">{data.failed} sumber gagal dimuat; hasil mungkin tidak lengkap.</p>}
-        <p className="small muted">Panah atas/bawah memilih, Enter membuka, Esc menutup. Kelompok: {GROUP_ORDER.join(", ")}.</p>
+        {data && data.failed > 0 && <p className="small muted" role="status">{t("dev.search.failed", { n: data.failed })}</p>}
+        <p className="small muted">{t("dev.search.keys", { groups: GROUP_ORDER.map((g) => t(`dev.search.group.${g}`)).join(", ") })}</p>
       </div>
     </Modal>
   );

@@ -4,6 +4,7 @@ import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, useLoad } from "../ui";
 import PhpManage from "./PhpManage";
+import { useT } from "../i18n";
 
 interface PHP {
   version: string;
@@ -26,14 +27,15 @@ const TOOLS = [
 ];
 
 export default function Runtimes() {
+  const t = useT();
   const php = useLoad(() => get<{ php: PHP[] }>("/api/php"));
   const rt = useLoad(() => get<{ runtimes: RT[] }>("/api/runtime"));
   // FPM butuh beberapa detik untuk naik setelah pemasangan; periksa ulang sampai aktif agar tidak menampilkan "mati" yang basi.
   const fpmDown = !!php.data?.php.some((p) => p.installed && !p.fpm);
   useEffect(() => {
     if (!fpmDown) return;
-    const t = setInterval(php.reload, 4000);
-    return () => clearInterval(t);
+    const iv = setInterval(php.reload, 4000);
+    return () => clearInterval(iv);
   }, [fpmDown, php.reload]);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [rmPhp, setRmPhp] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export default function Runtimes() {
     setNote(null);
     try {
       const r = await post<{ job: number }>(`/api/php/${v}/install`, {});
-      trackJob(r.job, `Pasang PHP ${v}`, php.reload);
+      trackJob(r.job, t("dev.rt.installPhp", { v }), php.reload);
     } catch (x) {
       setNote({ tone: "bad", text: errText(x) });
     }
@@ -55,7 +57,7 @@ export default function Runtimes() {
     setNote(null);
     try {
       const r = await post<{ job: number }>(`/api/composer/${a}`, {});
-      trackJob(r.job, a === "install" ? "Pasang Composer" : "Perbarui Composer", comp.reload);
+      trackJob(r.job, a === "install" ? t("dev.rt.composerInstall") : t("dev.rt.composerUpdate"), comp.reload);
     } catch (x) {
       setNote({ tone: "bad", text: errText(x) });
     }
@@ -66,7 +68,7 @@ export default function Runtimes() {
     setNote(null);
     try {
       const r = await post<{ job: number }>(`/api/runtime/${tool}/${v}/install`, {});
-      trackJob(r.job, `Pasang ${tool} ${v}`, rt.reload);
+      trackJob(r.job, t("dev.rt.installTool", { tool, v }), rt.reload);
       setVer((p) => ({ ...p, [tool]: "" }));
     } catch (x) {
       setNote({ tone: "bad", text: errText(x) });
@@ -76,7 +78,7 @@ export default function Runtimes() {
     setNote(null);
     try {
       await post(`/api/runtime/${r.tool}/${r.version}/use`, {});
-      setNote({ tone: "ok", text: `${r.tool} ${r.version} dijadikan versi bawaan.` });
+      setNote({ tone: "ok", text: t("dev.rt.madeDefault", { tool: r.tool, v: r.version }) });
       rt.reload();
     } catch (x) {
       setNote({ tone: "bad", text: errText(x) });
@@ -84,7 +86,7 @@ export default function Runtimes() {
   };
   return (
     <>
-      <PageHead title="PHP dan runtime" desc="Pasang beberapa versi berdampingan. Pemasangan berjalan di latar belakang; progresnya tampil di pojok kanan bawah." />
+      <PageHead title={t("nav.runtimes")} desc={t("dev.rt.desc")} />
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <Card title="PHP">
         <State loading={php.loading && !php.data} error={php.error} onRetry={php.reload}>
@@ -95,26 +97,26 @@ export default function Runtimes() {
                   <p>
                     <strong>PHP {p.version}</strong> {p.installed ? <span className="mono muted">{p.full}</span> : null}
                   </p>
-                  <p className="small muted">{p.installed ? (p.fpm ? "FPM aktif lewat unix socket" : "Terpasang, FPM belum aktif") : "Belum terpasang"}</p>
+                  <p className="small muted">{p.installed ? (p.fpm ? t("dev.rt.fpmSock") : t("dev.rt.fpmNotYet")) : t("svc.state.not_installed")}</p>
                 </div>
                 <div className="row">
                   {p.installed ? (
                     <>
-                      <Chip tone={p.fpm ? "ok" : "warn"}>{p.fpm ? "Terpasang" : "FPM mati"}</Chip>
+                      <Chip tone={p.fpm ? "ok" : "warn"}>{p.fpm ? t("dev.rt.installed") : t("dev.rt.fpmOff")}</Chip>
                       <button className="btn" onClick={() => setManage(p.version)}>
                         <Settings2 size={18} aria-hidden="true" />
-                        Kelola<span className="sr"> PHP {p.version}</span>
+                        {t("dev.rt.manage")}<span className="sr"> PHP {p.version}</span>
                       </button>
                       <button className="btn btn-danger-ghost" onClick={() => setRmPhp(p.version)}>
                         <Trash2 size={18} aria-hidden="true" />
-                        Hapus
+                        {t("apps.remove")}
                         <span className="sr"> PHP {p.version}</span>
                       </button>
                     </>
                   ) : (
                     <button className="btn" onClick={() => installPhp(p.version)}>
                       <Download size={18} aria-hidden="true" />
-                      Pasang
+                      {t("apps.install")}
                       <span className="sr"> PHP {p.version}</span>
                     </button>
                   )}
@@ -132,54 +134,54 @@ export default function Runtimes() {
                 <strong>Composer</strong> {comp.data?.installed && <span className="mono muted">{comp.data.version}</span>}
               </p>
               <p className="small muted">
-                {!comp.data?.installed ? "Belum terpasang." : comp.data.outdated ? `Versi ${comp.data.latest} tersedia.` : "Versi terbaru."} Dipasang lewat Homebrew; perintah composer per proyek ada di tab Deploy tiap situs.
+                {!comp.data?.installed ? t("dev.rt.notInstalledDot") : comp.data.outdated ? t("dev.rt.verAvail", { v: comp.data.latest }) : t("dev.rt.latest")} {t("dev.rt.composerNote")}
               </p>
             </div>
             <div className="row">
               {!comp.data?.installed ? (
                 <button className="btn" onClick={() => composerAct("install")}>
                   <Download size={18} aria-hidden="true" />
-                  Pasang Composer
+                  {t("dev.rt.composerInstall")}
                 </button>
               ) : (
                 <button className="btn" disabled={!comp.data.outdated} onClick={() => composerAct("update")}>
                   <Download size={18} aria-hidden="true" />
-                  Perbarui Composer
+                  {t("dev.rt.composerUpdate")}
                 </button>
               )}
             </div>
           </div>
         </State>
       </Card>
-      {TOOLS.map((t) => {
-        const items = rt.data?.runtimes.filter((r) => r.tool === t.id) ?? [];
+      {TOOLS.map((tl) => {
+        const items = rt.data?.runtimes.filter((r) => r.tool === tl.id) ?? [];
         return (
-          <Card key={t.id} title={t.label}>
-            <State loading={rt.loading && !rt.data} error={rt.error} empty={!!rt.data && items.length === 0} emptyText={`Belum ada ${t.label} yang dikelola mise.`} onRetry={rt.reload}>
+          <Card key={tl.id} title={tl.label}>
+            <State loading={rt.loading && !rt.data} error={rt.error} empty={!!rt.data && items.length === 0} emptyText={t("dev.rt.noneManaged", { label: tl.label })} onRetry={rt.reload}>
               <ul className="list">
                 {items.map((r) => (
                   <li key={r.version} className="list-row">
                     <span className="mono">{r.version}</span>
                     <div className="row">
                       {r.default && (
-                        <Chip tone="info">Bawaan</Chip>
+                        <Chip tone="info">{t("dev.php.builtin")}</Chip>
                       )}
-                      {r.pruned && <Chip tone="warn">Akan dibersihkan</Chip>}
+                      {r.pruned && <Chip tone="warn">{t("dev.rt.willPrune")}</Chip>}
                       {!r.default && (
                         <button className="btn" onClick={() => useRt(r)}>
-                          Jadikan bawaan
+                          {t("dev.rt.makeDefault")}
                           <span className="sr">
                             {" "}
-                            {t.label} {r.version}
+                            {tl.label} {r.version}
                           </span>
                         </button>
                       )}
                       <button className="btn btn-danger-ghost" onClick={() => setRmRt(r)}>
                         <Trash2 size={18} aria-hidden="true" />
-                        Hapus
+                        {t("apps.remove")}
                         <span className="sr">
                           {" "}
-                          {t.label} {r.version}
+                          {tl.label} {r.version}
                         </span>
                       </button>
                     </div>
@@ -191,16 +193,16 @@ export default function Runtimes() {
               className="inline-form"
               onSubmit={(e) => {
                 e.preventDefault();
-                installRt(t.id);
+                installRt(tl.id);
               }}
             >
-              <label className="sr" htmlFor={`v-${t.id}`}>
-                Versi {t.label} yang dipasang
+              <label className="sr" htmlFor={`v-${tl.id}`}>
+                {t("dev.rt.verInstalled", { label: tl.label })}
               </label>
-              <input id={`v-${t.id}`} className="mono" placeholder={`mis. ${t.sample} atau latest`} value={ver[t.id] ?? ""} onChange={(e) => setVer((p) => ({ ...p, [t.id]: e.target.value }))} pattern="(latest|lts|[0-9]+(\.[0-9]+){0,2})" />
-              <button className="btn" disabled={!(ver[t.id] ?? "").trim()}>
+              <input id={`v-${tl.id}`} className="mono" placeholder={t("dev.rt.verPh", { sample: tl.sample })} value={ver[tl.id] ?? ""} onChange={(e) => setVer((p) => ({ ...p, [tl.id]: e.target.value }))} pattern="(latest|lts|[0-9]+(\.[0-9]+){0,2})" />
+              <button className="btn" disabled={!(ver[tl.id] ?? "").trim()}>
                 <Download size={18} aria-hidden="true" />
-                Pasang versi
+                {t("dev.rt.installVer")}
               </button>
             </form>
           </Card>
@@ -209,23 +211,23 @@ export default function Runtimes() {
       {manage && <PhpManage version={manage} onClose={() => { setManage(null); php.reload(); }} />}
       {rmPhp && (
         <ConfirmDialog
-          title={`Hapus PHP ${rmPhp}`}
+          title={t("dev.rt.rmPhpTitle", { v: rmPhp })}
           word={rmPhp}
-          verb="Hapus PHP"
-          body={<p>Situs yang memakai versi ini akan berhenti bekerja sampai dipindah ke versi lain. Meminta kata sandi ulang.</p>}
+          verb={t("dev.rt.rmPhp")}
+          body={<p>{t("dev.rt.rmPhpBody")}</p>}
           onConfirm={async () => {
             const r = await post<{ job: number }>(`/api/php/${rmPhp}/remove`, { confirm: rmPhp });
-            trackJob(r.job, `Hapus PHP ${rmPhp}`, php.reload);
+            trackJob(r.job, t("dev.rt.rmPhpTitle", { v: rmPhp }), php.reload);
           }}
           onClose={() => setRmPhp(null)}
         />
       )}
       {rmRt && (
         <ConfirmDialog
-          title={`Hapus ${rmRt.tool} ${rmRt.version}`}
+          title={t("dev.rt.rmRtTitle", { tool: rmRt.tool, v: rmRt.version })}
           word={`${rmRt.tool}@${rmRt.version}`}
-          verb="Hapus versi"
-          body={<p>Proyek yang bergantung pada versi ini perlu dipindah. Meminta kata sandi ulang.</p>}
+          verb={t("dev.rt.rmVer")}
+          body={<p>{t("dev.rt.rmRtBody")}</p>}
           onConfirm={async () => {
             await post(`/api/runtime/${rmRt.tool}/${rmRt.version}/remove`, { confirm: `${rmRt.tool}@${rmRt.version}` });
             rt.reload();

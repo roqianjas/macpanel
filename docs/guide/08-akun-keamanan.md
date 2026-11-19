@@ -87,6 +87,6 @@ Kotak **Cari** di bilah atas membuka pencarian untuk halaman dan tab (mis. "tail
 
 Panel tersedia dalam Bahasa Indonesia dan English. Pilih bahasa dari menu profil (pojok kanan atas), halaman Profil, atau layar login. Pilihan disimpan di akun Anda sehingga ikut ke perangkat lain; di layar login hanya diingat di browser ini.
 
-Urutan penentuan: pilihan akun, lalu bahasa browser, lalu Indonesia. Bagian panel yang belum diterjemahkan tetap tampil dalam Indonesia (tidak ada teks kosong).
+Urutan penentuan: pilihan akun, lalu bahasa browser, lalu Indonesia. Seluruh antarmuka diterjemahkan. Yang masih berbahasa Indonesia: panduan ini, teks peringatan perangkat keras/jaringan/perkiraan disk, deskripsi katalog pembersihan disk, dan pesan galat dari server. Teks yang belum punya terjemahan tidak pernah kosong; panel memakai teks aslinya.
 
 Menambah bahasa (untuk kontributor): salin `ui/src/i18n/locales/id.ts` menjadi `locales/<kode>.ts`, terjemahkan nilainya (jangan ubah kunci atau `{placeholder}`), lalu daftarkan satu baris di `LOCALES` pada `ui/src/i18n/index.ts`. Kunci berakhiran `.one` dipakai untuk bentuk tunggal bila bahasa membedakannya. Tes `i18n.test.ts` memastikan setiap bahasa memiliki kunci dan placeholder yang sama dengan bahasa dasar.

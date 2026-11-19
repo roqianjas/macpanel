@@ -312,6 +312,14 @@ func RunNotify(ctx context.Context, a *core.App) {
 	}
 }
 
+// notifyCode: kunci terjemahan untuk NotifyHint ("panel" = tanpa pesan keluar, "ntfy:<host>" = juga ke ponsel).
+func notifyCode(a *core.App) string {
+	if c := loadConfig(a); c.Enabled && c.Topic != "" {
+		return "ntfy:" + hostOf(c.Server)
+	}
+	return "panel"
+}
+
 // NotifyHint: keterangan di kartu Peringatan, harus jujur soal apakah ada pesan keluar.
 func NotifyHint(a *core.App) string {
 	if c := loadConfig(a); c.Enabled && c.Topic != "" {

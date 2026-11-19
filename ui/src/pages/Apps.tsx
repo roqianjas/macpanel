@@ -6,6 +6,7 @@ import { trackJob } from "../jobs";
 import { FacetBar } from "../features/list/ListTools";
 import { applyFacet, countFacets, type Facet } from "../features/list/paging";
 import { useT, type Key } from "../i18n";
+import { svcDesc } from "../serverText";
 import { Alert, Card, Chip, ConfirmDialog, Mark, Modal, PageHead, Skeleton, State } from "../ui";
 
 const ORDER = ["Web server", "PHP", "Database", "Cache dan antrean", "Monitoring", "Jaringan", "Alat pengembangan", "Sistem"];
@@ -73,7 +74,7 @@ export default function Apps() {
                     <th scope="col">{t("apps.col.status")}</th>
                     <th scope="col">{t("apps.col.version")}</th>
                     <th scope="col">{t("apps.col.port")}</th>
-                    <th scope="col"><span className="sr">Aksi</span></th>
+                    <th scope="col"><span className="sr">{t("ops.col.actions")}</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -81,7 +82,7 @@ export default function Apps() {
                     <tr key={s.id} className={s.installed ? "" : "row-off"}>
                       <th scope="row">
                         <span className="row"><Mark tone={serviceView(s).tone} /><span>{s.label}</span></span>
-                        <span className="small muted" style={{ fontWeight: 400, display: "block" }}>{s.desc}</span>
+                        <span className="small muted" style={{ fontWeight: 400, display: "block" }}>{svcDesc(s.id, s.desc)}</span>
                       </th>
                       <td><Chip tone={serviceView(s).tone}>{serviceView(s).text}</Chip></td>
                       <td className="mono" data-label={t("apps.col.version")}>{s.version || "-"}</td>

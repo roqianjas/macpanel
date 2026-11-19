@@ -25,7 +25,7 @@ export default function ProfileCard() {
       const r = await post<{ display_name: string; avatar: string }>("/api/me/profile", { display_name: name.trim(), avatar });
       setMe(r);
       setName(r.display_name);
-      setMsg({ tone: "ok", text: "Profil disimpan." });
+      setMsg({ tone: "ok", text: t("settings.pc.saved") });
     } catch (x) {
       setMsg({ tone: "bad", text: errText(x) });
     } finally {
@@ -33,7 +33,7 @@ export default function ProfileCard() {
     }
   };
   return (
-    <Card title={<span className="with-icon"><UserRound size={18} aria-hidden="true" /> Profil</span>}>
+    <Card title={<span className="with-icon"><UserRound size={18} aria-hidden="true" /> {t("profile.menu")}</span>}>
       <form className="stack" onSubmit={save} autoComplete="off">
         <div className="profile-head">
           <Avatar name={me.user} display={name} avatar={avatar} size={72} />
@@ -42,13 +42,13 @@ export default function ProfileCard() {
             <p className="small muted mono">@{me.user}</p>
           </div>
         </div>
-        <Field label="Nama tampilan" hint="Nama yang tampil di pojok kanan atas. Nama pengguna untuk masuk tidak berubah.">
+        <Field label={t("settings.pc.display")} hint={t("settings.pc.displayHint")}>
           {(id, d) => <input id={id} aria-describedby={d} placeholder={me.user} maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />}
         </Field>
         <div className="stack">
           <span className="field-label" id="av-label">Avatar</span>
           <div className="logo-row" role="group" aria-labelledby="av-label">
-            <button type="button" className={`logo-opt ${avatar === "" ? "on" : ""}`} aria-pressed={avatar === ""} aria-label="Huruf awal nama" title="Huruf awal nama" onClick={() => setAvatar("")}>
+            <button type="button" className={`logo-opt ${avatar === "" ? "on" : ""}`} aria-pressed={avatar === ""} aria-label={t("settings.pc.initial")} title={t("settings.pc.initial")} onClick={() => setAvatar("")}>
               <Avatar name={me.user} display={name} size={28} />
             </button>
             {AVATARS.map(({ id, label, Icon }) => (
@@ -56,7 +56,7 @@ export default function ProfileCard() {
                 <Icon size={20} aria-hidden="true" />
               </button>
             ))}
-            <button type="button" className={`logo-opt ${avatar.startsWith("data:") ? "on" : ""}`} aria-pressed={avatar.startsWith("data:")} aria-label="Unggah foto sendiri" title="Unggah foto sendiri" onClick={() => file.current?.click()}>
+            <button type="button" className={`logo-opt ${avatar.startsWith("data:") ? "on" : ""}`} aria-pressed={avatar.startsWith("data:")} aria-label={t("settings.pc.upload")} title={t("settings.pc.upload")} onClick={() => file.current?.click()}>
               {avatar.startsWith("data:") ? <Check size={20} aria-hidden="true" /> : <ImageUp size={20} aria-hidden="true" />}
             </button>
             <input ref={file} type="file" accept="image/png,image/jpeg,image/webp" className="sr" tabIndex={-1} aria-hidden="true" onChange={async (e) => {
@@ -68,17 +68,17 @@ export default function ProfileCard() {
                 const l = await fileToLogo(f, 96);
                 if (l.kind === "img") setAvatar(l.src);
               } catch (x) {
-                setMsg({ tone: "bad", text: x instanceof Error ? x.message : "Gagal memuat gambar." });
+                setMsg({ tone: "bad", text: x instanceof Error ? x.message : t("settings.look.imgFail") });
               }
             }} />
           </div>
-          <p className="small muted">Foto (PNG, JPG, WebP, maks 2 MB) dipotong persegi dan dikecilkan ke 96 px. Disimpan di server untuk akun ini, jadi tampil di semua perangkat.</p>
+          <p className="small muted">{t("settings.pc.photoNote")}</p>
         </div>
         <LanguageSelect />
         <p className="small muted">{t("lang.hint")}</p>
         {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
         <div className="row-end">
-          <button className="btn btn-primary" disabled={busy || !dirty}>{busy ? "Menyimpan…" : "Simpan profil"}</button>
+          <button className="btn btn-primary" disabled={busy || !dirty}>{busy ? t("settings.saving") : t("settings.pc.save")}</button>
         </div>
       </form>
     </Card>

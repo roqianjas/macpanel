@@ -7,6 +7,7 @@ import { Card, Chip, Mark, State, usePoll } from "../ui";
 import HealthCard from "../features/hardware/HealthCard";
 import { useState } from "react";
 import { decimalSep, useT } from "../i18n";
+import { alertDetail, alertTitle } from "../serverText";
 
 interface Counts {
   sites: number;
@@ -56,10 +57,12 @@ export default function Overview() {
   const tx = phys.reduce((a, n) => a + n.tx_bps, 0);
   const now = Math.floor(Date.now() / 1000);
 
+  const notifyLine = (code?: string, text?: string) =>
+    code?.startsWith("ntfy:") ? t("ov.alert.footerNtfy", { host: code.slice(5) }) : code === "panel" || !text ? t("ov.alert.footer") : t("ov.alert.footerCustom", { x: text });
   const heroLoading = (svc.loading && !svc.data) || (sys.loading && !sys.data);
   const hero = heroLoading ? (
-    <section className="hero" aria-label="Status keseluruhan" role="status" aria-busy="true">
-      <span className="sr">Memuat…</span>
+    <section className="hero" aria-label={t("ov.hero.aria")} role="status" aria-busy="true">
+      <span className="sr">{t("state.loading")}</span>
       <div aria-hidden="true" className="sk-hero">
         <span className="sk sk-title" />
         <span className="sk sk-line" style={{ width: "70%" }} />
@@ -115,9 +118,9 @@ export default function Overview() {
               <li key={a.id} className="list-row">
                 <div>
                   <p>
-                    <Chip tone={a.level === "bad" ? "bad" : "warn"}>{a.level === "bad" ? t("ov.alert.bad") : t("ov.alert.warn")}</Chip> <strong>{a.title}</strong>
+                    <Chip tone={a.level === "bad" ? "bad" : "warn"}>{a.level === "bad" ? t("ov.alert.bad") : t("ov.alert.warn")}</Chip> <strong>{alertTitle(a)}</strong>
                   </p>
-                  <p className="small muted">{a.detail}</p>
+                  <p className="small muted">{alertDetail(a)}</p>
                 </div>
                 <a className="btn btn-sm" href={a.link}>
                   {t("ov.alert.view")}<span className="sr"> {a.title}</span>
@@ -125,7 +128,7 @@ export default function Overview() {
               </li>
             ))}
           </ul>
-          <p className="small muted">{alerts.data.notify ? t("ov.alert.footerCustom", { x: alerts.data.notify }) : t("ov.alert.footer")}</p>
+          <p className="small muted">{notifyLine(alerts.data.notify_code, alerts.data.notify)}</p>
         </Card>
       )}
       <State loading={sys.loading && !sys.data} skeleton="cards" error={sys.error} onRetry={sys.reload}>
@@ -136,33 +139,33 @@ export default function Overview() {
               <div className="kpi-body">
                 <Ring pct={hasSample ? si.cpu : null} label={t("ov.cpu.used")} tone={toneOf(hasSample ? si.cpu : null)} />
                 <div>
-                  <p className="big">{hasSample ? <CountUp value={si.cpu} decimals={0} suffix="%" /> : "n/a"}</p>
+                  <p className="big">{hasSample ? <CountUp value={si.cpu} decimals={0} suffix="%" /> : t("fmt.na")}</p>
                   <p className="small muted">{t("ov.cores", { n: si.cores })}</p>
                 </div>
               </div>
               <Sparkline pts={spark.data?.cpu ?? []} label={t("ov.cpu.hour")} />
             </li>
             <li className="card kpi">
-              <h2 className="kpi-h"><MemoryStick size={16} aria-hidden="true" /> Memori</h2>
+              <h2 className="kpi-h"><MemoryStick size={16} aria-hidden="true" /> {t("ov.mem")}</h2>
               <div className="kpi-body">
                 <Ring pct={hasSample ? si.mem : null} label={t("ov.mem.used")} tone={toneOf(hasSample ? si.mem : null)} />
                 <div>
-                  <p className="big">{hasSample ? <CountUp value={si.mem} decimals={0} suffix="%" /> : "n/a"}</p>
+                  <p className="big">{hasSample ? <CountUp value={si.mem} decimals={0} suffix="%" /> : t("fmt.na")}</p>
                   <p className="small muted">{t("ov.mem.of", { size: fmtBytes(si.mem_total) })}</p>
                 </div>
               </div>
               <Sparkline pts={spark.data?.mem ?? []} label={t("ov.mem.hour")} />
             </li>
             <li className="card kpi">
-              <h2 className="kpi-h"><HardDrive size={16} aria-hidden="true" /> Disk</h2>
+              <h2 className="kpi-h"><HardDrive size={16} aria-hidden="true" /> {t("ov.disk")}</h2>
               <div className="kpi-body">
                 <Ring pct={si.disk_total ? si.disk : null} label={t("ov.disk.used")} tone={toneOf(si.disk)} />
                 <div>
-                  <p className="big">{si.disk_total ? <CountUp value={si.disk} decimals={0} suffix="%" /> : "n/a"}</p>
+                  <p className="big">{si.disk_total ? <CountUp value={si.disk} decimals={0} suffix="%" /> : t("fmt.na")}</p>
                   <p className="small muted">{t("ov.disk.free", { size: fmtBytes(si.disk_free) })}</p>
                 </div>
               </div>
-              {si.disk >= 85 && <p className="callout">Disk hampir penuh. Bersihkan backup lama atau cache.</p>}
+              {si.disk >= 85 && <p className="callout">{t("system.ov.diskFull")}</p>}
             </li>
             <li className="card kpi">
               <h2 className="kpi-h"><Network size={16} aria-hidden="true" /> {t("ov.net")}</h2>
@@ -200,7 +203,7 @@ export default function Overview() {
                 tickFmt={(v) => `${Math.round(v)}%`}
                 series={[
                   { key: "cpu", label: "CPU", pts: met.data.cpu, fmt: (v) => `${v.toFixed(0)}%` },
-                  { key: "mem", label: "Memori", pts: met.data.mem, fmt: (v) => `${v.toFixed(0)}%` },
+                  { key: "mem", label: t("ov.mem"), pts: met.data.mem, fmt: (v) => `${v.toFixed(0)}%` },
                 ]}
               />
             )}
@@ -219,7 +222,7 @@ export default function Overview() {
                   <dd>{si.backup ? `${fmtAgo(now - si.backup.at)}${si.backup.local_only ? t("ov.sys.local") : ""}` : t("ov.sys.nobackup")}</dd>
                 </div>
               </dl>
-              {si.backup?.local_only && <p className="callout">Backup masih di disk yang sama, belum offsite.</p>}
+              {si.backup?.local_only && <p className="callout">{t("system.ov.bkLocal")}</p>}
             </Card>
           )}
         </div>

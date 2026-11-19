@@ -2,6 +2,7 @@ import { useState } from "react";
 import { errText, get, post } from "../api";
 import { fmtBytes } from "../lib";
 import { Alert, Card, ConfirmDialog, Field, State, useLoad } from "../ui";
+import { useT } from "../i18n";
 
 interface Plan {
   keep: number;
@@ -11,6 +12,7 @@ interface Plan {
 }
 
 export function CleanupCard({ onChanged }: { onChanged: () => void }) {
+  const t = useT();
   const cfg = useLoad(() => get<{ keep: number; days: number }>("/api/backups/config"));
   const [keep, setKeep] = useState("");
   const [days, setDays] = useState("");
@@ -34,20 +36,20 @@ export function CleanupCard({ onChanged }: { onChanged: () => void }) {
   };
   const total = (plan?.remove ?? []).reduce((a, r) => a + r.kb * 1024, 0);
   return (
-    <Card title="Bersihkan backup lama">
+    <Card title={t("ops.bc.title")}>
       <State loading={cfg.loading && !cfg.data} error={cfg.error} onRetry={cfg.reload}>
-        <p className="small muted">Hapus backup yang melebihi jumlah simpanan atau lebih tua dari batas umur. Backup terbaru tidak pernah dihapus. Lihat dulu daftar yang akan dihapus sebelum menjalankan. Pengaturan otomatis ada di kartu Jadwal; backup harian menjalankan pembersihan yang sama.</p>
+        <p className="small muted">{t("ops.bc.desc")}</p>
         <div className="grid2">
-          <Field label="Simpan backup terakhir" hint="1-60">{(id, h) => <input id={id} aria-describedby={h} type="number" min={1} max={60} placeholder="10" required value={k} onChange={(e) => { setKeep(e.target.value); setPlan(null); }} />}</Field>
-          <Field label="Hapus yang lebih tua dari (hari)" hint="0 = tanpa batas umur">{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} placeholder="30" required value={dd} onChange={(e) => { setDays(e.target.value); setPlan(null); }} />}</Field>
+          <Field label={t("ops.bk.keep")} hint="1-60">{(id, h) => <input id={id} aria-describedby={h} type="number" min={1} max={60} placeholder="10" required value={k} onChange={(e) => { setKeep(e.target.value); setPlan(null); }} />}</Field>
+          <Field label={t("ops.bc.olderThan")} hint={t("ops.bc.noAgeLimit")}>{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} placeholder="30" required value={dd} onChange={(e) => { setDays(e.target.value); setPlan(null); }} />}</Field>
         </div>
         {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
         <div className="row-end">
-          <button className="btn" onClick={preview} disabled={busy}>{busy ? "Menghitung…" : "Lihat yang akan dihapus"}</button>
+          <button className="btn" onClick={preview} disabled={busy}>{busy ? t("ops.bc.calculating") : t("ops.bc.preview")}</button>
         </div>
         {plan && (
           plan.remove.length === 0 ? (
-            <p className="muted">Tidak ada yang perlu dihapus. {plan.kept} backup tersimpan.</p>
+            <p className="muted">{t("ops.bc.nothing", { n: plan.kept })}</p>
           ) : (
             <div className="stack">
               <ul className="list">
@@ -56,8 +58,8 @@ export function CleanupCard({ onChanged }: { onChanged: () => void }) {
                 ))}
               </ul>
               <div className="row-end">
-                <span className="small muted">{plan.remove.length} backup, {fmtBytes(total)} akan dibebaskan; {plan.kept} tersisa.</span>
-                <button className="btn btn-danger-ghost" onClick={() => setConfirm(true)}>Hapus {plan.remove.length} backup</button>
+                <span className="small muted">{t("ops.bc.summary", { n: plan.remove.length, size: fmtBytes(total), kept: plan.kept })}</span>
+                <button className="btn btn-danger-ghost" onClick={() => setConfirm(true)}>{t("ops.bk.delN", { n: plan.remove.length })}</button>
               </div>
             </div>
           )
@@ -65,14 +67,14 @@ export function CleanupCard({ onChanged }: { onChanged: () => void }) {
       </State>
       {confirm && plan && (
         <ConfirmDialog
-          title="Hapus backup lama"
+          title={t("ops.bc.confirmTitle")}
           word="hapus"
-          verb={`Hapus ${plan.remove.length} backup`}
-          body={<p>{plan.remove.length} backup ({fmtBytes(total)}) dihapus permanen dari disk ini. Backup terbaru tetap ada. Meminta kata sandi ulang.</p>}
+          verb={t("ops.bk.delN", { n: plan.remove.length })}
+          body={<p>{t("ops.bc.confirmBody", { n: plan.remove.length, size: fmtBytes(total) })}</p>}
           onConfirm={async () => {
             await post("/api/backups/prune", { keep: Number(k), days: Number(dd) });
             setPlan(null);
-            setMsg({ tone: "ok", text: "Backup lama dihapus." });
+            setMsg({ tone: "ok", text: t("ops.bc.deleted") });
             onChanged();
           }}
           onClose={() => setConfirm(false)}
@@ -89,16 +91,17 @@ interface Extras {
 }
 
 export function ExtrasCard() {
+  const t = useT();
   const q = useLoad(() => get<Extras>("/api/backups/extras"));
   return (
-    <Card title="Dump database dan hasil ekstrak">
+    <Card title={t("ops.bc.extrasTitle")}>
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         {q.data && (
           <div className="stack">
-            <p className="small muted">Berkas ini di luar backup harian: dump terakhir yang dibuat saat database dihapus atau di-dump manual, dan hasil ekstrak dari penjelajah backup. Hanya berkas yang dibuat panel yang dihapus; berkas lain di folder yang sama tidak disentuh.</p>
-            <Row kind="db" title="Dump database" info={q.data.db} onDone={q.reload} />
-            <Row kind="restore" title="Hasil ekstrak backup" info={q.data.restore} onDone={q.reload} />
-            <div className="list-row"><div><p>Data lama hasil migrasi</p><p className="small muted">{q.data.retired.note}</p></div><span className="mono">{fmtBytes(q.data.retired.kb * 1024)}</span></div>
+            <p className="small muted">{t("ops.bc.extrasDesc")}</p>
+            <Row kind="db" title={t("ops.bc.dumps")} info={q.data.db} onDone={q.reload} />
+            <Row kind="restore" title={t("ops.bc.extractions")} info={q.data.restore} onDone={q.reload} />
+            <div className="list-row"><div><p>{t("ops.bc.legacy")}</p><p className="small muted">{q.data.retired.note}</p></div><span className="mono">{fmtBytes(q.data.retired.kb * 1024)}</span></div>
           </div>
         )}
       </State>
@@ -107,6 +110,7 @@ export function ExtrasCard() {
 }
 
 function Row({ kind, title, info, onDone }: { kind: "db" | "restore"; title: string; info: { count: number; kb: number }; onDone: () => void }) {
+  const t = useT();
   const [days, setDays] = useState("30");
   const [pv, setPv] = useState<{ count: number; kb: number } | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -122,26 +126,26 @@ function Row({ kind, title, info, onDone }: { kind: "db" | "restore"; title: str
   };
   return (
     <div className="stack">
-      <div className="list-row"><div><p>{title}</p><p className="small muted">{info.count} item</p></div><span className="mono">{fmtBytes(info.kb * 1024)}</span></div>
+      <div className="list-row"><div><p>{title}</p><p className="small muted">{t("ops.items", { n: info.count })}</p></div><span className="mono">{fmtBytes(info.kb * 1024)}</span></div>
       {info.count > 0 && (
         <div className="row-form">
-          <Field label="Hapus yang lebih tua dari (hari)" hint="0 = semua">{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} placeholder="30" required value={days} onChange={(e) => { setDays(e.target.value); setPv(null); }} />}</Field>
-          <button className="btn" onClick={check}>Hitung</button>
-          {pv && pv.count > 0 && <button className="btn btn-danger-ghost" onClick={() => setConfirm(true)}>Hapus {pv.count} item ({fmtBytes(pv.kb * 1024)})</button>}
+          <Field label={t("ops.bc.olderThan")} hint={t("ops.bc.all")}>{(id, h) => <input id={id} aria-describedby={h} type="number" min={0} max={3650} placeholder="30" required value={days} onChange={(e) => { setDays(e.target.value); setPv(null); }} />}</Field>
+          <button className="btn" onClick={check}>{t("ops.bc.count")}</button>
+          {pv && pv.count > 0 && <button className="btn btn-danger-ghost" onClick={() => setConfirm(true)}>{t("ops.bc.delItems", { n: pv.count, size: fmtBytes(pv.kb * 1024) })}</button>}
         </div>
       )}
-      {pv && pv.count === 0 && <p className="small muted">Tidak ada yang cocok.</p>}
+      {pv && pv.count === 0 && <p className="small muted">{t("ops.noMatch")}</p>}
       {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
       {confirm && pv && (
         <ConfirmDialog
-          title={`Hapus ${title.toLowerCase()}`}
+          title={t("ops.bc.delWhat", { what: title.toLowerCase() })}
           word="hapus"
-          verb={`Hapus ${pv.count} item`}
-          body={<p>{pv.count} item ({fmtBytes(pv.kb * 1024)}) dihapus permanen. Meminta kata sandi ulang.</p>}
+          verb={t("ops.bc.delItemsVerb", { n: pv.count })}
+          body={<p>{t("ops.bc.delItemsBody", { n: pv.count, size: fmtBytes(pv.kb * 1024) })}</p>}
           onConfirm={async () => {
             await post("/api/backups/extras", { kind, days: Number(days) });
             setPv(null);
-            setMsg({ tone: "ok", text: "Dihapus." });
+            setMsg({ tone: "ok", text: t("ops.deleted") });
             onDone();
           }}
           onClose={() => setConfirm(false)}

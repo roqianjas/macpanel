@@ -7,11 +7,13 @@ import MemSection from "../features/clean/MemSection";
 import TailscaleSection from "../features/tailscale/TailscaleSection";
 import UninstallGuide from "../features/uninstall/UninstallGuide";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, Tabs, useLoad } from "../ui";
+import { t as tr, useT } from "../i18n";
 
+// Label dibaca saat render (getter) supaya mengikuti bahasa aktif.
 const TABS = [
-  { id: "keamanan", label: "Keamanan" },
-  { id: "proses", label: "Proses" },
-  { id: "disk", label: "Ruang dan memori" },
+  { id: "keamanan", get label() { return tr("system.tab.sec"); } },
+  { id: "proses", get label() { return tr("system.tab.proc"); } },
+  { id: "disk", get label() { return tr("system.tab.disk"); } },
   { id: "dns", label: "DNS" },
   { id: "tailscale", label: "Tailscale" },
   { id: "docker", label: "Docker" },
@@ -19,12 +21,13 @@ const TABS = [
 ];
 
 export default function System({ sub = "" }: { sub?: string }) {
-  const [tab, setTab] = useState(TABS.some((t) => t.id === sub) ? sub : "keamanan");
-  useEffect(() => { if (TABS.some((t) => t.id === sub)) setTab(sub); }, [sub]);
+  const t = useT();
+  const [tab, setTab] = useState(TABS.some((x) => x.id === sub) ? sub : "keamanan");
+  useEffect(() => { if (TABS.some((x) => x.id === sub)) setTab(sub); }, [sub]);
   return (
     <>
-      <PageHead title="Sistem" desc="Status keamanan, proses, ruang disk, memori, dan Docker. Yang mengubah sistem hanya pembersihan cache (dengan pratinjau dan verifikasi ulang), mematikan layanan opsional, dan menghentikan proses pengembangan." />
-      <Tabs tabs={TABS} value={tab} onChange={setTab} label="Bagian sistem" />
+      <PageHead title={t("nav.system")} desc={t("system.desc")} />
+      <Tabs tabs={TABS} value={tab} onChange={setTab} label={t("system.tabs.aria")} />
       <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
         {tab === "keamanan" ? <Security /> : tab === "proses" ? <Procs /> : tab === "disk" ? <SpaceMemory /> : tab === "dns" ? <Dns /> : tab === "tailscale" ? <TailscaleSection /> : tab === "uninstall" ? <UninstallGuide /> : <Docker />}
       </div>
@@ -40,6 +43,7 @@ interface Port {
 }
 
 function Security() {
+  const t = useT();
   const q = useLoad(() => get<{ firewall: string; stealth: string; ssh: { password_auth: string; root_login: string; kbd_interactive: string }; ports: Port[] }>("/api/sys/security"));
   const d = q.data;
   const fwOn = !!d && /enabled/i.test(d.firewall);
@@ -48,28 +52,28 @@ function Security() {
     <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
       {d && (
         <div className="stack">
-          <Card title="Pengerasan">
+          <Card title={t("system.sec.hardening")}>
             <ul className="list">
-              <li className="list-row"><span>Firewall aplikasi macOS</span><Chip tone={fwOn ? "ok" : "warn"}>{fwOn ? "Aktif" : "Mati"}</Chip></li>
-              <li className="list-row"><span>Login SSH dengan kata sandi</span><Chip tone={d.ssh.password_auth === "no" ? "ok" : "bad"}>{d.ssh.password_auth === "no" ? "Dimatikan (hanya kunci)" : d.ssh.password_auth}</Chip></li>
-              <li className="list-row"><span>Login SSH sebagai root</span><Chip tone={d.ssh.root_login === "no" ? "ok" : "warn"}>{d.ssh.root_login}</Chip></li>
-              <li className="list-row"><span>Keyboard-interactive SSH</span><Chip tone={d.ssh.kbd_interactive === "no" ? "ok" : "warn"}>{d.ssh.kbd_interactive}</Chip></li>
+              <li className="list-row"><span>{t("system.sec.fw")}</span><Chip tone={fwOn ? "ok" : "warn"}>{fwOn ? t("system.sec.on") : t("system.sec.off")}</Chip></li>
+              <li className="list-row"><span>{t("system.sec.pw")}</span><Chip tone={d.ssh.password_auth === "no" ? "ok" : "bad"}>{d.ssh.password_auth === "no" ? t("system.sec.pwOff") : d.ssh.password_auth}</Chip></li>
+              <li className="list-row"><span>{t("system.sec.root")}</span><Chip tone={d.ssh.root_login === "no" ? "ok" : "warn"}>{d.ssh.root_login}</Chip></li>
+              <li className="list-row"><span>{t("system.sec.kbd")}</span><Chip tone={d.ssh.kbd_interactive === "no" ? "ok" : "warn"}>{d.ssh.kbd_interactive}</Chip></li>
             </ul>
-            <p className="small muted">Mengubah firewall atau SSH butuh <span className="mono">sudo</span>, jadi sengaja tidak bisa dilakukan dari panel. Jalankan sendiri di Terminal. {sshOk ? "" : "Periksa baris yang bertanda kuning atau merah."}</p>
+            <p className="small muted">{t("system.sec.note1")} <span className="mono">sudo</span>{t("system.sec.note2")} {sshOk ? "" : t("system.sec.check")}</p>
           </Card>
-          <Card title="Port yang mendengarkan">
-            <p className="small muted">Baris "terbuka" artinya tidak terikat ke loopback. Untuk nginx itu wajar karena akses dibatasi tailnet lewat konfigurasi; layanan lain sebaiknya hanya di 127.0.0.1.</p>
+          <Card title={t("system.sec.ports")}>
+            <p className="small muted">{t("system.sec.portsHint")}</p>
             <div className="tbl-wrap">
               <table className="tbl">
-                <caption className="sr">Port TCP yang mendengarkan</caption>
-                <thead><tr><th scope="col">Port</th><th scope="col">Alamat</th><th scope="col">Proses</th><th scope="col">Status</th></tr></thead>
+                <caption className="sr">{t("system.sec.caption")}</caption>
+                <thead><tr><th scope="col">{t("apps.col.port")}</th><th scope="col">{t("system.address")}</th><th scope="col">{t("system.tab.proc")}</th><th scope="col">{t("apps.col.status")}</th></tr></thead>
                 <tbody>
                   {d.ports.map((p, i) => (
                     <tr key={i}>
                       <td className="mono">{p.port}</td>
                       <td className="mono">{p.addr}</td>
                       <td>{p.proc}</td>
-                      <td><Chip tone={p.exposed ? "warn" : "ok"}>{p.exposed ? "Terbuka" : "Lokal"}</Chip></td>
+                      <td><Chip tone={p.exposed ? "warn" : "ok"}>{p.exposed ? t("system.sec.open") : t("system.sec.local")}</Chip></td>
                     </tr>
                   ))}
                 </tbody>
@@ -93,17 +97,18 @@ interface Proc {
 }
 
 function Procs() {
+  const t = useT();
   const q = useLoad(() => get<{ procs: Proc[]; total: number }>("/api/sys/procs"));
   const [kill, setKill] = useState<Proc | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   return (
-    <Card title="Proses milik Anda (40 teratas menurut CPU)" action={<button className="btn" onClick={q.reload}>Segarkan</button>}>
+    <Card title={t("system.proc.title")} action={<button className="btn" onClick={q.reload}>{t("system.proc.refresh")}</button>}>
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         <div className="tbl-wrap">
           <table className="tbl">
-            <caption className="sr">Proses</caption>
-            <thead><tr><th scope="col">PID</th><th scope="col">Nama</th><th scope="col">CPU %</th><th scope="col">RAM</th><th scope="col">Jalan</th><th scope="col"><span className="sr">Aksi</span></th></tr></thead>
+            <caption className="sr">{t("system.proc.caption")}</caption>
+            <thead><tr><th scope="col">PID</th><th scope="col">{t("system.name")}</th><th scope="col">CPU %</th><th scope="col">RAM</th><th scope="col">{t("system.proc.run")}</th><th scope="col"><span className="sr">{t("system.action")}</span></th></tr></thead>
             <tbody>
               {q.data?.procs.map((p) => (
                 <tr key={p.pid}>
@@ -115,10 +120,10 @@ function Procs() {
                   <td className="cell-end">
                     {p.killable ? (
                       <button className="btn btn-danger-ghost btn-sm" onClick={() => setKill(p)}>
-                        <Skull size={16} aria-hidden="true" />Hentikan<span className="sr"> {p.name} {p.pid}</span>
+                        <Skull size={16} aria-hidden="true" />{t("apps.stop")}<span className="sr"> {p.name} {p.pid}</span>
                       </button>
                     ) : (
-                      <span className="small muted">dikelola sistem</span>
+                      <span className="small muted">{t("system.proc.managed")}</span>
                     )}
                   </td>
                 </tr>
@@ -126,17 +131,17 @@ function Procs() {
             </tbody>
           </table>
         </div>
-        <p className="small muted">Hanya proses pengembangan (node, php, python, go, composer, dan sejenisnya) yang bisa dihentikan, dengan SIGTERM. nginx, database, panel, dan proses sistem dikecualikan; kelola layanan lewat halaman Aplikasi.</p>
+        <p className="small muted">{t("system.proc.note")}</p>
       </State>
       {kill && (
         <ConfirmDialog
-          title={`Hentikan ${kill.name} (${kill.pid})`}
+          title={t("system.proc.stopTitle", { name: kill.name, pid: kill.pid })}
           word={kill.name}
-          verb="Hentikan proses"
-          body={<p>Mengirim SIGTERM. Pekerjaan yang belum disimpan oleh proses itu bisa hilang.</p>}
+          verb={t("system.proc.stopVerb")}
+          body={<p>{t("system.proc.stopBody")}</p>}
           onConfirm={async () => {
             const r = await post<{ job?: number; output?: string }>("/api/sys/kill", { pid: kill.pid });
-            setNote({ tone: "ok", text: r.output ?? "Perintah dikirim." });
+            setNote({ tone: "ok", text: r.output ?? t("system.proc.sent") });
             setTimeout(q.reload, 800);
           }}
           onClose={() => setKill(null)}
@@ -157,14 +162,15 @@ function SpaceMemory() {
 }
 
 function Disk() {
+  const t = useT();
   const q = useLoad(() => get<{ rows: { name: string; kb: number }[]; total: number; free: number }>("/api/sys/disk"));
   const max = Math.max(1, ...(q.data?.rows.map((r) => r.kb) ?? [1]));
   return (
-    <Card title="Pemakaian disk per folder" action={<button className="btn" onClick={q.reload}>Hitung ulang</button>}>
+    <Card title={t("system.disk.title")} action={<button className="btn" onClick={q.reload}>{t("system.disk.recount")}</button>}>
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         {q.data && (
           <>
-            <p className="small muted">Bebas {fmtBytes(q.data.free)} dari {fmtBytes(q.data.total)}. Perhitungan memakai <span className="mono">du</span> dan bisa memakan waktu beberapa detik.</p>
+            <p className="small muted">{t("system.disk.d1", { free: fmtBytes(q.data.free), total: fmtBytes(q.data.total) })} <span className="mono">du</span> {t("system.disk.d2")}</p>
             <ul className="bars">
               {q.data.rows.map((r) => (
                 <li key={r.name} className="bar-row">
@@ -182,44 +188,46 @@ function Disk() {
 }
 
 function Docker() {
+  const t = useT();
   const q = useLoad(() => get<{ installed: boolean; running?: boolean; error?: string; containers?: { name: string; image: string; status: string; ports: string }[] }>("/api/sys/docker"));
   const d = q.data;
   return (
     <Card title="Docker">
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
-        {d && !d.installed && <p className="muted">Docker belum terpasang. Sesuai kebijakan, Docker hanya dipasang bila sebuah proyek memerlukannya; semua layanan lain berjalan native.</p>}
-        {d?.installed && !d.running && <Alert>Docker terpasang tetapi tidak berjalan{d.error ? `: ${d.error}` : "."}</Alert>}
-        {d?.running && ((d.containers ?? []).length === 0 ? <p className="muted">Tidak ada kontainer yang berjalan.</p> : (
+        {d && !d.installed && <p className="muted">{t("system.dk.none")}</p>}
+        {d?.installed && !d.running && <Alert>{t("system.dk.down")}{d.error ? `: ${d.error}` : "."}</Alert>}
+        {d?.running && ((d.containers ?? []).length === 0 ? <p className="muted">{t("system.dk.empty")}</p> : (
           <ul className="list">{d.containers!.map((c) => <li key={c.name} className="list-row"><div><p className="mono">{c.name}</p><p className="small muted">{c.image} · {c.status}{c.ports ? ` · ${c.ports}` : ""}</p></div></li>)}</ul>
         ))}
-        <p className="small muted">Panel hanya menampilkan status Docker (baca saja).</p>
+        <p className="small muted">{t("system.dk.ro")}</p>
       </State>
     </Card>
   );
 }
 
 function Dns() {
+  const t = useT();
   const q = useLoad(() => get<{ tld: string; config: string[]; resolver: string | null; wildcard: string | null; tailscale_ip: string | null; wildcard_matches_tailscale: boolean | null; responding: boolean; rows: { name: string; ip: string | null; ok: boolean }[] }>("/api/sys/dns"));
   const d = q.data;
   return (
     <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
       {d && (
         <div className="stack">
-          <Card title={`DNS *.${d.tld}`} action={<button className="btn" onClick={q.reload}>Periksa ulang</button>}>
+          <Card title={`DNS *.${d.tld}`} action={<button className="btn" onClick={q.reload}>{t("system.dns.recheck")}</button>}>
             <ul className="list">
-              <li className="list-row"><span>dnsmasq menjawab</span><Chip tone={d.responding ? "ok" : "bad"}>{d.responding ? "Ya" : "Tidak"}</Chip></li>
-              <li className="list-row"><span>Wildcard mengarah ke</span><span className="mono">{d.wildcard ?? "tidak ada"}</span></li>
-              <li className="list-row"><span>IP Tailscale Mac ini</span><span className="mono">{d.tailscale_ip ?? "tidak terbaca"}</span></li>
-              <li className="list-row"><span>Wildcard sama dengan IP Tailscale</span>{d.wildcard_matches_tailscale === null ? <Chip tone="mute">Tidak diketahui</Chip> : <Chip tone={d.wildcard_matches_tailscale ? "ok" : "warn"}>{d.wildcard_matches_tailscale ? "Ya" : "Berbeda"}</Chip>}</li>
-              <li className="list-row"><span>/etc/resolver/{d.tld}</span><span className="mono">{d.resolver ?? "tidak ada"}</span></li>
+              <li className="list-row"><span>{t("system.dns.answers")}</span><Chip tone={d.responding ? "ok" : "bad"}>{d.responding ? t("system.yes") : t("system.no")}</Chip></li>
+              <li className="list-row"><span>{t("system.dns.points")}</span><span className="mono">{d.wildcard ?? t("system.dns.none")}</span></li>
+              <li className="list-row"><span>{t("system.dns.tsip")}</span><span className="mono">{d.tailscale_ip ?? t("system.dns.unreadable")}</span></li>
+              <li className="list-row"><span>{t("system.dns.same")}</span>{d.wildcard_matches_tailscale === null ? <Chip tone="mute">{t("system.dns.unknown")}</Chip> : <Chip tone={d.wildcard_matches_tailscale ? "ok" : "warn"}>{d.wildcard_matches_tailscale ? t("system.yes") : t("system.dns.differs")}</Chip>}</li>
+              <li className="list-row"><span>/etc/resolver/{d.tld}</span><span className="mono">{d.resolver ?? t("system.dns.none")}</span></li>
             </ul>
-            <p className="small muted">Satu aturan wildcard sudah menjawab semua situs, jadi tidak ada zona atau rekaman per situs untuk dikelola. Halaman ini hanya membaca. Mengubah DNS butuh sudo; edit <span className="mono">/opt/homebrew/etc/dnsmasq.conf</span> di Terminal.</p>
-            {d.wildcard_matches_tailscale === false && <Alert tone="warn">Wildcard tidak sama dengan IP Tailscale saat ini. Perangkat lain di tailnet akan memakai alamat yang salah sampai dnsmasq.conf diperbarui.</Alert>}
+            <p className="small muted">{t("system.dns.note1")} <span className="mono">/opt/homebrew/etc/dnsmasq.conf</span> {t("system.dns.note2")}</p>
+            {d.wildcard_matches_tailscale === false && <Alert tone="warn">{t("system.dns.mismatch")}</Alert>}
           </Card>
-          <Card title="Resolusi per situs">
+          <Card title={t("system.dns.perSite")}>
             <ul className="list">
               {d.rows.map((r) => (
-                <li key={r.name} className="list-row"><span className="mono">{r.name}</span><span className="mono">{r.ip ?? "tidak terjawab"}</span><Chip tone={r.ok ? "ok" : "bad"}>{r.ok ? "OK" : "Salah"}</Chip></li>
+                <li key={r.name} className="list-row"><span className="mono">{r.name}</span><span className="mono">{r.ip ?? t("system.dns.noAnswer")}</span><Chip tone={r.ok ? "ok" : "bad"}>{r.ok ? t("system.dns.ok") : t("system.dns.wrong")}</Chip></li>
               ))}
             </ul>
           </Card>

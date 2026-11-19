@@ -187,6 +187,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 
 /** Dialog: fokus masuk dan terkunci di dalam, Escape menutup, fokus kembali ke pemicu. */
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const tid = useId();
   useEffect(() => {
@@ -225,7 +226,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
       <div ref={ref} className={`modal ${wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true" aria-labelledby={tid} tabIndex={-1}>
         <header className="modal-head">
           <h2 id={tid}>{title}</h2>
-          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Tutup dialog">
+          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label={t("modal.close")}>
             <X size={18} aria-hidden="true" />
           </button>
         </header>

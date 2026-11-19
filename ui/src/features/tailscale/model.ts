@@ -1,3 +1,5 @@
+import { t } from "../../i18n";
+
 // Kelola Tailscale: panel hanya membaca status dan menampilkan perintah; sudo -S -p '' dijalankan pemilik di terminal.
 export interface Tailnet {
   state: string;
@@ -28,11 +30,11 @@ export function phase(i: TsInfo): Phase {
 }
 
 export const PHASE_TEXT: Record<Phase, { tone: "ok" | "warn" | "bad" | "mute"; text: string }> = {
-  running: { tone: "ok", text: "Tersambung" },
-  stopped: { tone: "warn", text: "Terputus atau daemon berhenti" },
-  login: { tone: "warn", text: "Perlu login" },
-  missing: { tone: "mute", text: "Belum terpasang (lewat Homebrew)" },
-  unknown: { tone: "warn", text: "Status tidak terbaca" },
+  running: { tone: "ok", get text() { return t("system.ts.ph.running"); } },
+  stopped: { tone: "warn", get text() { return t("system.ts.ph.stopped"); } },
+  login: { tone: "warn", get text() { return t("system.ts.ph.login"); } },
+  missing: { tone: "mute", get text() { return t("system.ts.ph.missing"); } },
+  unknown: { tone: "warn", get text() { return t("system.ts.ph.unknown"); } },
 };
 
 export interface Action {
@@ -46,13 +48,13 @@ export interface Action {
 }
 
 export const ACTIONS: Action[] = [
-  { id: "install", title: "Pasang", why: "Memasang paket Homebrew dan mendaftarkan daemon sistem (hidup sejak boot). Login ke tailnet dilakukan terpisah.", plan: "lab tailscale install", run: "lab tailscale install --apply", danger: false, sudo: true },
-  { id: "login", title: "Login atau sambungkan", why: "Membuka browser untuk masuk ke tailnet Anda. Hanya Anda yang bisa; tidak pernah dijalankan otomatis. Dipakai juga untuk menyambung lagi setelah 'putuskan'.", run: "tailscale up", danger: false, sudo: false },
-  { id: "start", title: "Jalankan daemon", why: "Menyalakan tailscaled bila berhenti.", plan: "lab tailscale start", run: "lab tailscale start --apply", danger: false, sudo: true },
-  { id: "restart", title: "Mulai ulang daemon", why: "Berguna bila macet. Tailnet putus beberapa detik, lalu kembali sendiri.", plan: "lab tailscale restart", run: "lab tailscale restart --apply", danger: false, sudo: true },
-  { id: "down", title: "Putuskan sambungan (daemon tetap hidup)", why: "Mac mini keluar dari tailnet sementara. Sambung lagi dengan 'tailscale up'.", plan: "lab tailscale down", run: "lab tailscale down --apply", danger: true, sudo: false },
-  { id: "stop", title: "Hentikan daemon", why: "Mematikan tailscaled sepenuhnya.", plan: "lab tailscale stop", run: "lab tailscale stop --apply", danger: true, sudo: true },
-  { id: "uninstall", title: "Lepas (uninstall)", why: "Menghentikan daemon dan menghapus paket. Berdiri sendiri, tidak memengaruhi panel, situs, atau database.", plan: "lab uninstall --level 4", run: "lab uninstall --level 4 --apply", danger: true, sudo: true },
+  { id: "install", get title() { return t("system.ts.a.install"); }, get why() { return t("system.ts.a.install.why"); }, plan: "lab tailscale install", run: "lab tailscale install --apply", danger: false, sudo: true },
+  { id: "login", get title() { return t("system.ts.a.login"); }, get why() { return t("system.ts.a.login.why"); }, run: "tailscale up", danger: false, sudo: false },
+  { id: "start", get title() { return t("system.ts.a.start"); }, get why() { return t("system.ts.a.start.why"); }, plan: "lab tailscale start", run: "lab tailscale start --apply", danger: false, sudo: true },
+  { id: "restart", get title() { return t("system.ts.a.restart"); }, get why() { return t("system.ts.a.restart.why"); }, plan: "lab tailscale restart", run: "lab tailscale restart --apply", danger: false, sudo: true },
+  { id: "down", get title() { return t("system.ts.a.down"); }, get why() { return t("system.ts.a.down.why"); }, plan: "lab tailscale down", run: "lab tailscale down --apply", danger: true, sudo: false },
+  { id: "stop", get title() { return t("system.ts.a.stop"); }, get why() { return t("system.ts.a.stop.why"); }, plan: "lab tailscale stop", run: "lab tailscale stop --apply", danger: true, sudo: true },
+  { id: "uninstall", get title() { return t("system.ts.a.uninstall"); }, get why() { return t("system.ts.a.uninstall.why"); }, plan: "lab uninstall --level 4", run: "lab uninstall --level 4 --apply", danger: true, sudo: true },
 ];
 
 /** Tindakan yang masuk akal untuk keadaan sekarang; yang lain tetap tampil tetapi diredupkan dengan alasannya. */
@@ -60,18 +62,18 @@ export function applicable(a: Action, p: Phase): { ok: boolean; reason: string }
   const need = (ok: boolean, reason: string) => ({ ok, reason: ok ? "" : reason });
   switch (a.id) {
     case "install":
-      return need(p === "missing", "Sudah terpasang.");
+      return need(p === "missing", t("system.ts.r.installed"));
     case "login":
-      return need(p !== "missing", "Pasang dulu.");
+      return need(p !== "missing", t("system.ts.r.installFirst"));
     case "start":
-      return need(p === "stopped" || p === "unknown", p === "missing" ? "Pasang dulu." : "Sudah berjalan.");
+      return need(p === "stopped" || p === "unknown", p === "missing" ? t("system.ts.r.installFirst") : t("system.ts.r.running"));
     case "restart":
-      return need(p !== "missing", "Pasang dulu.");
+      return need(p !== "missing", t("system.ts.r.installFirst"));
     case "down":
-      return need(p === "running", p === "missing" ? "Pasang dulu." : "Tidak sedang tersambung.");
+      return need(p === "running", p === "missing" ? t("system.ts.r.installFirst") : t("system.ts.r.notConnected"));
     case "stop":
     case "uninstall":
-      return need(p !== "missing", "Tidak terpasang lewat Homebrew.");
+      return need(p !== "missing", t("system.ts.r.notBrew"));
     default:
       return { ok: true, reason: "" };
   }

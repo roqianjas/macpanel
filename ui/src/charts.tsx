@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { RANGES, fmtClock, fmtSpan, geometry, summarize, useCountUp, type Pt, type RangeKey } from "./lib";
-import { decimalSep, t } from "./i18n";
+import { decimalSep, useT } from "./i18n";
 
 export function CountUp({ value, decimals = 0, suffix = "" }: { value: number | null; decimals?: number; suffix?: string }) {
+  const t = useT();
   const v = useCountUp(value);
-  if (v == null) return <>n/a</>;
+  if (v == null) return <>{t("fmt.na")}</>;
   return (
     <>
       {v.toFixed(decimals).replace(".", decimalSep())}
@@ -15,13 +16,14 @@ export function CountUp({ value, decimals = 0, suffix = "" }: { value: number | 
 
 /** Cincin proporsi. Terisi dari kosong saat dipasang. */
 export function Ring({ pct, label, tone = "primary" }: { pct: number | null; label: string; tone?: "primary" | "warn" | "bad" }) {
+  const t = useT();
   const size = 96,
     sw = 10,
     r = (size - sw) / 2,
     c = 2 * Math.PI * r;
   const val = Math.min(100, Math.max(0, pct ?? 0));
   return (
-    <svg className={`ring ring-${tone}`} width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={pct == null ? `${label}: tidak diketahui` : `${label}: ${Math.round(pct)}%`} style={{ ["--c" as string]: c }}>
+    <svg className={`ring ring-${tone}`} width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={pct == null ? t("system.chart.unknown", { label }) : `${label}: ${Math.round(pct)}%`} style={{ ["--c" as string]: c }}>
       <circle cx={size / 2} cy={size / 2} r={r} className="ring-track" strokeWidth={sw} fill="none" />
       <circle cx={size / 2} cy={size / 2} r={r} className="ring-val" strokeWidth={sw} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - val / 100)} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
     </svg>
@@ -31,7 +33,8 @@ export function Ring({ pct, label, tone = "primary" }: { pct: number | null; lab
 export const toneOf = (pct: number | null): "primary" | "warn" | "bad" => (pct != null && pct >= 90 ? "bad" : pct != null && pct >= 75 ? "warn" : "primary");
 
 export function Sparkline({ pts, label, hi }: { pts: Pt[]; label: string; hi?: number }) {
-  if (pts.length < 2) return <p className="small muted">Grafik muncul setelah 2 titik data ({pts.length} terkumpul).</p>;
+  const t = useT();
+  if (pts.length < 2) return <p className="small muted">{t("system.chart.sparkWait", { n: pts.length })}</p>;
   const top = hi ?? 100;
   const g = geometry(pts, 220, 44, 0, top, { l: 0, r: 0, t: 3, b: 3 });
   return (
@@ -43,8 +46,9 @@ export function Sparkline({ pts, label, hi }: { pts: Pt[]; label: string; hi?: n
 }
 
 export function RangePicker({ value, onChange }: { value: RangeKey; onChange: (k: RangeKey) => void }) {
+  const t = useT();
   return (
-    <div className="seg" role="group" aria-label="Rentang waktu grafik">
+    <div className="seg" role="group" aria-label={t("system.chart.rangeAria")}>
       {RANGES.map((r) => (
         <button key={r.key} type="button" aria-pressed={value === r.key} className={value === r.key ? "on" : undefined} onClick={() => onChange(r.key)}>
           {r.label}
@@ -66,6 +70,7 @@ const H = 250,
 
 /** Grafik garis. Data nyata saja; kurang dari 2 titik tampil sebagai keterangan, bukan grafik palsu. */
 export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series: ChartSeries[]; rangeKey: RangeKey; title: string; domain: [number, number]; tickFmt: (v: number) => string }) {
+  const t = useT();
   const range = RANGES.find((r) => r.key === rangeKey) ?? RANGES[1];
   const main = series[0]?.pts ?? [];
   const [cursor, setCursor] = useState<number | null>(null);
@@ -88,9 +93,9 @@ export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series
   if (main.length < 2) {
     return (
       <div className="state" role="status">
-        <p className="state-title">Belum cukup data untuk grafik</p>
+        <p className="state-title">{t("system.chart.notEnough")}</p>
         <div className="state-body">
-          <p>{main.length} titik terkumpul. Satu titik dicatat tiap 30 detik, jadi grafik muncul setelah titik kedua dan terisi seiring waktu (maksimal 7 hari).</p>
+          <p>{t("system.chart.notEnoughBody", { n: main.length })}</p>
         </div>
       </div>
     );
@@ -101,7 +106,7 @@ export function LineChart({ series, rangeKey, title, domain, tickFmt }: { series
   const g0 = geos[0]!;
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((k) => domain[0] + (domain[1] - domain[0]) * k);
   const sum = series.map((s) => ({ label: s.label, s: summarize(s.pts), fmt: s.fmt }));
-  const aria = `${title}. ` + sum.map((x) => (x.s ? `${x.label}: terakhir ${x.fmt(x.s.last)}, terendah ${x.fmt(x.s.min)}, tertinggi ${x.fmt(x.s.max)}` : "")).join(". ") + `. Gunakan panah kiri dan kanan untuk membaca nilai.`;
+  const aria = `${title}. ` + sum.map((x) => (x.s ? t("system.chart.item", { label: x.label, last: x.fmt(x.s.last), min: x.fmt(x.s.min), max: x.fmt(x.s.max) }) : "")).join(". ") + `. ${t("system.chart.arrows")}`;
   const withDate = span > 86400;
 
   const move = (e: PointerEvent<SVGSVGElement>) => {

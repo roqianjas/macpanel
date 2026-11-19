@@ -12,21 +12,23 @@ import { Logs } from "./Logs";
 import { AuthUsers } from "./AuthUsers";
 import { EnvEditor } from "./EnvEditor";
 import { Traffic } from "./Traffic";
+import { t, useT } from "../../i18n";
 
-export const TABS = [
-  { id: "umum", label: "Umum" },
-  { id: "domain", label: "Domain" },
-  { id: "akses", label: "Akses" },
+export const tabs = () => [
+  { id: "umum", label: t("dev.sd.tab.general") },
+  { id: "domain", label: t("dev.sd.tab.domain") },
+  { id: "akses", label: t("dev.sd.tab.access") },
   { id: "env", label: ".env" },
-  { id: "trafik", label: "Trafik" },
+  { id: "trafik", label: t("dev.sd.tab.traffic") },
   { id: "deploy", label: "Deploy" },
   { id: "rewrite", label: "Rewrite" },
   { id: "ssl", label: "SSL" },
-  { id: "config", label: "Config nginx" },
-  { id: "log", label: "Log" },
+  { id: "config", label: t("dev.conf.title") },
+  { id: "log", label: t("apps.log") },
 ];
 
 export function SiteDetail({ name }: { name: string }) {
+  const t = useT();
   const [tab, setTab] = useState("umum");
   const settings = useLoad(() => get<{ kind: string; model: Model | null; system: boolean }>(`/api/sites/${name}/settings`), [name]);
   const [removing, setRemoving] = useState(false);
@@ -38,20 +40,20 @@ export function SiteDetail({ name }: { name: string }) {
     <>
       <PageHead
         title={host}
-        desc={system ? "Situs sistem: hanya bisa dilihat dari panel." : missing ? "Situs ini tidak aktif (dijeda) atau tidak ada. Aktifkan dari daftar Website untuk mengelolanya." : "Atur situs, rewrite, sertifikat, dan config nginx."}
+        desc={system ? t("dev.sd.systemDesc") : missing ? t("dev.sd.missingDesc") : t("dev.sd.desc")}
         action={
           <>
-            <a className="btn" href="#/website">Semua situs</a>
-            {!system && !missing && <button className="btn" onClick={() => setCloning(true)}>Kloning</button>}
+            <a className="btn" href="#/website">{t("dev.sd.allSites")}</a>
+            {!system && !missing && <button className="btn" onClick={() => setCloning(true)}>{t("dev.sd.clone")}</button>}
             <a className="btn" href={`https://${host}`} target="_blank" rel="noopener noreferrer">
               <ExternalLink size={18} aria-hidden="true" />
-              Buka situs<span className="sr"> (tab baru)</span>
+              {t("dev.sd.open")}<span className="sr"> {t("dev.sd.newTab")}</span>
             </a>
           </>
         }
       />
       {cloning && <CloneModal src={name} onClose={() => setCloning(false)} onDone={(n) => { setCloning(false); location.hash = `#/website/${n}`; }} />}
-      {!missing && <Tabs tabs={system ? TABS.filter((t) => t.id !== "deploy") : TABS} value={tab} onChange={setTab} label="Bagian situs" />}
+      {!missing && <Tabs tabs={system ? tabs().filter((x) => x.id !== "deploy") : tabs()} value={tab} onChange={setTab} label={t("dev.sd.sections")} />}
       {!missing && (
         <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
           {tab === "umum" || tab === "rewrite" || tab === "domain" || tab === "akses" ? (
@@ -63,7 +65,7 @@ export function SiteDetail({ name }: { name: string }) {
                     {tab === "akses" && !system && <AuthUsers name={name} enabled={!!settings.data.model.auth} />}
                   </>
                 ) : (
-                  <Card><p>Situs ini memakai config kustom yang tidak bisa diubah lewat formulir. Gunakan tab <strong>Config nginx</strong>.</p></Card>
+                  <Card><p>{t("dev.sd.customNote1")} <strong>{t("dev.conf.title")}</strong>{t("dev.sd.customNote2")}</p></Card>
                 ))}
             </State>
           ) : tab === "trafik" ? (
@@ -83,22 +85,22 @@ export function SiteDetail({ name }: { name: string }) {
       )}
       {missing && <Alert tone="warn">{settings.error}</Alert>}
       {!system && !missing && tab === "umum" && (
-        <Card title="Hapus situs" className="danger-zone">
-          <p className="muted small">Menghapus config dan sertifikat situs ini. Folder proyek tidak disentuh.</p>
+        <Card title={t("dev.sd.rmSite")} className="danger-zone">
+          <p className="muted small">{t("dev.sd.rmNote")}</p>
           <div>
             <button className="btn btn-danger" onClick={() => setRemoving(true)}>
               <Trash2 size={18} aria-hidden="true" />
-              Hapus {host}
+              {t("dev.sd.rmHost", { host })}
             </button>
           </div>
         </Card>
       )}
       {removing && (
         <ConfirmDialog
-          title={`Hapus ${host}`}
+          title={t("dev.sd.rmHost", { host })}
           word={name}
-          verb="Hapus situs"
-          body={<p>Situs akan berhenti dilayani. Aksi ini meminta kata sandi ulang.</p>}
+          verb={t("dev.sd.rmSite")}
+          body={<p>{t("dev.sd.rmBody")}</p>}
           onConfirm={async () => {
             await post(`/api/sites/${name}/remove`, { confirm: name });
             location.hash = "#/website";

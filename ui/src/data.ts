@@ -86,9 +86,11 @@ export interface AlertItem {
   title: string;
   detail: string;
   link: string;
+  code?: string;
+  args?: Record<string, string | number>;
 }
 // alerts dijaga tidak null di sini: satu respons null pernah membuat seluruh aplikasi kosong (App membaca .length).
 export const useAlerts = () => usePoll(async () => {
-  const r = await get<{ alerts: AlertItem[] | null; at: number; notify?: string }>("/api/alerts");
+  const r = await get<{ alerts: AlertItem[] | null; at: number; notify?: string; notify_code?: string }>("/api/alerts");
   return { ...r, alerts: r.alerts ?? [] };
 }, 60000);

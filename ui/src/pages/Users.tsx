@@ -3,6 +3,7 @@ import { errText, fmtTime, get, post } from "../api";
 import { Alert, Card, Chip, ConfirmDialog, Field, Modal, PageHead, State, useLoad } from "../ui";
 import { SecretDialog } from "./DbUsers";
 import { Avatar } from "../features/profile/avatar";
+import { useT } from "../i18n";
 
 interface Acc {
   name: string;
@@ -18,6 +19,7 @@ interface Acc {
 type Secret = { title: string; label: string; value: string; note?: string } | null;
 
 export default function Users() {
+  const t = useT();
   const q = useLoad(() => get<{ accounts: Acc[] }>("/api/accounts"));
   const [adding, setAdding] = useState(false);
   const [sel, setSel] = useState<Acc | null>(null);
@@ -27,17 +29,17 @@ export default function Users() {
   return (
     <>
       <PageHead
-        title="Pengguna"
-        desc="Akun yang dapat masuk ke panel. Akun baru mendapat kata sandi sementara yang wajib diganti saat masuk pertama; 2FA dinyalakan sendiri oleh pemiliknya di Pengaturan."
+        title={t("nav.users")}
+        desc={t("settings.users.desc")}
         action={
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
-            Tambah pengguna
+            {t("settings.users.add")}
           </button>
         }
       />
       {note && <Alert tone="ok">{note}</Alert>}
-      <Card title="Daftar pengguna">
-        <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && list.length === 0} emptyText="Belum ada pengguna." onRetry={q.reload}>
+      <Card title={t("settings.users.list")}>
+        <State loading={q.loading && !q.data} error={q.error} empty={!!q.data && list.length === 0} emptyText={t("settings.users.empty")} onRetry={q.reload}>
           <ul className="list">
             {list.map((u) => (
               <li key={u.name} className="list-row user-row">
@@ -46,23 +48,23 @@ export default function Users() {
                   {u.display_name && <p className="profile-name">{u.display_name}</p>}
                   <p className="mono">
                     @{u.name}
-                    {u.self ? " (Anda)" : ""}
+                    {u.self ? t("settings.users.you") : ""}
                   </p>
-                  <p className="small muted">Dibuat {fmtTime(u.created)}</p>
+                  <p className="small muted">{t("settings.users.created", { time: fmtTime(u.created) })}</p>
                   <div className="row" style={{ flexWrap: "wrap" }}>
-                    <Chip tone={u.role === "admin" ? "info" : "mute"}>{u.role === "admin" ? "Admin" : "Hanya-baca"}</Chip>
-                    <Chip tone={u.totp_on ? "ok" : "warn"}>{u.totp_on ? "2FA aktif" : "2FA mati"}</Chip>
-                    {u.disabled && <Chip tone="bad">Nonaktif</Chip>}
-                    {u.must_change && <Chip tone="warn">Belum ganti sandi sementara</Chip>}
+                    <Chip tone={u.role === "admin" ? "info" : "mute"}>{u.role === "admin" ? t("role.admin") : t("role.viewer")}</Chip>
+                    <Chip tone={u.totp_on ? "ok" : "warn"}>{u.totp_on ? t("settings.users.2faOn") : t("settings.users.2faOff")}</Chip>
+                    {u.disabled && <Chip tone="bad">{t("settings.disabled")}</Chip>}
+                    {u.must_change && <Chip tone="warn">{t("settings.users.mustChange")}</Chip>}
                   </div>
                 </div>
                 {u.self ? (
                   <a className="btn" href="#/profil">
-                    Profil saya<span className="sr"> (nama, avatar, kata sandi, 2FA)</span>
+                    {t("profile.mine")}<span className="sr">{t("settings.users.mineSr")}</span>
                   </a>
                 ) : (
                   <button className="btn" onClick={() => setSel(u)}>
-                    Kelola<span className="sr"> {u.name}</span>
+                    {t("settings.users.manage")}<span className="sr"> {u.name}</span>
                   </button>
                 )}
               </li>
@@ -76,8 +78,8 @@ export default function Users() {
           onDone={(r) => {
             setAdding(false);
             q.reload();
-            if (!r.temp_password) return setNote(`Akun ${r.name} dibuat dengan kata sandi sementara pilihan Anda. Pemilik wajib menggantinya saat masuk pertama.`);
-            setSecret({ title: `Akun ${r.name} dibuat`, label: "Kata sandi sementara", value: r.temp_password ?? "", note: "Berikan kepada pemiliknya lewat jalur aman. Ia wajib menggantinya saat masuk pertama." });
+            if (!r.temp_password) return setNote(t("settings.users.createdOwn", { name: r.name }));
+            setSecret({ title: t("settings.users.createdTitle", { name: r.name }), label: t("settings.users.tempPw"), value: r.temp_password ?? "", note: t("settings.users.createdNote") });
           }}
         />
       )}
@@ -99,13 +101,14 @@ export default function Users() {
 }
 
 function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { name: string; temp_password?: string }) => void }) {
+  const t = useT();
   const [name, setName] = useState("");
   const [role, setRole] = useState("viewer");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   return (
-    <Modal title="Tambah pengguna" onClose={onClose}>
+    <Modal title={t("settings.users.add")} onClose={onClose}>
       <form
         className="stack"
         autoComplete="off"
@@ -121,14 +124,14 @@ function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { na
           }
         }}
       >
-        <Field label="Nama pengguna" hint="Huruf kecil, angka, _ atau -; 3-32 karakter; diawali huruf.">
-          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="nama-pengguna" maxLength={32} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_-]{2,31}" required data-autofocus spellCheck={false} />}
+        <Field label={t("login.user")} hint={t("settings.users.nameHint")}>
+          {(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder={t("settings.users.namePh")} maxLength={32} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} pattern="[a-z][a-z0-9_-]{2,31}" required data-autofocus spellCheck={false} />}
         </Field>
-        <Field label="Peran" hint="Hanya-baca: melihat saja, tidak dapat mengubah apa pun dan tidak melihat kredensial.">
+        <Field label={t("settings.users.role")} hint={t("settings.users.roleHint")}>
           {(id, dd) => (
             <select id={id} aria-describedby={dd} value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="viewer">Hanya-baca</option>
-              <option value="admin">Admin (semua aksi)</option>
+              <option value="viewer">{t("role.viewer")}</option>
+              <option value="admin">{t("settings.users.adminAll")}</option>
             </select>
           )}
         </Field>
@@ -136,10 +139,10 @@ function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { na
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
           <button type="button" className="btn" onClick={onClose}>
-            Batal
+            {t("common.cancel")}
           </button>
           <button className="btn btn-primary" disabled={busy || !name || (pw !== "" && pw.length < 12)}>
-            {busy ? "Membuat…" : "Buat akun"}
+            {busy ? t("settings.creating") : t("settings.users.createAcc")}
           </button>
         </div>
       </form>
@@ -148,6 +151,7 @@ function AddAccount({ onClose, onDone }: { onClose: () => void; onDone: (r: { na
 }
 
 function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; onChanged: (msg: string, secret?: Secret) => void }) {
+  const t = useT();
   const [role, setRole] = useState(acc.role);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -164,49 +168,49 @@ function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; on
   };
   const base = `/api/accounts/${acc.name}` as const;
   return (
-    <Modal title={`Kelola ${acc.name}`} onClose={onClose}>
+    <Modal title={t("settings.users.manageTitle", { name: acc.name })} onClose={onClose}>
       <div className="stack">
         {err && <Alert>{err}</Alert>}
-        <Field label="Peran" hint="Mengubah peran mengeluarkan semua sesi dan mencabut token akun itu.">
+        <Field label={t("settings.users.role")} hint={t("settings.users.roleHint2")}>
           {(id, dd) => (
             <div className="row">
               <select id={id} aria-describedby={dd} value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="viewer">Hanya-baca</option>
-                <option value="admin">Admin</option>
+                <option value="viewer">{t("role.viewer")}</option>
+                <option value="admin">{t("role.admin")}</option>
               </select>
-              <button className="btn" disabled={busy || role === acc.role} onClick={() => run(async () => { await post(`${base}/role`, { role }); onChanged(`Peran ${acc.name} diubah.`); })}>
-                Simpan peran
+              <button className="btn" disabled={busy || role === acc.role} onClick={() => run(async () => { await post(`${base}/role`, { role }); onChanged(t("settings.users.roleChanged", { name: acc.name })); })}>
+                {t("settings.users.saveRole")}
               </button>
             </div>
           )}
         </Field>
         <div className="stack">
-          <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/${acc.disabled ? "enable" : "disable"}`, {}); onChanged(`${acc.name} ${acc.disabled ? "diaktifkan" : "dinonaktifkan"}.`); })}>
-            {acc.disabled ? "Aktifkan akun" : "Nonaktifkan akun (keluarkan semua sesi)"}
+          <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/${acc.disabled ? "enable" : "disable"}`, {}); onChanged(t(acc.disabled ? "settings.users.nowEnabled" : "settings.users.nowDisabled", { name: acc.name })); })}>
+            {acc.disabled ? t("settings.users.enableAcc") : t("settings.users.disableAcc")}
           </button>
           <ResetPassword busy={busy} run={run} base={base} acc={acc} onChanged={onChanged} />
-          {!acc.totp_on && <p className="small muted">2FA mati. Hanya pemilik akun yang bisa menyalakannya (butuh aplikasi autentikator di ponselnya) lewat Profil saya.</p>}
+          {!acc.totp_on && <p className="small muted">{t("settings.users.2faOffNote")}</p>}
           {acc.totp_on && (
-            <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/2fa-off`, {}); onChanged(`2FA ${acc.name} dimatikan; ia dapat menyalakannya lagi di Pengaturan.`); })}>
-              Matikan 2FA (mis. ponsel hilang)
+            <button className="btn" disabled={busy} onClick={() => run(async () => { await post(`${base}/2fa-off`, {}); onChanged(t("settings.users.2faOffDone", { name: acc.name })); })}>
+              {t("settings.users.2faOffBtn")}
             </button>
           )}
           <button className="btn btn-danger-ghost" disabled={busy} onClick={() => setDel(true)}>
-            Hapus akun
+            {t("settings.users.delete")}
           </button>
         </div>
       </div>
       {del && (
         <ConfirmDialog
-          title={`Hapus akun ${acc.name}`}
+          title={t("settings.users.deleteTitle", { name: acc.name })}
           word={acc.name}
-          verb="Hapus akun"
-          body={<p>Akun, sesi, perangkat tepercaya, dan tokennya dihapus permanen. Riwayat di Aktivitas tetap ada.</p>}
+          verb={t("settings.users.delete")}
+          body={<p>{t("settings.users.deleteBody")}</p>}
           onClose={() => setDel(false)}
           onConfirm={async () => {
             await post(`${base}/remove`, { confirm: acc.name });
             setDel(false);
-            onChanged(`Akun ${acc.name} dihapus.`);
+            onChanged(t("settings.users.deleted", { name: acc.name }));
           }}
         />
       )}
@@ -214,7 +218,8 @@ function Manage({ acc, onClose, onChanged }: { acc: Acc; onClose: () => void; on
   );
 }
 
-function PasswordField({ value, onChange, label = "Kata sandi sementara (opsional)" }: { value: string; onChange: (v: string) => void; label?: string }) {
+function PasswordField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label?: string }) {
+  const t = useT();
   const [show, setShow] = useState(false);
   const gen = () => {
     const a = new Uint8Array(18);
@@ -223,12 +228,12 @@ function PasswordField({ value, onChange, label = "Kata sandi sementara (opsiona
     setShow(true);
   };
   return (
-    <Field label={label} hint={value ? (value.length < 12 ? `Minimal 12 karakter (sekarang ${value.length}).` : "Pemilik tetap wajib menggantinya saat masuk pertama.") : "Kosongkan agar panel membuat kata sandi acak dan menampilkannya sekali. Atau isi sendiri, minimal 12 karakter."}>
+    <Field label={label ?? t("settings.users.tempOpt")} hint={value ? (value.length < 12 ? t("settings.users.pwHint.short", { len: value.length }) : t("settings.users.pwHint.ok")) : t("settings.users.pwHint.empty")}>
       {(id, dd) => (
         <div className="row">
-          <input id={id} aria-describedby={dd} className="mono" type={show ? "text" : "password"} autoComplete="new-password" placeholder="kosong = dibuat otomatis" maxLength={256} value={value} onChange={(e) => onChange(e.target.value)} />
-          <button type="button" className="btn" onClick={() => setShow((v) => !v)} aria-pressed={show}>{show ? "Sembunyikan" : "Tampilkan"}</button>
-          <button type="button" className="btn" onClick={gen}>Buat acak</button>
+          <input id={id} aria-describedby={dd} className="mono" type={show ? "text" : "password"} autoComplete="new-password" placeholder={t("settings.users.pwPh")} maxLength={256} value={value} onChange={(e) => onChange(e.target.value)} />
+          <button type="button" className="btn" onClick={() => setShow((v) => !v)} aria-pressed={show}>{show ? t("settings.users.hide") : t("settings.users.show")}</button>
+          <button type="button" className="btn" onClick={gen}>{t("settings.users.random")}</button>
         </div>
       )}
     </Field>
@@ -236,19 +241,20 @@ function PasswordField({ value, onChange, label = "Kata sandi sementara (opsiona
 }
 
 function ResetPassword({ busy, run, base, acc, onChanged }: { busy: boolean; run: (fn: () => Promise<void>) => void; base: string; acc: Acc; onChanged: (msg: string, secret?: Secret) => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [pw, setPw] = useState("");
-  if (!open) return <button className="btn" disabled={busy} onClick={() => setOpen(true)}>Reset kata sandi</button>;
+  if (!open) return <button className="btn" disabled={busy} onClick={() => setOpen(true)}>{t("settings.users.reset")}</button>;
   return (
     <div className="stack sched">
-      <PasswordField value={pw} onChange={setPw} label="Kata sandi sementara baru (opsional)" />
+      <PasswordField value={pw} onChange={setPw} label={t("settings.users.tempOptNew")} />
       <div className="row">
-        <button className="btn" onClick={() => { setOpen(false); setPw(""); }}>Batal</button>
+        <button className="btn" onClick={() => { setOpen(false); setPw(""); }}>{t("common.cancel")}</button>
         <button className="btn btn-primary" disabled={busy || (pw !== "" && pw.length < 12)} onClick={() => run(async () => {
           const r = await post<{ temp_password?: string }>(`${base}/reset` as `/api/accounts/${string}/reset`, pw ? { password: pw } : {});
-          if (!r.temp_password) return onChanged(`Kata sandi ${acc.name} direset ke pilihan Anda; semua sesi dan token dicabut. Ia wajib menggantinya saat masuk.`);
-          onChanged("", { title: `Kata sandi ${acc.name} direset`, label: "Kata sandi sementara", value: r.temp_password, note: "Semua sesi, perangkat tepercaya, dan token akun itu dicabut. Ia wajib menggantinya saat masuk." });
-        })}>Reset kata sandi</button>
+          if (!r.temp_password) return onChanged(t("settings.users.resetOwn", { name: acc.name }));
+          onChanged("", { title: t("settings.users.resetTitle", { name: acc.name }), label: t("settings.users.tempPw"), value: r.temp_password, note: t("settings.users.resetNote") });
+        })}>{t("settings.users.reset")}</button>
       </div>
     </div>
   );

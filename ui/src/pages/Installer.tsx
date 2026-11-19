@@ -3,6 +3,7 @@ import { errText, get, post } from "../api";
 import type { PostUrl } from "../api.gen";
 import { trackJob } from "../jobs";
 import { Alert, Field, Modal, useLoad } from "../ui";
+import { useT } from "../i18n";
 
 const NAME = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
 const APP_NAME = /^[a-z][a-z0-9-]{0,28}[a-z0-9]$/;
@@ -15,12 +16,13 @@ const KINDS: { id: Kind; label: string; tool?: string }[] = [
   { id: "nextjs", label: "Next.js", tool: "node" },
 ];
 const APP_HINT: Record<string, string> = {
-  go: "Membuat proyek Go sederhana (net/http), membangun biner, menjalankannya sebagai worker launchd di 127.0.0.1, dan membuat situs proxy <nama>.lab.",
-  python: "Membuat proyek Python dengan virtualenv (.venv) dan aplikasi contoh tanpa dependensi, menjalankannya sebagai worker launchd di 127.0.0.1, dan membuat situs proxy <nama>.lab.",
-  nextjs: "Menjalankan create-next-app (TypeScript, App Router, pnpm), membangun, menjalankannya sebagai worker launchd di 127.0.0.1, dan membuat situs proxy <nama>.lab. Butuh internet dan bisa beberapa menit.",
+  go: "ops.in.hint.go",
+  python: "ops.in.hint.python",
+  nextjs: "ops.in.hint.nextjs",
 };
 
 function useRun(onDone: (name: string) => void) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const run = async (path: PostUrl, body: object, label: string, name: string) => {
@@ -31,7 +33,7 @@ function useRun(onDone: (name: string) => void) {
       trackJob(r.job, label, (j) => {
         setBusy(false);
         if (j.status === "ok") onDone(name);
-        else setErr(j.output || "Gagal.");
+        else setErr(j.output || t("ops.failed"));
       });
     } catch (x) {
       setBusy(false);
@@ -42,6 +44,7 @@ function useRun(onDone: (name: string) => void) {
 }
 
 export function InstallModal({ onClose, onDone }: { onClose: () => void; onDone: (name: string) => void }) {
+  const t = useT();
   const [kind, setKind] = useState<Kind>("laravel");
   const [runtime, setRuntime] = useState("");
   const [port, setPort] = useState("");
@@ -56,39 +59,39 @@ export function InstallModal({ onClose, onDone }: { onClose: () => void; onDone:
   const portNum = port === "" ? 0 : Number(port);
   const ok = (isApp ? APP_NAME.test(name) : NAME.test(name)) && (!isApp || port === "" || (Number.isInteger(portNum) && portNum >= 1024 && portNum <= 65535));
   return (
-    <Modal title="Pasang cepat" onClose={onClose}>
-      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run("/api/installer", isApp ? { kind, name, ...(runtime ? { runtime } : {}), ...(portNum ? { port: portNum } : {}) } : { kind, name, php, db }, `Pasang ${kind} ${name}`, name); }}>
-        <p className="small muted">{isApp ? APP_HINT[kind] : <>Membuat folder di <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, database baru (MariaDB atau MySQL), kredensial, dan situs <span className="mono">&lt;nama&gt;.lab</span>. Butuh internet dan beberapa menit.</>} Bila gagal di tengah, semua yang baru dibuat dibersihkan. Meminta kata sandi ulang.</p>
-        <div className="seg" role="group" aria-label="Jenis proyek" style={{ flexWrap: "wrap" }}>
+    <Modal title={t("ops.in.title")} onClose={onClose}>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run("/api/installer", isApp ? { kind, name, ...(runtime ? { runtime } : {}), ...(portNum ? { port: portNum } : {}) } : { kind, name, php, db }, t("ops.in.job", { kind, name }), name); }}>
+        <p className="small muted">{isApp ? t(APP_HINT[kind]) : <>{t("ops.in.A")} <span className="mono">{t("ops.in.dirPath")}</span>{t("ops.in.B")} <span className="mono">{t("ops.in.siteHost")}</span>{t("ops.in.C")}</>} {t("ops.in.D")}</p>
+        <div className="seg" role="group" aria-label={t("ops.in.kindAria")} style={{ flexWrap: "wrap" }}>
           {KINDS.map((k) => (
             <button key={k.id} type="button" className={`seg-btn ${kind === k.id ? "on" : ""}`} aria-pressed={kind === k.id} onClick={() => { setKind(k.id); setRuntime(""); }}>{k.label}</button>
           ))}
         </div>
-        <Field label="Nama situs" hint="Huruf kecil, angka, tanda hubung. Jadi nama.lab.">{(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder="toko-saya" pattern="[a-z0-9]([a-z0-9\-]{0,28}[a-z0-9])?" title="Huruf kecil, angka, tanda hubung; tidak diawali atau diakhiri tanda hubung" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
+        <Field label={t("ops.in.siteName")} hint={t("ops.in.siteNameHint")}>{(id, dd) => <input id={id} aria-describedby={dd} className="mono" placeholder={t("ops.in.siteNamePh")} pattern="[a-z0-9]([a-z0-9\-]{0,28}[a-z0-9])?" title={t("ops.in.siteNameTitle")} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
         {isApp ? (
           <>
-            <Field label={`Versi ${meta.id === "nextjs" ? "Node" : meta.label}`} hint="Kosong = versi bawaan. Versi lain dipasang di menu PHP dan runtime.">
+            <Field label={t("ops.in.version", { tool: meta.id === "nextjs" ? "Node" : meta.label })} hint={t("ops.in.versionHint")}>
               {(id, dd) => (
                 <select id={id} aria-describedby={dd} value={runtime} onChange={(e) => setRuntime(e.target.value)}>
-                  <option value="">Bawaan</option>
+                  <option value="">{t("ops.in.default")}</option>
                   {versions.map((v) => <option key={v.version} value={v.version}>{v.version}</option>)}
                 </select>
               )}
             </Field>
-            <Field label="Port (opsional)" hint="Kosong = dipilihkan otomatis (3100-3999). Aplikasi hanya mendengarkan 127.0.0.1.">
-              {(id, dd) => <input id={id} aria-describedby={dd} className="mono" inputMode="numeric" placeholder="otomatis" pattern="[0-9]{4,5}" title="Port 1024-65535 atau kosong" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} maxLength={5} />}
+            <Field label={t("ops.in.port")} hint={t("ops.in.portHint")}>
+              {(id, dd) => <input id={id} aria-describedby={dd} className="mono" inputMode="numeric" placeholder={t("ops.in.portPh")} pattern="[0-9]{4,5}" title={t("ops.in.portTitle")} value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} maxLength={5} />}
             </Field>
           </>
         ) : (
           <>
-        <Field label="Database">{(id) => <select id={id} value={db} onChange={(e) => setDb(e.target.value)}><option value="mariadb">MariaDB (port 3306)</option><option value="mysql">MySQL (port 3307)</option></select>}</Field>
-        <Field label="Versi PHP">{(id) => <select id={id} value={php} onChange={(e) => setPhp(e.target.value)}>{["8.2", "8.3", "8.4", "8.5"].map((v) => <option key={v}>{v}</option>)}</select>}</Field>
+        <Field label={t("ops.in.database")}>{(id) => <select id={id} value={db} onChange={(e) => setDb(e.target.value)}><option value="mariadb">{t("ops.in.mariadb")}</option><option value="mysql">{t("ops.in.mysql")}</option></select>}</Field>
+        <Field label={t("ops.in.phpVersion")}>{(id) => <select id={id} value={php} onChange={(e) => setPhp(e.target.value)}>{["8.2", "8.3", "8.4", "8.5"].map((v) => <option key={v}>{v}</option>)}</select>}</Field>
           </>
         )}
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
-          <button type="button" className="btn" onClick={onClose}>Batal</button>
-          <button className="btn btn-primary" disabled={busy || !ok}>{busy ? "Memasang… (lihat tray kerja)" : "Pasang"}</button>
+          <button type="button" className="btn" onClick={onClose}>{t("common.cancel")}</button>
+          <button className="btn btn-primary" disabled={busy || !ok}>{busy ? t("ops.in.installing") : t("apps.install")}</button>
         </div>
       </form>
     </Modal>
@@ -96,22 +99,23 @@ export function InstallModal({ onClose, onDone }: { onClose: () => void; onDone:
 }
 
 export function CloneModal({ src, onClose, onDone }: { src: string; onClose: () => void; onDone: (name: string) => void }) {
+  const t = useT();
   const [dst, setDst] = useState(`${src}-staging`.slice(0, 30));
   const [withDb, setWithDb] = useState(true);
   const { busy, err, run } = useRun(onDone);
   const ok = NAME.test(dst) && dst !== src;
   return (
-    <Modal title={`Kloning ${src}.lab`} onClose={onClose}>
-      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run(`/api/sites/${src}/clone`, { dst, with_db: withDb }, `Kloning ${src} ke ${dst}`, dst); }}>
-        <p className="small muted">Menyalin folder proyek (tanpa <span className="mono">.git</span>, <span className="mono">node_modules</span>, dan log) ke <span className="mono">~/MacPanel/wwwroot/&lt;nama&gt;</span>, membuat situs baru, dan database baru terpisah dengan kredensial sendiri; <span className="mono">.env</span> salinan diarahkan ke database baru sehingga staging tidak menyentuh data sumber. Meminta kata sandi ulang.</p>
-        <Field label="Nama situs baru">{(id) => <input id={id} className="mono" placeholder="toko-saya-baru" pattern="[a-z0-9]([a-z0-9\-]{0,28}[a-z0-9])?" title="Huruf kecil, angka, tanda hubung" value={dst} onChange={(e) => setDst(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
+    <Modal title={t("ops.in.cloneTitle", { src })} onClose={onClose}>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (ok) run(`/api/sites/${src}/clone`, { dst, with_db: withDb }, t("ops.in.cloneJob", { src, dst }), dst); }}>
+        <p className="small muted">{t("ops.in.cloneA")} <span className="mono">.git</span>, <span className="mono">node_modules</span>{t("ops.in.cloneB")} <span className="mono">{t("ops.in.dirPath")}</span>{t("ops.in.cloneC")} <span className="mono">.env</span> {t("ops.in.cloneD")}</p>
+        <Field label={t("ops.in.newName")}>{(id) => <input id={id} className="mono" placeholder={t("ops.in.newNamePh")} pattern="[a-z0-9]([a-z0-9\-]{0,28}[a-z0-9])?" title={t("ops.in.newNameTitle")} value={dst} onChange={(e) => setDst(e.target.value.toLowerCase())} maxLength={30} required autoComplete="off" spellCheck={false} />}</Field>
         <div className="checks">
-          <label className="check"><input type="checkbox" checked={withDb} onChange={(e) => setWithDb(e.target.checked)} />Salin juga isi database (bila proyek memakai database lab dengan nama sama)</label>
+          <label className="check"><input type="checkbox" checked={withDb} onChange={(e) => setWithDb(e.target.checked)} />{t("ops.in.withDb")}</label>
         </div>
         {err && <Alert>{err}</Alert>}
         <div className="row-end">
-          <button type="button" className="btn" onClick={onClose}>Batal</button>
-          <button className="btn btn-primary" disabled={busy || !ok}>{busy ? "Mengkloning… (lihat tray kerja)" : "Kloning"}</button>
+          <button type="button" className="btn" onClick={onClose}>{t("common.cancel")}</button>
+          <button className="btn btn-primary" disabled={busy || !ok}>{busy ? t("ops.in.cloning") : t("ops.in.clone")}</button>
         </div>
       </form>
     </Modal>

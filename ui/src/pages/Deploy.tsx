@@ -4,6 +4,7 @@ import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, State, useLoad } from "../ui";
 import Webhook from "./Webhook";
+import { useT } from "../i18n";
 
 interface Info {
   dir: string;
@@ -16,6 +17,7 @@ const DEFAULT_ON = new Set(["git_pull", "composer_install", "node_install", "nod
 const EXCLUSIVE: Record<string, string> = { composer_install: "composer_install_nodev", composer_install_nodev: "composer_install" };
 
 export default function Deploy({ name }: { name: string }) {
+  const t = useT();
   const q = useLoad(() => get<Info>(`/api/sites/${name}/deploy`), [name]);
   const [sel, setSel] = useState<Set<string> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,7 +41,7 @@ export default function Deploy({ name }: { name: string }) {
     try {
       const ordered = steps.filter((s) => chosen.has(s.id)).map((s) => s.id);
       const r = await post<{ job: number }>(`/api/sites/${name}/deploy`, { steps: ordered });
-      trackJob(r.job, `Deploy ${name}`, (j) => {
+      trackJob(r.job, t("ops.dp.job", { name }), (j) => {
         setBusy(false);
         setOut({ ok: j.status === "ok", text: j.output });
         q.reload();
@@ -51,8 +53,8 @@ export default function Deploy({ name }: { name: string }) {
   };
   if (q.error.includes("tidak punya root")) {
     return (
-      <Card title="Deploy tidak tersedia">
-        <p className="small muted">Situs ini hanya meneruskan permintaan ke layanan lain (reverse proxy), jadi tidak punya folder proyek untuk di-deploy dari panel. Deploy berlaku untuk situs PHP, statis, dan proyek yang dibuat lewat panel.</p>
+      <Card title={t("ops.dp.unavailable")}>
+        <p className="small muted">{t("ops.dp.unavailableBody")}</p>
       </Card>
     );
   }
@@ -61,21 +63,21 @@ export default function Deploy({ name }: { name: string }) {
       <State loading={q.loading && !q.data} error={q.error} onRetry={q.reload}>
         {q.data && (
           <>
-            <Card title="Proyek">
+            <Card title={t("ops.dp.project")}>
               <p className="mono small">{q.data.dir}</p>
               {q.data.git ? (
                 <p className="small">
-                  Cabang <strong className="mono">{q.data.git.branch}</strong>, commit terakhir <span className="mono">{q.data.git.commit}</span>{" "}
-                  {q.data.git.dirty && <Chip tone="warn">Ada perubahan lokal</Chip>} {!q.data.git.remote && <Chip tone="warn">Tanpa remote</Chip>}
+                  {t("ops.dp.branch")} <strong className="mono">{q.data.git.branch}</strong>{t("ops.dp.lastCommit")} <span className="mono">{q.data.git.commit}</span>{" "}
+                  {q.data.git.dirty && <Chip tone="warn">{t("ops.dp.dirty")}</Chip>} {!q.data.git.remote && <Chip tone="warn">{t("ops.dp.noRemote")}</Chip>}
                 </p>
               ) : (
-                <p className="small muted">Folder ini bukan repositori git, jadi langkah git pull tidak tersedia.</p>
+                <p className="small muted">{t("ops.dp.noGit")}</p>
               )}
-              <p className="small muted">Langkah dijalankan berurutan dan berhenti di langkah pertama yang gagal. Git memakai SSH tanpa prompt: bila key butuh passphrase, tarik manual di terminal. Meminta kata sandi ulang.</p>
+              <p className="small muted">{t("ops.dp.stepsNote")}</p>
             </Card>
-            <Card title="Langkah deploy">
+            <Card title={t("ops.dp.steps")}>
               {steps.length === 0 ? (
-                <p className="muted">Tidak ada langkah yang cocok untuk proyek ini.</p>
+                <p className="muted">{t("ops.dp.noSteps")}</p>
               ) : (
                 <ul className="list">
                   {steps.map((s) => (
@@ -93,14 +95,14 @@ export default function Deploy({ name }: { name: string }) {
               <div className="row-end">
                 <button className="btn btn-primary" disabled={busy || chosen.size === 0} onClick={run}>
                   <Rocket size={18} aria-hidden="true" />
-                  {busy ? "Berjalan…" : `Jalankan ${chosen.size} langkah`}
+                  {busy ? t("ops.running") : t("ops.dp.run", { n: chosen.size })}
                 </button>
               </div>
             </Card>
             <Webhook name={name} steps={steps} />
             {out && (
-              <Card title={out.ok ? "Hasil: selesai" : "Hasil: gagal"}>
-                <pre className="logbox mono" tabIndex={0} aria-label="Keluaran deploy">{out.text || "(tanpa keluaran)"}</pre>
+              <Card title={out.ok ? t("ops.dp.resultOk") : t("ops.dp.resultBad")}>
+                <pre className="logbox mono" tabIndex={0} aria-label={t("ops.dp.outputAria")}>{out.text || t("ops.dp.noOutput")}</pre>
               </Card>
             )}
           </>

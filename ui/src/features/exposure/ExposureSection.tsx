@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useT } from "../../i18n";
 import { Copy, ShieldAlert, ShieldCheck, Terminal } from "lucide-react";
 import { errText, fmtTime, get, post } from "../../api";
 import { Alert, Card, Chip, ConfirmDialog, State, usePoll } from "../../ui";
@@ -11,6 +12,7 @@ type Note = { tone: "ok" | "bad"; text: string } | null;
 
 export default function ExposureSection() {
   // Data berubah tiap 5 menit di server; 60 detik cukup untuk melihat hasil setelah mengubah daftar izin.
+  const t = useT();
   const q = usePoll(() => get<ExView>("/api/exposure"), 60000);
   const [ask, setAsk] = useState<ExItem | null>(null);
   const [note, setNote] = useState<Note>(null);
@@ -26,7 +28,7 @@ export default function ExposureSection() {
     try {
       await post("/api/exposure/revoke", { entry });
       await q.reload();
-      setNote({ tone: "ok", text: `${entry} dicabut dari daftar izin.` });
+      setNote({ tone: "ok", text: t("system.ex.revoked", { entry }) });
     } catch (e) {
       setNote({ tone: "bad", text: errText(e) });
     } finally {
@@ -35,7 +37,7 @@ export default function ExposureSection() {
   };
 
   return (
-    <Card title={<>{flagged > 0 ? <ShieldAlert size={18} className="icon" aria-hidden="true" /> : <ShieldCheck size={18} className="icon" aria-hidden="true" />} Paparan layanan ke jaringan rumah</>}>
+    <Card title={<>{flagged > 0 ? <ShieldAlert size={18} className="icon" aria-hidden="true" /> : <ShieldCheck size={18} className="icon" aria-hidden="true" />} {t("system.ex.title")}</>}>
       <State loading={q.loading && !v} error={q.error} onRetry={q.reload}>
         {v && (
           <div className="stack">
@@ -45,22 +47,22 @@ export default function ExposureSection() {
             </p>
             {v.now && (
               <p className="small muted">
-                Diperiksa {fmtTime(v.now.at)} dari IP LAN {v.now.lan_ip ?? "(tidak terbaca)"}, tiap {Math.round(v.interval / 60)} menit. Layanan dianggap terbuka hanya bila sambungan dari LAN benar-benar berhasil; peringatan muncul setelah terlihat {v.confirm_samples} kali berturut-turut. {loopbackCount(v.items)} layanan lain hanya di loopback.
+                {t("system.ex.checked", { at: fmtTime(v.now.at), ip: v.now.lan_ip ?? t("system.ex.noip"), min: Math.round(v.interval / 60), samples: v.confirm_samples, count: loopbackCount(v.items) })}
               </p>
             )}
             {v.now && v.now.errors.length > 0 && <Alert tone="bad">{v.now.errors.join(" ")}</Alert>}
             {visibleItems(v.items).length > 0 && (
               <div className="tbl-wrap">
                 <table className="tbl">
-                  <caption className="sr">Layanan yang mendengar di luar loopback</caption>
+                  <caption className="sr">{t("system.ex.caption")}</caption>
                   <thead>
                     <tr>
-                      <th scope="col">Layanan</th>
-                      <th scope="col">Port</th>
-                      <th scope="col">Alamat</th>
-                      <th scope="col">Status</th>
+                      <th scope="col">{t("apps.col.service")}</th>
+                      <th scope="col">{t("apps.col.port")}</th>
+                      <th scope="col">{t("system.address")}</th>
+                      <th scope="col">{t("apps.col.status")}</th>
                       <th scope="col">
-                        <span className="sr">Aksi</span>
+                        <span className="sr">{t("system.action")}</span>
                       </th>
                     </tr>
                   </thead>
@@ -74,7 +76,7 @@ export default function ExposureSection() {
                             {i.system && <span className="muted small"> (macOS)</span>}
                           </th>
                           <td className="mono">{i.port}</td>
-                          <td className="mono">{i.bind === "?" ? "semua" : i.bind === "*" ? "semua antarmuka" : i.bind}</td>
+                          <td className="mono">{i.bind === "?" ? t("system.ex.bindAll") : i.bind === "*" ? t("system.ex.bindAny") : i.bind}</td>
                           <td>
                             <Chip tone={s.tone}>{s.label}</Chip>
                             <span className="sr"> {s.hint}</span>
@@ -83,12 +85,12 @@ export default function ExposureSection() {
                             <div className="row">
                             {closeCommand(i) && (
                               <button className="btn btn-sm" aria-expanded={howto?.key === i.key} onClick={() => setHowto(howto?.key === i.key ? null : i)}>
-                                <Terminal size={16} aria-hidden="true" /> Cara menutup<span className="sr"> {displayName(i)} port {i.port}</span>
+                                <Terminal size={16} aria-hidden="true" /> {t("system.ex.howto")}<span className="sr"> {t("system.ex.srPort", { name: displayName(i), port: i.port })}</span>
                               </button>
                             )}
                             {i.status === "flagged" && v.can_edit && (
                               <button className="btn btn-sm" onClick={() => setAsk(i)}>
-                                Tandai disengaja<span className="sr"> {displayName(i)} port {i.port}</span>
+                                {t("system.ex.mark")}<span className="sr"> {t("system.ex.srPort", { name: displayName(i), port: i.port })}</span>
                               </button>
                             )}
                             </div>
@@ -101,10 +103,10 @@ export default function ExposureSection() {
               </div>
             )}
             {howto && closeCommand(howto) && (
-              <div className="howto" role="region" aria-label={`Cara menutup port ${howto.port}`}>
+              <div className="howto" role="region" aria-label={t("system.ex.howtoAria", { port: howto.port })}>
                 <p className="small">
-                  <strong>Tutup port {howto.port} dari jaringan rumah.</strong> Jalankan di terminal Mac mini atau lewat SSH. Perintah ini meminta password{" "}
-                  <span className="mono">sudo</span> Anda; panel tidak menjalankannya.
+                  <strong>{t("system.ex.closeHead", { port: howto.port })}</strong> {t("system.ex.run1")}{" "}
+                  <span className="mono">sudo</span> {t("system.ex.run2")}
                 </p>
                 <div className="howto-row">
                   <code className="mono howto-cmd">{closeCommand(howto)}</code>
@@ -113,37 +115,37 @@ export default function ExposureSection() {
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(closeCommand(howto) || "");
-                        setCopied("Perintah disalin.");
+                        setCopied(t("system.ex.copiedCmd"));
                       } catch {
-                        setCopied("Clipboard tidak tersedia di koneksi ini; salin manual.");
+                        setCopied(t("system.clipFail"));
                       }
                     }}
                   >
-                    <Copy size={16} aria-hidden="true" /> Salin perintah
+                    <Copy size={16} aria-hidden="true" /> {t("system.ex.copyCmd")}
                   </button>
                 </div>
                 <p className="small muted" role="status">
-                  {copied || "Tailnet tetap boleh mengakses port ini."} Cek aturan aktif dengan <span className="mono">lab firewall verify</span>; batalkan dengan{" "}
+                  {copied || t("system.ex.tailnetOk")} {t("system.ex.checkRules")} <span className="mono">lab firewall verify</span>{t("system.ex.undoWith")}{" "}
                   <span className="mono">lab firewall unblock {howto.port}</span>.
                 </p>
               </div>
             )}
             <div className="stack">
-              <h3 className="h3">Daftar izin</h3>
-              <p className="small muted">Layanan yang Anda putuskan boleh terbuka. Mencabut entri membuat peringatan muncul lagi bila layanannya masih terbuka.</p>
+              <h3 className="h3">{t("system.ex.allowTitle")}</h3>
+              <p className="small muted">{t("system.ex.allowHint")}</p>
               {v.allowed.length === 0 ? (
-                <p className="small muted">Kosong.</p>
+                <p className="small muted">{t("list.empty")}</p>
               ) : (
                 <ul className="list">
                   {v.allowed.map((e) => (
                     <li key={e} className="list-row">
                       <span className="mono">
                         {e}
-                        {isDefaultEntry(e, v.defaults) && <span className="muted small"> (bawaan)</span>}
+                        {isDefaultEntry(e, v.defaults) && <span className="muted small"> {t("system.ex.default")}</span>}
                       </span>
                       {v.can_edit && (
                         <button className="btn btn-sm" disabled={busy === e} onClick={() => revoke(e)}>
-                          {busy === e ? "Mencabut…" : "Cabut"}
+                          {busy === e ? t("system.ex.revoking") : t("system.ex.revoke")}
                           <span className="sr"> {e}</span>
                         </button>
                       )}
@@ -151,25 +153,25 @@ export default function ExposureSection() {
                   ))}
                 </ul>
               )}
-              {!v.can_edit && <p className="small muted">Hanya admin yang dapat mengubah daftar izin.</p>}
+              {!v.can_edit && <p className="small muted">{t("system.ex.adminOnly")}</p>}
             </div>
           </div>
         )}
       </State>
       {ask && (
         <ConfirmDialog
-          title={`Tandai ${displayName(ask)} port ${ask.port} sebagai disengaja`}
-          word="izinkan"
-          verb="Tandai disengaja"
+          title={t("system.ex.confirmTitle", { name: displayName(ask), port: ask.port })}
+          word={t("system.ex.word")}
+          verb={t("system.ex.mark")}
           body={
             <p>
-              Peringatan untuk <span className="mono">{ask.key}</span> berhenti muncul. Layanan itu tetap terbuka ke semua perangkat di jaringan rumah; tindakan ini hanya mengubah peringatan, bukan menutup port. Untuk benar-benar menutupnya, ikat layanan ke 127.0.0.1.
+              {t("system.ex.confirm1")} <span className="mono">{ask.key}</span> {t("system.ex.confirm2")}
             </p>
           }
           onConfirm={async () => {
             await post("/api/exposure/allow", { entry: ask.key });
             await q.reload();
-            setNote({ tone: "ok", text: `${ask.key} ditambahkan ke daftar izin.` });
+            setNote({ tone: "ok", text: t("system.ex.allowed", { entry: ask.key }) });
           }}
           onClose={() => setAsk(null)}
         />

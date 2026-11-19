@@ -1,26 +1,27 @@
 import { useEffect, useSyncExternalStore } from "react";
+import { t } from "../../i18n";
 import { Atom, Boxes, Cloud, Command, Cpu, Flame, Gem, Hexagon, KeyRound, Layers, Leaf, Orbit, Rocket, Server, ShieldCheck, Terminal, Zap, type LucideIcon } from "lucide-react";
 
 // Logo panel: ikon bawaan (mengikuti warna aksen) atau gambar sendiri. Disimpan per browser, sama seperti gaya dan aksen.
 // Ikon lain dipilih karena relevan dengan server/ops; KeyRound tetap bawaan (kunci = akses).
 export const LOGOS: { id: string; label: string; Icon: LucideIcon }[] = [
-  { id: "key", label: "Kunci", Icon: KeyRound },
+  { id: "key", get label() { return t("settings.logo.key"); }, Icon: KeyRound },
   { id: "server", label: "Server", Icon: Server },
   { id: "terminal", label: "Terminal", Icon: Terminal },
-  { id: "cpu", label: "Prosesor", Icon: Cpu },
-  { id: "rocket", label: "Roket", Icon: Rocket },
-  { id: "shield", label: "Perisai", Icon: ShieldCheck },
-  { id: "zap", label: "Petir", Icon: Zap },
-  { id: "boxes", label: "Kotak", Icon: Boxes },
-  { id: "cloud", label: "Awan", Icon: Cloud },
-  { id: "hexagon", label: "Segi enam", Icon: Hexagon },
-  { id: "layers", label: "Lapisan", Icon: Layers },
+  { id: "cpu", get label() { return t("settings.logo.cpu"); }, Icon: Cpu },
+  { id: "rocket", get label() { return t("settings.logo.rocket"); }, Icon: Rocket },
+  { id: "shield", get label() { return t("settings.logo.shield"); }, Icon: ShieldCheck },
+  { id: "zap", get label() { return t("settings.logo.zap"); }, Icon: Zap },
+  { id: "boxes", get label() { return t("settings.logo.boxes"); }, Icon: Boxes },
+  { id: "cloud", get label() { return t("settings.logo.cloud"); }, Icon: Cloud },
+  { id: "hexagon", get label() { return t("settings.logo.hexagon"); }, Icon: Hexagon },
+  { id: "layers", get label() { return t("settings.logo.layers"); }, Icon: Layers },
   { id: "command", label: "Command", Icon: Command },
   { id: "atom", label: "Atom", Icon: Atom },
   { id: "orbit", label: "Orbit", Icon: Orbit },
-  { id: "flame", label: "Api", Icon: Flame },
-  { id: "leaf", label: "Daun", Icon: Leaf },
-  { id: "gem", label: "Permata", Icon: Gem },
+  { id: "flame", get label() { return t("settings.logo.flame"); }, Icon: Flame },
+  { id: "leaf", get label() { return t("settings.logo.leaf"); }, Icon: Leaf },
+  { id: "gem", get label() { return t("settings.logo.gem"); }, Icon: Gem },
 ];
 
 const KEY = "panel-logo";
@@ -59,19 +60,19 @@ export const useLogo = () => useSyncExternalStore(subscribe, currentLogo);
 
 /** Gambar unggahan: dipotong persegi dari tengah, diperkecil 128 px, disimpan sebagai PNG baru (metadata asli dan isi aktif tidak ikut). */
 export async function fileToLogo(file: File, S = 128): Promise<Logo> {
-  if (!IMG_TYPES.includes(file.type)) throw new Error("Format harus PNG, JPG, atau WebP. SVG ditolak karena bisa memuat skrip.");
-  if (file.size > MAX_IMG_BYTES) throw new Error("Ukuran gambar maksimal 2 MB.");
+  if (!IMG_TYPES.includes(file.type)) throw new Error(t("settings.logo.errType"));
+  if (file.size > MAX_IMG_BYTES) throw new Error(t("settings.logo.errSize"));
   const bmp = await createImageBitmap(file).catch(() => null);
-  if (!bmp) throw new Error("Gambar tidak bisa dibaca.");
+  if (!bmp) throw new Error(t("settings.logo.errRead"));
   const c = document.createElement("canvas");
   c.width = c.height = S;
   const g = c.getContext("2d");
-  if (!g) throw new Error("Browser tidak mendukung canvas.");
+  if (!g) throw new Error(t("settings.logo.errCanvas"));
   const side = Math.min(bmp.width, bmp.height);
   g.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, S, S);
   bmp.close();
   const src = c.toDataURL("image/png");
-  if (!isImgSrc(src)) throw new Error("Gambar terlalu rumit setelah diperkecil. Coba gambar lain.");
+  if (!isImgSrc(src)) throw new Error(t("settings.logo.errComplex"));
   return { kind: "img", src };
 }
 
