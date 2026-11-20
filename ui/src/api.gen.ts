@@ -56,6 +56,7 @@ export type GetPath =
   | `/api/sites/${string}/env`
   | `/api/sites/${string}/hook`
   | `/api/sites/${string}/logs`
+  | `/api/sites/${string}/public`
   | `/api/sites/${string}/settings`
   | `/api/sites/${string}/ssl`
   | `/api/sites/${string}/stats`
@@ -149,6 +150,8 @@ export type PostPath =
   | `/api/sites/${string}/env`
   | `/api/sites/${string}/hook`
   | `/api/sites/${string}/hook/remove`
+  | `/api/sites/${string}/public/off`
+  | `/api/sites/${string}/public/on`
   | `/api/sites/${string}/remove`
   | `/api/sites/${string}/restore`
   | `/api/sites/${string}/settings`

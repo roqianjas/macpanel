@@ -8,6 +8,7 @@ const server: Record<string, string> = {
   "svc.desc.memcached": "Cache memori, opsional (port 11211)",
   "svc.desc.docker": "Runtime Docker tanpa GUI (VM 2 CPU / 4 GB, hanya wwwroot dibagikan). Dikelola di menu Docker",
   "svc.desc.9router": "Router/proxy model AI lokal (127.0.0.1:20128, lewat 9router.lab di tailnet). Password bawaan hanya bisa diganti dari Mac ini sendiri di http://127.0.0.1:20128",
+  "svc.desc.cloudflared": "Membuka satu situs ke internet sementara (tanpa akun/domain). Tidak punya proses sendiri: nyalakan per situs di tab Publik. Berhenti = semua tunnel dimatikan",
   "svc.desc.httpd": "Web server untuk situs yang butuh .htaccess. Hanya 127.0.0.1:8080 di belakang nginx",
   "svc.desc.mailpit": "Penangkap email dev: SMTP 1025, UI 127.0.0.1:8025",
   "svc.desc.netdata": "Metrik sistem real-time (stats.lab)",

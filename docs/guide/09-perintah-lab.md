@@ -60,6 +60,15 @@ lab apache sites                   # daftar vhost Apache
 lab apache config                  # bangkitkan ulang config dan uji sintaks
 ```
 
+## Akses publik sementara
+```
+lab app install cloudflared        # pasang Cloudflare Tunnel (tanpa proses sendiri)
+lab public on blog --ttl 120       # buka situs ke publik 120 menit (5-1440), mencetak alamat acak
+lab public status [--json]         # tunnel aktif dan sisa waktunya
+lab public off blog                # tutup satu situs (atau: lab public off --all)
+```
+Listener loopback per situs dibuat di `nginx/sites/public-NAMA.conf` dan dihapus otomatis saat tunnel berhenti. Situs sistem, proxy ke layanan internal, dan situs Apache ditolak.
+
 Config Apache dibangkitkan oleh `lab` (jangan diedit tangan, akan ditimpa). `--apache` tidak digabung dengan `--wordpress` atau port proxy. Di panel: Website, Tambah situs, centang "Layani dengan Apache".
 lab appinstall laravel|wordpress <nama> [--php 8.4] [--db mariadb|mysql]
 ```

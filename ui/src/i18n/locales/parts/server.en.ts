@@ -8,6 +8,7 @@ const server: Record<string, string> = {
   "svc.desc.memcached": "In-memory cache, optional (port 11211)",
   "svc.desc.docker": "Docker runtime without a GUI (2 CPU / 4 GB VM, only wwwroot is shared). Managed in the Docker menu",
   "svc.desc.9router": "Local AI model router/proxy (127.0.0.1:20128, via 9router.lab on the tailnet). The default password can only be changed from this Mac itself at http://127.0.0.1:20128",
+  "svc.desc.cloudflared": "Opens one site to the internet temporarily (no account or domain). It has no process of its own: turn it on per site in the Public tab. Stop = all tunnels are turned off",
   "svc.desc.httpd": "Web server for sites that need .htaccess. Only 127.0.0.1:8080, behind nginx",
   "svc.desc.mailpit": "Dev mail catcher: SMTP 1025, UI 127.0.0.1:8025",
   "svc.desc.netdata": "Real-time system metrics (stats.lab)",

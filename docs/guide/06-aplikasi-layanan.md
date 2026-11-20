@@ -45,6 +45,9 @@ Batas: situs Apache memakai satu vhost per situs (`.htaccess` berlaku, daftar is
 
 Catatan 9Router: dashboard memakai kata sandi bawaan dari pembuatnya. 9Router menolak login jarak jauh sampai kata sandi itu diganti, jadi ganti terlebih dulu dari mesin itu sendiri di `http://127.0.0.1:20128` (dari komputer lain: `ssh -L 20128:127.0.0.1:20128 <mesin>`, lalu buka `http://localhost:20128`). Data akun disimpan di `~/.9router` dan tidak ikut backup panel.
 
+## Cloudflare Tunnel (opsional)
+`cloudflared` dipasang dari Homebrew lewat halaman Aplikasi. Ia tidak punya proses sendiri: akses publik dinyalakan per situs di tab **Publik**. Status "Berjalan" berarti ada tunnel aktif; **Berhenti** mematikan semua tunnel sekaligus. Menghapus aplikasi juga mematikan semua tunnel.
+
 ## Menghapus aplikasi opsional
 Hapus memerlukan verifikasi ulang dan mengetik nama aplikasi. Data pengguna aplikasi tidak dihapus.
 

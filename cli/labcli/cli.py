@@ -47,6 +47,7 @@ from labcli.ini import ini_get, ini_set
 from labcli.install import app_install, site_clone
 from labcli.nginx import nginx
 from labcli.php import php
+from labcli.public import public
 from labcli.redis import redis_cmd
 from labcli.regproxy import proxy_cmd
 from labcli.runtime import runtime
@@ -155,6 +156,20 @@ def reg_sys(top):
     q.add_argument("dir")
     q.add_argument("--php", choices=PHPS)
     ax.add_parser("site-remove").add_argument("name")
+    pb = top.add_parser("public", help="buka satu situs ke publik sementara (Cloudflare Quick Tunnel)").add_subparsers(dest="act", required=True)
+    q = pb.add_parser("on")
+    q.add_argument("name")
+    q.add_argument("--ttl", default="120", help="batas waktu menit (5-1440, bawaan 120)")
+    q = pb.add_parser("off")
+    q.add_argument("name", nargs="?")
+    q.add_argument("--all", action="store_true")
+    q = pb.add_parser("status")
+    q.add_argument("name", nargs="?")
+    q.add_argument("--json", action="store_true")
+    q = pb.add_parser("_run")
+    q.add_argument("name")
+    q.add_argument("port")
+    q.add_argument("ttl")
     ng = top.add_parser("nginx").add_subparsers(dest="act", required=True)
     ng.add_parser("test")
     ng.add_parser("reload")
@@ -375,6 +390,7 @@ HANDLERS = {
     "runtime": runtime,
     "nginx": nginx,
     "apache": apache,
+    "public": public,
     "service": service,
     "app": app,
     "update": lambda a: check(a) if a.act == "check" else apply(a),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Feather, Activity, Archive, ArrowRightLeft, Boxes, Box, Calendar, Circle, CircleStop, Clock, Cog, Cpu, Database, DatabaseBackup, Eraser, FileCode, FileText, Globe, HardDrive, KeyRound, Layers, LayoutGrid, Lock, LogIn, Network, Package, Pause, Play, Power, RefreshCw, ScrollText, ShieldCheck, SlidersHorizontal, Trash2, TriangleAlert, Wrench, Zap, Terminal, Route, Settings, Gauge, Rocket, Waypoints, CalendarClock, type LucideIcon } from "lucide-react";
+import { Feather, Activity, Archive, ArrowRightLeft, Boxes, Box, Calendar, Circle, CircleStop, Clock, Cog, Cpu, Database, DatabaseBackup, Eraser, FileCode, FileText, Globe, HardDrive, KeyRound, Layers, LayoutGrid, Lock, LogIn, Network, Package, Pause, Play, Power, RefreshCw, ScrollText, ShieldCheck, SlidersHorizontal, Trash2, TriangleAlert, Wrench, Zap, Terminal, Route, Settings, Gauge, Rocket, Waypoints, CalendarClock, Radio, type LucideIcon } from "lucide-react";
 
 // Ikon dekoratif tab dan filter, dipetakan dari id supaya tab baru otomatis ikut tanpa mengubah tiap daftar.
 // Setiap ikon dipilih karena relevan dengan isinya (aria-hidden: label teks tetap ada). Id tak dikenal: titik netral, bukan ikon asal.
@@ -13,7 +13,7 @@ const MAP: Record<string, LucideIcon> = {
   running: Play, stopped: CircleStop,
   login: LogIn, fail: TriangleAlert, backup: DatabaseBackup, clean: Eraser, token: KeyRound, gagal: TriangleAlert, berjalan: RefreshCw, timeout: Clock,
   // tab halaman
-  umum: Settings, domain: Globe, akses: Lock, env: ScrollText, trafik: Gauge, deploy: Rocket, rewrite: Route, ssl: ShieldCheck,
+  umum: Settings, domain: Globe, akses: Lock, env: ScrollText, trafik: Gauge, deploy: Rocket, rewrite: Route, ssl: ShieldCheck, publik: Radio,
   ext: Package, ini: SlidersHorizontal, fpm: Terminal,
   container: Box, compose: Layers, image: Package,
   worker: Cog, job: CalendarClock,

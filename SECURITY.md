@@ -9,6 +9,7 @@ MacPanel can run privileged-looking actions on your Mac (restart services, edit 
 - Hash-chained audit log. TOTP key is stored in the macOS Keychain, not on disk.
 - Roles: `admin` and read-only `viewer`. Accounts are created from the local terminal (`panel user add`) or by an admin in the panel (temporary password, shown to nobody afterwards, forced change at first login). 2FA is per account.
 - Responses carry a strict CSP (`default-src 'self'`, no inline script, `img-src 'self' data:`); uploaded logos and avatars are raster images only (SVG is rejected because it can carry script).
+- Optional per-site public access (Cloudflare Quick Tunnel, `lab public`): each site gets its own loopback listener (a copy of its HTTPS block without the tailnet restriction, because tunnel traffic arrives from this machine), so a forged `Host` cannot reach another site. It always has a time limit, is confirmed explicitly in the panel (with step-up), refuses system sites and proxies to internal services, always blocks dotfiles, is logged in Activity, and never restarts after a reboot. Anyone who knows the random address can reach the site: use test data.
 - Optional Apache listens on `127.0.0.1:8080` only, behind nginx; its generated config denies everything by default.
 
 ## Known limits

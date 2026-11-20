@@ -49,5 +49,13 @@ Konfigurasi yang gagal pada `nginx -t` tidak diterapkan.
 - **Hapus** menghapus konfigurasi dan sertifikat; folder proyek tidak dihapus. Anda harus mengetik ulang nama situs.
 - Situs sistem tidak dapat dijeda atau dihapus.
 
+## Akses publik sementara (tab Publik)
+Untuk menguji bersama orang di luar jaringan privat, tab **Publik** membuka satu situs ke internet lewat Cloudflare Quick Tunnel (tanpa akun dan tanpa domain). Pasang dulu **Cloudflare Tunnel** dari halaman Aplikasi.
+- Centang konfirmasi, pilih batas waktu (30 menit sampai 24 jam), lalu **Buka ke publik**. Alamat acak `https://…trycloudflare.com` muncul; salin dan bagikan.
+- Setiap situs punya listener lokal sendiri, jadi hanya situs itu yang terbuka. Situs sistem dan proxy ke layanan internal ditolak. Berkas tersembunyi (`.env`, `.git`) selalu ditolak.
+- Tidak ada login tambahan, alamat berubah setiap dinyalakan, dan tidak ada jaminan ketersediaan. Pakai data uji.
+- Mati otomatis saat waktu habis, atau tekan **Matikan sekarang**. Tidak menyala lagi setelah reboot. Situs Apache belum didukung.
+- Jumlah situs yang bisa publik bersamaan tidak dibatasi (masing-masing satu proses `cloudflared`).
+
 ## Webhook deploy (GitHub)
 Di tab Deploy, aktifkan webhook, pilih branch dan langkah deploy yang diizinkan. Panel menampilkan secret satu kali; simpan di pengaturan webhook GitHub. Setiap permintaan diverifikasi tanda tangannya, dan permintaan tidak sah dijawab 404. Penerima webhook mendengarkan hanya di loopback; mengeksposnya ke internet (misalnya lewat tunnel) adalah keputusan Anda dan tidak dilakukan otomatis.

@@ -7,6 +7,7 @@ import { Alert, Card, ConfirmDialog, PageHead, State, Tabs, useLoad } from "../.
 import { Model } from "./types";
 import { SettingsForm } from "./SettingsForm";
 import { Ssl } from "./Ssl";
+import { PublicAccess } from "./Public";
 import { ConfigEditor } from "./ConfigEditor";
 import { Logs } from "./Logs";
 import { AuthUsers } from "./AuthUsers";
@@ -23,6 +24,7 @@ export const tabs = () => [
   { id: "deploy", label: "Deploy" },
   { id: "rewrite", label: "Rewrite" },
   { id: "ssl", label: "SSL" },
+  { id: "publik", label: t("pub.tab") },
   { id: "config", label: t("dev.conf.title") },
   { id: "log", label: t("apps.log") },
 ];
@@ -53,7 +55,7 @@ export function SiteDetail({ name }: { name: string }) {
         }
       />
       {cloning && <CloneModal src={name} onClose={() => setCloning(false)} onDone={(n) => { setCloning(false); location.hash = `#/website/${n}`; }} />}
-      {!missing && <Tabs tabs={system ? tabs().filter((x) => x.id !== "deploy") : tabs()} value={tab} onChange={setTab} label={t("dev.sd.sections")} />}
+      {!missing && <Tabs tabs={system ? tabs().filter((x) => x.id !== "deploy" && x.id !== "publik") : tabs()} value={tab} onChange={setTab} label={t("dev.sd.sections")} />}
       {!missing && (
         <div role="tabpanel" aria-labelledby={`tab-${tab}`} className="tabpanel">
           {tab === "umum" || tab === "rewrite" || tab === "domain" || tab === "akses" ? (
@@ -76,6 +78,8 @@ export function SiteDetail({ name }: { name: string }) {
             <Deploy name={name} />
           ) : tab === "ssl" ? (
             <Ssl name={name} />
+          ) : tab === "publik" ? (
+            <PublicAccess name={name} />
           ) : tab === "config" ? (
             <ConfigEditor name={name} system={system} onSaved={settings.reload} />
           ) : (

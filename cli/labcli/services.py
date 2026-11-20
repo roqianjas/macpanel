@@ -1,5 +1,6 @@
 """lab service / app: layanan launchd, katalog aplikasi opsional, pemasang 9Router dan Docker."""
 
+import argparse
 import json
 import os
 import shutil
@@ -112,6 +113,16 @@ CATALOG = [
         optional=True,
         log=str(NGINX_LOG_ROOT / "httpd/error.log"),
         desc="Web server untuk situs yang butuh .htaccess. Hanya 127.0.0.1:8080 di belakang nginx",
+    ),
+    S(
+        "cloudflared",
+        "Cloudflare Tunnel",
+        "Jaringan",
+        "brew",
+        "cloudflared",
+        proc="cloudflared",
+        optional=True,
+        desc="Membuka satu situs ke internet sementara (tanpa akun/domain). Tidak punya proses sendiri: nyalakan per situs di tab Publik. Berhenti = semua tunnel dimatikan",
     ),
     S("mailpit", "Mailpit", "Alat pengembangan", "brew", "mailpit", port=8025, optional=True, desc="Penangkap email dev: SMTP 1025, UI 127.0.0.1:8025"),
     S("netdata", "Netdata", "Monitoring", "brew", "netdata", port=19999, log=str(NGINX_LOG_ROOT / "netdata/daemon.log"), desc="Metrik sistem real-time (stats.lab)"),
@@ -242,6 +253,14 @@ def service(a):
         die(f"'{c['id']}' tidak bisa dikendalikan dari sini ({c['desc']})")
     if not snapshot_one(c)[0]:
         die(f"'{c['id']}' belum terpasang")
+    if c["id"] == "cloudflared":
+        from labcli import public
+
+        if a.act == "start":
+            print("OK: Cloudflare Tunnel siap. Tidak ada proses sendiri; nyalakan akses publik per situs (lab public on SITUS atau tab Publik).")
+            return
+        public.off(argparse.Namespace(all=True, name=None))
+        return
     if c["kind"] == "brew":
         extra = []
         if c["name"] == "mailpit" and a.act in ("start", "restart"):
@@ -534,7 +553,12 @@ def app(a):
         if not installed:
             print(f"belum terpasang: {c['label']}")
             return
-        sh([BREW, "services", "stop", c["name"]])
+        if c["id"] == "cloudflared":
+            from labcli import public
+
+            public.off(argparse.Namespace(all=True, name=None))
+        else:
+            sh([BREW, "services", "stop", c["name"]])
         if stream([BREW, "uninstall", c["name"]]):
             die("brew uninstall gagal")
         print(f"OK: {c['label']} dihapus")

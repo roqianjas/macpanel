@@ -24,6 +24,7 @@ Captured from a throwaway demo instance (fake sites; hostname, IP and account na
 - **PHP:** install 8.2-8.5 side by side, PECL extensions with on/off switches (redis, apcu, xdebug, imagick, igbinary, msgpack, pcov, yaml, memcached, mongodb), FPM pool settings, restart + logs, Composer.
 - **Databases:** MariaDB (3306), MySQL (3307) and PostgreSQL create / dump / restore / upload dump (restore refuses dangerous client commands and runs as the project user).
 - **Runtimes:** Node, Go, Python, pnpm via mise.
+- **Temporary public access (optional):** per-site Public tab opens one site to the internet through a Cloudflare Quick Tunnel (no account or domain), with a confirmation, a time limit and automatic shutdown. See SECURITY.md for the model.
 - **Apache (optional):** per-site `.htaccess` support. Apache listens on `127.0.0.1:8080` only, behind nginx, so TLS and the private-network restriction stay in one place.
 - **Workers and cron:** supervisor/crontab equivalent on launchd. Task types Shell, PHP, Node, Python and URL; schedules from every N minutes to a full 5-field cron and `@reboot`.
 - **Deploy:** per-site git pull, composer, npm/pnpm, artisan, FPM restart.

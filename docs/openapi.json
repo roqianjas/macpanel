@@ -2304,6 +2304,72 @@
         "x-token": true
       }
     },
+    "/api/sites/{name}/public": {
+      "get": {
+        "operationId": "get_api_sites_name_public",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/public/off": {
+      "post": {
+        "operationId": "post_api_sites_name_public_off",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
+    "/api/sites/{name}/public/on": {
+      "post": {
+        "operationId": "post_api_sites_name_public_on",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
     "/api/sites/{name}/remove": {
       "post": {
         "operationId": "post_api_sites_name_remove",

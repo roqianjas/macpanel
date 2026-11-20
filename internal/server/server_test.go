@@ -1977,3 +1977,58 @@ func TestListSitesDetectsApacheVhost(t *testing.T) {
 		t.Errorf("tanpa vhost Apache tidak boleh bermode apache: %s", b)
 	}
 }
+
+func TestSitePublicNeedsAckStepupAndRejectsBadInput(t *testing.T) {
+	o := testenv.ExtrasEnv(t)
+	calls := o.Calls()
+	if c, _ := o.Post("/api/sites/demo/public/on", `{"ttl_min":60,"ack":true}`); c == 200 {
+		t.Fatalf("tanpa step-up harus ditolak")
+	}
+	o.Stepup()
+	bad := map[string]string{
+		"tanpa konfirmasi":  `{"ttl_min":60}`,
+		"konfirmasi false":  `{"ttl_min":60,"ack":false}`,
+		"ttl terlalu kecil": `{"ttl_min":1,"ack":true}`,
+		"ttl terlalu besar": `{"ttl_min":1441,"ack":true}`,
+		"ttl negatif":       `{"ttl_min":-5,"ack":true}`,
+		"kunci asing":       `{"ttl_min":60,"ack":true,"x":1}`,
+	}
+	for n, b := range bad {
+		if c, body := o.Post("/api/sites/demo/public/on", b); c != 400 {
+			t.Errorf("%s: %d %s", n, c, body)
+		}
+	}
+	if c, _ := o.Post("/api/sites/home/public/on", `{"ttl_min":60,"ack":true}`); c != 400 {
+		t.Errorf("situs sistem harus ditolak: %d", c)
+	}
+	if c, _ := o.Post("/api/sites/nope/public/on", `{"ttl_min":60,"ack":true}`); c != 404 {
+		t.Errorf("situs tak ada harus 404: %d", c)
+	}
+	if o.Calls() != calls {
+		t.Fatalf("lab dipanggil padahal input ditolak: %s", o.Calls())
+	}
+}
+
+func TestSitePublicOnOffCallsLabAndStatusFiltersUrl(t *testing.T) {
+	o := testenv.ExtrasEnv(t)
+	o.Stepup()
+	if c, b := o.Post("/api/sites/demo/public/on", `{"ack":true}`); c != 200 {
+		t.Fatalf("on: %d %s", c, b)
+	}
+	if !strings.Contains(o.Calls(), "CALL:[public][on][demo][--ttl][120]") {
+		t.Fatalf("bawaan 120 menit: %s", o.Calls())
+	}
+	if c, b := o.Post("/api/sites/demo/public/off", `{}`); c != 200 {
+		t.Fatalf("off: %d %s", c, b)
+	}
+	if !strings.Contains(o.Calls(), "CALL:[public][off][demo]") {
+		t.Fatalf("%s", o.Calls())
+	}
+	c, b := o.GetJSON("/api/sites/demo/public")
+	if c != 200 || !strings.Contains(b, "abc-def.trycloudflare.com") || strings.Contains(b, "api") {
+		t.Fatalf("status demo: %d %s", c, b)
+	}
+	if c, b = o.GetJSON("/api/sites/api/public"); c != 200 || strings.Contains(b, "evil.example.com") {
+		t.Fatalf("URL di luar trycloudflare.com harus dibuang: %d %s", c, b)
+	}
+}

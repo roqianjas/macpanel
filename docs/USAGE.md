@@ -102,6 +102,14 @@ Konfigurasi yang gagal pada `nginx -t` tidak diterapkan.
 - **Hapus** menghapus konfigurasi dan sertifikat; folder proyek tidak dihapus. Anda harus mengetik ulang nama situs.
 - Situs sistem tidak dapat dijeda atau dihapus.
 
+## Akses publik sementara (tab Publik)
+Untuk menguji bersama orang di luar jaringan privat, tab **Publik** membuka satu situs ke internet lewat Cloudflare Quick Tunnel (tanpa akun dan tanpa domain). Pasang dulu **Cloudflare Tunnel** dari halaman Aplikasi.
+- Centang konfirmasi, pilih batas waktu (30 menit sampai 24 jam), lalu **Buka ke publik**. Alamat acak `https://…trycloudflare.com` muncul; salin dan bagikan.
+- Setiap situs punya listener lokal sendiri, jadi hanya situs itu yang terbuka. Situs sistem dan proxy ke layanan internal ditolak. Berkas tersembunyi (`.env`, `.git`) selalu ditolak.
+- Tidak ada login tambahan, alamat berubah setiap dinyalakan, dan tidak ada jaminan ketersediaan. Pakai data uji.
+- Mati otomatis saat waktu habis, atau tekan **Matikan sekarang**. Tidak menyala lagi setelah reboot. Situs Apache belum didukung.
+- Jumlah situs yang bisa publik bersamaan tidak dibatasi (masing-masing satu proses `cloudflared`).
+
 ## Webhook deploy (GitHub)
 Di tab Deploy, aktifkan webhook, pilih branch dan langkah deploy yang diizinkan. Panel menampilkan secret satu kali; simpan di pengaturan webhook GitHub. Setiap permintaan diverifikasi tanda tangannya, dan permintaan tidak sah dijawab 404. Penerima webhook mendengarkan hanya di loopback; mengeksposnya ke internet (misalnya lewat tunnel) adalah keputusan Anda dan tidak dilakukan otomatis.
 
@@ -268,6 +276,9 @@ Pasang **Apache** dari tab Web server, lalu nyalakan. Apache hanya mendengarkan 
 Batas: situs Apache memakai satu vhost per situs (`.htaccess` berlaku, daftar isi folder dimatikan). Pengaturan lanjutan per situs (aturan rewrite, alias) dari panel belum tersedia untuk jenis ini, dan WordPress tetap dilayani nginx. Perintah terminal: `lab app install httpd`, `lab service start httpd`, `lab site add <nama> <folder> --apache`.
 
 Catatan 9Router: dashboard memakai kata sandi bawaan dari pembuatnya. 9Router menolak login jarak jauh sampai kata sandi itu diganti, jadi ganti terlebih dulu dari mesin itu sendiri di `http://127.0.0.1:20128` (dari komputer lain: `ssh -L 20128:127.0.0.1:20128 <mesin>`, lalu buka `http://localhost:20128`). Data akun disimpan di `~/.9router` dan tidak ikut backup panel.
+
+## Cloudflare Tunnel (opsional)
+`cloudflared` dipasang dari Homebrew lewat halaman Aplikasi. Ia tidak punya proses sendiri: akses publik dinyalakan per situs di tab **Publik**. Status "Berjalan" berarti ada tunnel aktif; **Berhenti** mematikan semua tunnel sekaligus. Menghapus aplikasi juga mematikan semua tunnel.
 
 ## Menghapus aplikasi opsional
 Hapus memerlukan verifikasi ulang dan mengetik nama aplikasi. Data pengguna aplikasi tidak dihapus.
@@ -511,6 +522,15 @@ lab site add blog ~/MacPanel/wwwroot/blog --apache [--php 8.4]
 lab apache sites                   # daftar vhost Apache
 lab apache config                  # bangkitkan ulang config dan uji sintaks
 ```
+
+## Akses publik sementara
+```
+lab app install cloudflared        # pasang Cloudflare Tunnel (tanpa proses sendiri)
+lab public on blog --ttl 120       # buka situs ke publik 120 menit (5-1440), mencetak alamat acak
+lab public status [--json]         # tunnel aktif dan sisa waktunya
+lab public off blog                # tutup satu situs (atau: lab public off --all)
+```
+Listener loopback per situs dibuat di `nginx/sites/public-NAMA.conf` dan dihapus otomatis saat tunnel berhenti. Situs sistem, proxy ke layanan internal, dan situs Apache ditolak.
 
 Config Apache dibangkitkan oleh `lab` (jangan diedit tangan, akan ditimpa). `--apache` tidak digabung dengan `--wordpress` atau port proxy. Di panel: Website, Tambah situs, centang "Layani dengan Apache".
 lab appinstall laravel|wordpress <nama> [--php 8.4] [--db mariadb|mysql]

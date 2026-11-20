@@ -363,6 +363,11 @@ func (o *opsEnv) Post(path, body string) (int, string) {
 	return w.Code, w.Body.String()
 }
 
+func (o *opsEnv) GetJSON(path string) (int, string) {
+	w := o.Do("GET", path, "", o.Cookie, "", nil)
+	return w.Code, w.Body.String()
+}
+
 func (o *opsEnv) Calls() string { b, _ := os.ReadFile(o.log); return string(b) }
 
 func (o *opsEnv) Stepup() {
@@ -496,6 +501,7 @@ func RealGet(t *testing.T, dialIP, host, path string) (int, string, string) {
 const fakeNginx = `D=$(dirname "$0")
 case "$1 $2" in
 "nginx test") [ -f "$D/fail_test" ] && { echo "nginx: [emerg] direktif salah"; exit 1; }; echo "test ok";;
+"public status") printf '{"installed":true,"ttl_default":120,"ttl_min":5,"ttl_max":1440,"tunnels":[{"site":"demo","active":true,"url":"https://abc-def.trycloudflare.com","started":1,"expires":2,"seconds_left":60},{"site":"api","active":true,"url":"https://evil.example.com","started":1,"expires":2,"seconds_left":60}]}';;
 "nginx reload") [ -f "$D/fail_reload" ] && { echo "reload gagal"; exit 1; }; echo "reload ok";;
 *) echo "ok $1 $2";;
 esac`

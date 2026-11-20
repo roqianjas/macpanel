@@ -30,7 +30,7 @@ var svcIDRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,18}[a-z0-9])?(\.[0-9]{1,
 
 var svcActions = map[string]bool{"start": true, "stop": true, "restart": true}
 
-var optionalApp = map[string]bool{"memcached": true, "mailpit": true, "9router": true, "docker": true}
+var optionalApp = map[string]bool{"memcached": true, "mailpit": true, "9router": true, "docker": true, "httpd": true, "cloudflared": true}
 
 var SvcStates = map[string]bool{"running": true, "stopped": true, "not_installed": true, "error": true}
 
