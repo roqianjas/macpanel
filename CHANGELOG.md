@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Sites whose project folder is outside `~/MacPanel/wwwroot` show a clear "not available through the panel" notice on the Deploy and .env tabs instead of a raw load error.
 - Temporary public access per site (Public tab, `lab public`) through Cloudflare Quick Tunnel: one loopback listener per site, explicit confirmation + step-up, time limit with automatic shutdown, Activity log, never restarts after reboot. Listener files live in `nginx/public/`, outside `sites/`, so they never appear as sites. Cloudflare Tunnel is an optional app (install/stop/remove from Apps). The Apps page can now install and remove Apache too.
 - Extra domains accept any host name (e.g. a Tailscale Funnel name) with an explicit public-exposure confirmation; only `.lab` names get an mkcert certificate.
 

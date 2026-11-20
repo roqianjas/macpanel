@@ -497,5 +497,7 @@ const dev: Record<string, string> = {
   "pub.min": "{n} menit",
   "pub.hm": "{h} jam {m} menit",
   "pub.h": "{h} jam",
+  "state.outside.title": "Fitur ini tidak tersedia lewat panel",
+  "state.outside.body": "Folder proyek situs ini ada di luar ~/MacPanel/wwwroot, jadi deploy dan .env tidak bisa dikelola dari panel. Kelola dari terminal.",
 };
 export default dev;

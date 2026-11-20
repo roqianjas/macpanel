@@ -497,5 +497,7 @@ const dev: Record<string, string> = {
   "pub.min": "{n} min",
   "pub.hm": "{h} h {m} min",
   "pub.h": "{h} h",
+  "state.outside.title": "This feature is not available through the panel",
+  "state.outside.body": "This site's project folder is outside ~/MacPanel/wwwroot, so deploy and .env cannot be managed from the panel. Manage it from the terminal.",
 };
 export default dev;

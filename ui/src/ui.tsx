@@ -1,7 +1,7 @@
 import { useT } from "./i18n";
 import { TabIcon, useScrollRow } from "./tabicons";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { LoaderCircle, TriangleAlert, X } from "lucide-react";
+import { Info, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import { errText } from "./api";
 
 /** useLoad: muat data dengan status memuat/galat/kosong yang konsisten (R-27). */
@@ -61,8 +61,25 @@ export function Skeleton({ kind = "rows" }: { kind?: SkeletonKind }) {
   );
 }
 
+// Pesan server untuk situs yang foldernya di luar ~/MacPanel/wwwroot: bukan galat, fitur itu memang tidak tersedia lewat panel.
+export const OUTSIDE_ROOT = /di bawah ~\/MacPanel\/wwwroot/;
+
+export function OutsideNotice() {
+  const t = useT();
+  return (
+    <div className="state" role="status">
+      <Info className="icon" size={18} aria-hidden="true" />
+      <div>
+        <p className="state-title">{t("state.outside.title")}</p>
+        <p className="small muted">{t("state.outside.body")}</p>
+      </div>
+    </div>
+  );
+}
+
 export function State({ loading, error, empty, emptyText, onRetry, skeleton, children }: { loading: boolean; error: string; empty?: boolean; emptyText?: string; onRetry?: () => void; skeleton?: SkeletonKind; children: ReactNode }) {
   const t = useT();
+  if (error && OUTSIDE_ROOT.test(error)) return <OutsideNotice />;
   if (error)
     return (
       <div className="state state-bad" role="alert">

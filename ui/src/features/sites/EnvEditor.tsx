@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { errText, get, post } from "../../api";
-import { Alert, Card } from "../../ui";
+import { Alert, Card, OUTSIDE_ROOT, OutsideNotice } from "../../ui";
 import { useT } from "../../i18n";
 
 export function EnvEditor({ name }: { name: string }) {
@@ -11,6 +11,7 @@ export function EnvEditor({ name }: { name: string }) {
   const [exists, setExists] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const [outside, setOutside] = useState(false);
   const open = async () => {
     setState("loading");
     setMsg(null);
@@ -21,7 +22,12 @@ export function EnvEditor({ name }: { name: string }) {
       setPath(r.path);
       setState("open");
     } catch (x) {
-      setMsg({ tone: "bad", text: errText(x) });
+      const e = errText(x);
+      if (OUTSIDE_ROOT.test(e)) {
+        setOutside(true);
+      } else {
+        setMsg({ tone: "bad", text: e });
+      }
       setState("closed");
     }
   };
@@ -42,7 +48,9 @@ export function EnvEditor({ name }: { name: string }) {
     <Card title={t("dev.env.title")}>
       <p className="small muted">{t("dev.env.note")}</p>
       {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
-      {state !== "open" ? (
+      {outside ? (
+        <OutsideNotice />
+      ) : state !== "open" ? (
         <div>
           <button className="btn" onClick={open} disabled={state === "loading"}>{state === "loading" ? t("dev.env.opening") : t("dev.env.open")}</button>
         </div>
