@@ -282,8 +282,8 @@ func (p *policy) one(d *Dir) error {
 			return bad(d, "nama pertama harus tepat "+p.host+" (maks 10 domain tambahan)")
 		}
 		for _, al := range d.Args[1:] {
-			if !aliasOK(a, al) {
-				return bad(d, "domain tambahan harus berbentuk nama."+a.TLD)
+			if !aliasValid(a, al) {
+				return bad(d, "domain tambahan harus berbentuk nama."+a.TLD+" atau nama host umum")
 			}
 			if al == p.host || aliasConflict(a, p.name, al) {
 				return bad(d, "domain "+al+" sudah dipakai situs lain")

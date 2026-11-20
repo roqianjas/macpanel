@@ -58,6 +58,16 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
                 <textarea id={id} aria-describedby={dd} className="mono" rows={4} placeholder={t("dev.set.domPh")} value={(m.aliases ?? []).join("\n")} onChange={(e) => set("aliases", e.target.value.split("\n").map((x) => x.trim().toLowerCase()).filter(Boolean))} spellCheck={false} />
               )}
             </Field>
+            <p className="small muted">{t("dev.set.domPublicNote")}</p>
+            {(m.aliases ?? []).some((x) => !x.endsWith(".lab")) && (
+              <>
+                <div className="alert alert-warn" role="alert">{t("dev.set.domPublicWarn")}</div>
+                <label className="check">
+                  <input type="checkbox" checked={!!m.public_ack} onChange={(e) => set("public_ack", e.target.checked)} />
+                  {t("dev.set.domPublicAck")}
+                </label>
+              </>
+            )}
           </Card>
         ) : section === "akses" ? (
           <Card title={t("dev.set.access")}>

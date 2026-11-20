@@ -29,6 +29,7 @@ export interface Model {
   force_https: boolean;
   gzip: boolean;
   aliases?: string[];
+  public_ack?: boolean;
   auth?: boolean;
   allow_ips?: string[];
 }

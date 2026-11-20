@@ -28,6 +28,7 @@ type Model struct {
 	ForceHTTPS  bool      `json:"force_https"`
 	Gzip        bool      `json:"gzip"`
 	Aliases     []string  `json:"aliases,omitempty"`
+	PublicAck   bool      `json:"public_ack,omitempty"` // konfirmasi: nama non-.lab membuka kemungkinan paparan publik
 	Auth        bool      `json:"auth,omitempty"`
 	AllowIPs    []string  `json:"allow_ips,omitempty"`
 }

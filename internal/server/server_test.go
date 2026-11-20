@@ -1064,23 +1064,29 @@ func TestSiteExtrasRejections(t *testing.T) {
 	before := o.SiteConf("demo")
 	calls := o.Calls()
 	bad := map[string]string{
-		"alias luar tld":    `"aliases":["evil.com"]`,
-		"alias bertingkat":  `"aliases":["a.b.lab"]`,
-		"alias traversal":   `"aliases":["../x.lab"]`,
-		"alias huruf besar": `"aliases":["Www.lab"]`,
-		"alias spasi":       `"aliases":["a b.lab"]`,
-		"alias titik koma":  `"aliases":["a.lab;include /etc/passwd"]`,
-		"alias ganda":       `"aliases":["a.lab","a.lab"]`,
-		"alias 11":          `"aliases":["a1.lab","a2.lab","a3.lab","a4.lab","a5.lab","a6.lab","a7.lab","a8.lab","a9.lab","a10.lab","a11.lab"]`,
-		"alias situs inti":  `"aliases":["home.lab"]`,
-		"alias panel":       `"aliases":["panel.lab"]`,
-		"ip semua":          `"allow_ips":["all"]`,
-		"ip 0/0":            `"allow_ips":["0.0.0.0/0"]`,
-		"ip publik":         `"allow_ips":["8.8.8.8"]`,
-		"ip lan":            `"allow_ips":["192.168.0.1"]`,
-		"ip lebih luas":     `"allow_ips":["100.64.0.0/9"]`,
-		"ip koma":           `"allow_ips":["100.64.0.1;deny all"]`,
-		"auth tanpa user":   `"auth":true`,
+		"alias umum tanpa konfirmasi": `"aliases":["evil.com"]`,
+		"alias wildcard":              `"aliases":["*.ts.net"],"public_ack":true`,
+		"alias IP":                    `"aliases":["1.2.3.4"],"public_ack":true`,
+		"alias satu label":            `"aliases":["mesin"],"public_ack":true`,
+		"alias underscore":            `"aliases":["a_b.example.com"],"public_ack":true`,
+		"alias .local":                `"aliases":["x.local"],"public_ack":true`,
+		"alias titik koma umum":       `"aliases":["a.com;include /etc/passwd"],"public_ack":true`,
+		"alias bertingkat":            `"aliases":["a.b.lab"]`,
+		"alias traversal":             `"aliases":["../x.lab"]`,
+		"alias huruf besar":           `"aliases":["Www.lab"]`,
+		"alias spasi":                 `"aliases":["a b.lab"]`,
+		"alias titik koma":            `"aliases":["a.lab;include /etc/passwd"]`,
+		"alias ganda":                 `"aliases":["a.lab","a.lab"]`,
+		"alias 11":                    `"aliases":["a1.lab","a2.lab","a3.lab","a4.lab","a5.lab","a6.lab","a7.lab","a8.lab","a9.lab","a10.lab","a11.lab"]`,
+		"alias situs inti":            `"aliases":["home.lab"]`,
+		"alias panel":                 `"aliases":["panel.lab"]`,
+		"ip semua":                    `"allow_ips":["all"]`,
+		"ip 0/0":                      `"allow_ips":["0.0.0.0/0"]`,
+		"ip publik":                   `"allow_ips":["8.8.8.8"]`,
+		"ip lan":                      `"allow_ips":["192.168.0.1"]`,
+		"ip lebih luas":               `"allow_ips":["100.64.0.0/9"]`,
+		"ip koma":                     `"allow_ips":["100.64.0.1;deny all"]`,
+		"auth tanpa user":             `"auth":true`,
 	}
 	for name, extra := range bad {
 		if c, b := o.Settings("demo", testenv.WithExtra(o.GoodModel("php"), extra)); c != 400 {
@@ -1092,6 +1098,23 @@ func TestSiteExtrasRejections(t *testing.T) {
 	}
 	if o.SiteConf("demo") != before || o.Calls() != calls {
 		t.Fatalf("config/lab berubah karena input ditolak: %s", o.Calls())
+	}
+}
+
+func TestSitePublicAliasNeedsAckAndSkipsLocalCert(t *testing.T) {
+	o := testenv.ExtrasEnv(t)
+	o.Stepup()
+	m := testenv.WithExtra(o.GoodModel("php"), `"aliases":["dalam.lab","mesin.contoh.ts.net"],"public_ack":true`)
+	if c, b := o.Settings("demo", m); c != 200 {
+		t.Fatalf("alias umum dengan konfirmasi harus diterima: %d %s", c, b)
+	}
+	conf := o.SiteConf("demo")
+	if !strings.Contains(conf, "mesin.contoh.ts.net") || !strings.Contains(conf, "dalam.lab") {
+		t.Fatalf("server_name tidak memuat kedua nama: %s", conf)
+	}
+	calls := o.Calls()
+	if !strings.Contains(calls, "[cert][demo][dalam.lab]") || strings.Contains(calls, "ts.net") {
+		t.Fatalf("hanya nama .lab boleh masuk sertifikat mkcert: %s", calls)
 	}
 }
 

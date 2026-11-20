@@ -276,6 +276,52 @@ func aliasOK(a *core.App, alias string) bool {
 	return ok && tld == a.TLD && aliasLabel.MatchString(l) && !core.ProtectedSites[l]
 }
 
+var hostLabel = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// publicHostOK: nama host umum (mis. mesin.tailnet.ts.net atau contoh.com). Tanpa wildcard, tanpa IP, tanpa TLD lokal
+// (.lab milik aliasOK), minimal dua label. Nama ini tidak mendapat sertifikat lokal.
+func publicHostOK(a *core.App, h string) bool {
+	if len(h) > 253 || strings.HasSuffix(h, "."+a.TLD) || strings.HasSuffix(h, ".local") || strings.HasSuffix(h, ".localhost") {
+		return false
+	}
+	ls := strings.Split(h, ".")
+	if len(ls) < 2 {
+		return false
+	}
+	for _, l := range ls {
+		if !hostLabel.MatchString(l) {
+			return false
+		}
+	}
+	if net.ParseIP(h) != nil || regexp.MustCompile(`^[0-9.]+$`).MatchString(h) {
+		return false
+	}
+	return true
+}
+
+// aliasValid: nama .lab atau nama host umum.
+func aliasValid(a *core.App, al string) bool { return aliasOK(a, al) || publicHostOK(a, al) }
+
+// localAliases: hanya nama .lab, satu-satunya yang boleh masuk sertifikat mkcert.
+func localAliases(a *core.App, als []string) []string {
+	var out []string
+	for _, al := range als {
+		if aliasOK(a, al) {
+			out = append(out, al)
+		}
+	}
+	return out
+}
+
+func hasPublicAlias(a *core.App, als []string) bool {
+	for _, al := range als {
+		if !aliasOK(a, al) {
+			return true
+		}
+	}
+	return false
+}
+
 var serverNameRE = regexp.MustCompile(`(?m)^\s*server_name\s+([^;]+);`)
 
 // aliasConflict: nama sudah dipakai situs lain.
@@ -304,13 +350,16 @@ func validateExtras(a *core.App, m *Model) error {
 	}
 	seen := map[string]bool{}
 	for _, al := range m.Aliases {
-		if !aliasOK(a, al) {
-			return fmt.Errorf("domain tambahan %q harus berbentuk nama.%s (huruf kecil, angka, tanda hubung)", al, a.TLD)
+		if !aliasValid(a, al) {
+			return fmt.Errorf("domain tambahan %q harus berbentuk nama.%s atau nama host umum (huruf kecil, angka, tanda hubung, tanpa wildcard/IP)", al, a.TLD)
 		}
 		if seen[al] {
 			return fmt.Errorf("domain tambahan %q ganda", al)
 		}
 		seen[al] = true
+	}
+	if hasPublicAlias(a, m.Aliases) && !m.PublicAck {
+		return errors.New("domain di luar ." + a.TLD + " bisa membuat situs terjangkau dari internet (mis. lewat Tailscale Funnel); centang konfirmasi paparan publik")
 	}
 	if len(m.AllowIPs) > 20 {
 		return errors.New("maksimal 20 aturan IP")

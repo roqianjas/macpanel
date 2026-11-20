@@ -66,8 +66,8 @@ func SettingsSet(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.
 			return
 		}
 	}
-	if len(m.Aliases) > 0 { // sertifikat harus memuat semua nama sebelum nginx dimuat ulang
-		if res := a.Mutate(append([]string{"site", "cert", name}, m.Aliases...), ""); res.Code != 0 {
+	if la := localAliases(a, m.Aliases); len(la) > 0 { // sertifikat harus memuat semua nama sebelum nginx dimuat ulang
+		if res := a.Mutate(append([]string{"site", "cert", name}, la...), ""); res.Code != 0 {
 			core.WriteError(w, 500, "gagal membuat sertifikat untuk domain tambahan: "+core.Scrub(res.Out))
 			return
 		}
@@ -177,7 +177,7 @@ func SSLRenew(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Ses
 	}
 	args := []string{"site", "cert", name}
 	if st, err := readSite(a, name); err == nil && st.Model != nil {
-		args = append(args, st.Model.Aliases...)
+		args = append(args, localAliases(a, st.Model.Aliases)...)
 	}
 	a.Record(w, ss, a.ClientIP(r), "ssl_renew", name, a.Mutate(args, ""))
 }

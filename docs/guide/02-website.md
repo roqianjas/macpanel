@@ -32,7 +32,7 @@ Klik nama situs untuk membuka tab:
 | Tab | Fungsi |
 |---|---|
 | Umum | Versi PHP, jeda atau aktifkan, kloning |
-| Domain | Domain tambahan (sertifikat dibuat ulang agar memuat semua nama) |
+| Domain | Extra domains: `name.lab` names get a local certificate; any other host name (e.g. a Tailscale Funnel name) is accepted without a certificate and needs an explicit public-exposure confirmation, because the tailnet-only rule does not stop Funnel traffic |
 | Akses | Kata sandi dasar (basic auth) dan batas IP |
 | .env | Lihat dan ubah berkas `.env` (membutuhkan verifikasi ulang) |
 | Trafik | Ringkasan log akses: status, halaman, dan IP teratas |

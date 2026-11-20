@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Extra domains accept any host name (e.g. a Tailscale Funnel name) with an explicit public-exposure confirmation; only `.lab` names get an mkcert certificate.
+
 ## 0.1.0 (first public release, macOS only)
 
 MacPanel is a self-hosted web control panel for a Mac (Apple Silicon) used as a development server: the aaPanel/cPanel experience, native, reachable only over a private network such as Tailscale.
