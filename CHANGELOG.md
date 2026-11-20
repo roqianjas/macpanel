@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Temporary public access per site (Public tab, `lab public`) through Cloudflare Quick Tunnel: one loopback listener per site, explicit confirmation + step-up, time limit with automatic shutdown, Activity log, never restarts after reboot. Cloudflare Tunnel is an optional app (install/stop/remove from Apps). The Apps page can now install and remove Apache too.
+- Temporary public access per site (Public tab, `lab public`) through Cloudflare Quick Tunnel: one loopback listener per site, explicit confirmation + step-up, time limit with automatic shutdown, Activity log, never restarts after reboot. Listener files live in `nginx/public/`, outside `sites/`, so they never appear as sites. Cloudflare Tunnel is an optional app (install/stop/remove from Apps). The Apps page can now install and remove Apache too.
 - Extra domains accept any host name (e.g. a Tailscale Funnel name) with an explicit public-exposure confirmation; only `.lab` names get an mkcert certificate.
 
 ## 0.1.0 (first public release, macOS only)

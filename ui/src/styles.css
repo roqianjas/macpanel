@@ -630,3 +630,6 @@ textarea.mono { width: 100%; }
 .langsel-box select { flex: 1; min-width: 0; border: 0; background: transparent; outline-offset: 4px; min-height: 40px; font: inherit; color: var(--text); box-shadow: none; }
 .pmenu-lang { padding: var(--s2); border-bottom: 1px solid var(--line-soft); margin-bottom: var(--s1); }
 .login-lang { position: fixed; top: var(--s3); right: var(--s3); z-index: 10; min-width: 190px; }
+
+.pub-list { list-style: disc; padding-left: var(--s4); display: grid; gap: var(--s1); }
+.pub-kv dd { font-size: var(--t-s); }

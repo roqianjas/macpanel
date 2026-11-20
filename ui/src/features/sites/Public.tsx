@@ -67,7 +67,7 @@ export function PublicAccess({ name }: { name: string }) {
         {data?.installed && active && data.tunnel && (
           <>
             <div className="alert alert-warn" role="alert">{t("pub.warnActive")}</div>
-            <dl className="kv">
+            <dl className="kv pub-kv">
               <div>
                 <dt>{t("pub.address")}</dt>
                 <dd className="mono">
@@ -76,12 +76,13 @@ export function PublicAccess({ name }: { name: string }) {
               </div>
               <div>
                 <dt>{t("pub.remaining")}</dt>
-                <dd>
-                  <Chip tone="warn">{t("pub.public")}</Chip> {left(data.tunnel.seconds_left, t)}
+                <dd className="row">
+                  <Chip tone="warn">{t("pub.public")}</Chip>
+                  <span>{left(data.tunnel.seconds_left, t)}</span>
                 </dd>
               </div>
             </dl>
-            <div className="row-actions">
+            <div className="row">
               {data.tunnel.url && (
                 <button type="button" className="btn" onClick={() => copy(data.tunnel!.url)}>
                   {copied ? t("pub.copied") : t("pub.copy")}
@@ -96,7 +97,7 @@ export function PublicAccess({ name }: { name: string }) {
         {data?.installed && !active && (
           <>
             <p className="small muted">{t("pub.intro")}</p>
-            <ul className="small muted">
+            <ul className="pub-list small muted">
               <li>{t("pub.pt1")}</li>
               <li>{t("pub.pt2")}</li>
               <li>{t("pub.pt3")}</li>

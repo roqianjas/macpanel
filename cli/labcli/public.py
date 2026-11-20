@@ -18,11 +18,13 @@ import sys
 import time
 from pathlib import Path
 
-from labcli.core import HOME, LABBIN, PROTECTED, SITE_NAME_RE, SITES, UID, die, sh
-from labcli.nginx import nginx_test
+from labcli.core import HOME, LABBIN, OPS, PROTECTED, SITE_NAME_RE, SITES, UID, die, sh
+from labcli.nginx import NGINX_CONF, nginx_test
 
 CLOUDFLARED = "/opt/homebrew/bin/cloudflared"
 PUBLIC_DIR = HOME / ".config/macminiops/public"
+CONF_DIR = OPS / "nginx/public"  # di luar sites/: panel dan `lab site` tidak boleh menganggapnya situs
+INCLUDE_LINE = f"include {CONF_DIR}/*.conf;"
 PORT_MIN, PORT_MAX = 8450, 8499
 TTL_DEFAULT, TTL_MIN, TTL_MAX = 120, 5, 1440
 DENY = PROTECTED | {"9router", "adminer", "mailpit", "netdata"}
@@ -32,7 +34,24 @@ LABEL = "com.macminiops.public."
 
 
 def conf_path(name):
-    return SITES / f"public-{name}.conf"
+    return CONF_DIR / f"public-{name}.conf"
+
+
+def ensure_include():
+    """nginx.conf lama belum memuat nginx/public/*.conf: tambahkan sekali (dengan cadangan, dibatalkan bila nginx -t gagal)."""
+    text = NGINX_CONF.read_text()
+    if INCLUDE_LINE in text:
+        return
+    m = re.search(r"^([ \t]*)include\s+\S*/nginx/sites/\*\.conf;[ \t]*$", text, re.M)
+    if not m:
+        die("nginx.conf tidak memuat nginx/sites/*.conf; tambahkan sendiri: " + INCLUDE_LINE)
+    bak = NGINX_CONF.with_name(f"nginx.conf.bak.{time.strftime('%Y%m%d-%H%M%S')}")
+    bak.write_text(text)
+    NGINX_CONF.write_text(text[: m.end()] + f"\n{m.group(1)}{INCLUDE_LINE}" + text[m.end() :])
+    t = nginx_test()
+    if t.returncode:
+        NGINX_CONF.write_text(text)
+        die("nginx -t gagal setelah menambah include: " + (t.stdout + t.stderr).strip()[-200:])
 
 
 def state_path(name):
@@ -208,6 +227,8 @@ def on(a):
     port = pick_port()
     text = (SITES / f"{name}.conf").read_text()
     new = build_conf(name, port, text)
+    ensure_include()
+    CONF_DIR.mkdir(parents=True, exist_ok=True)
     conf_path(name).write_text(new)
     err = reload_nginx()
     if err:
@@ -255,7 +276,7 @@ def off(a):
         ns = names_active()
         for n in ns:
             off_one(n)
-        for p in SITES.glob("public-*.conf"):
+        for p in CONF_DIR.glob("public-*.conf"):
             n = p.stem[len("public-") :]
             cleanup(n)
         print(f"OK: {len(ns)} tunnel dimatikan")

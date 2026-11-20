@@ -74,3 +74,28 @@ def test_proxy_to_app_port_allowed():
 def test_system_and_bad_names_refused(n):
     with pytest.raises(SystemExit):
         public.check_name(n)
+
+
+def test_include_added_once_with_backup_and_conf_kept_outside_sites(tmp_path, monkeypatch):
+    ngx = tmp_path / "nginx.conf"
+    ngx.write_text("http {\n    include /srv/x/nginx/sites/*.conf;\n}\n")
+    monkeypatch.setattr(public, "NGINX_CONF", ngx)
+    monkeypatch.setattr(public, "INCLUDE_LINE", "include /srv/x/nginx/public/*.conf;")
+    monkeypatch.setattr(public, "nginx_test", lambda: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})())
+    public.ensure_include()
+    public.ensure_include()
+    text = ngx.read_text()
+    assert text.count("nginx/public/*.conf") == 1 and "    include /srv/x/nginx/public/*.conf;" in text
+    assert len(list(tmp_path.glob("nginx.conf.bak.*"))) == 1
+    assert "sites" not in str(public.conf_path("a").parent.name)
+
+
+def test_include_rolled_back_when_nginx_rejects(tmp_path, monkeypatch):
+    ngx = tmp_path / "nginx.conf"
+    orig = "http {\n    include /srv/x/nginx/sites/*.conf;\n}\n"
+    ngx.write_text(orig)
+    monkeypatch.setattr(public, "NGINX_CONF", ngx)
+    monkeypatch.setattr(public, "nginx_test", lambda: type("R", (), {"returncode": 1, "stdout": "", "stderr": "boom"})())
+    with pytest.raises(SystemExit):
+        public.ensure_include()
+    assert ngx.read_text() == orig

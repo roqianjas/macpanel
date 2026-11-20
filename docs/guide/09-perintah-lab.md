@@ -67,7 +67,7 @@ lab public on blog --ttl 120       # buka situs ke publik 120 menit (5-1440), me
 lab public status [--json]         # tunnel aktif dan sisa waktunya
 lab public off blog                # tutup satu situs (atau: lab public off --all)
 ```
-Listener loopback per situs dibuat di `nginx/sites/public-NAMA.conf` dan dihapus otomatis saat tunnel berhenti. Situs sistem, proxy ke layanan internal, dan situs Apache ditolak.
+Listener loopback per situs dibuat di `nginx/public/public-NAMA.conf` (di luar `sites/`, jadi tidak tampil sebagai situs; `nginx.conf` ditambah satu baris include dengan cadangan) dan dihapus otomatis saat tunnel berhenti. Situs sistem, proxy ke layanan internal, dan situs Apache ditolak.
 
 Config Apache dibangkitkan oleh `lab` (jangan diedit tangan, akan ditimpa). `--apache` tidak digabung dengan `--wordpress` atau port proxy. Di panel: Website, Tambah situs, centang "Layani dengan Apache".
 lab appinstall laravel|wordpress <nama> [--php 8.4] [--db mariadb|mysql]
