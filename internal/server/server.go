@@ -215,6 +215,8 @@ func Routes() []core.Route {
 		{Method: "POST", Path: "/api/notify/test", Level: core.Full, H: overview.NotifyTest},
 		{Method: "GET", Path: "/api/system", Level: core.Full, H: system.System},
 		{Method: "GET", Path: "/api/php", Level: core.Full, H: phpruntime.PHPList},
+		{Method: "GET", Path: "/api/php/default", Level: core.Full, H: phpruntime.PHPDefaultGet},
+		{Method: "POST", Path: "/api/php/default", Level: core.Full, H: phpruntime.PHPDefaultSet},
 		{Method: "POST", Path: "/api/php/{version}/install", Level: core.Full, H: phpruntime.PHPInstall},
 		{Method: "POST", Path: "/api/php/{version}/remove", Level: core.Full, H: phpruntime.PHPRemove},
 		{Method: "GET", Path: "/api/runtime", Level: core.Full, H: phpruntime.RuntimeList},

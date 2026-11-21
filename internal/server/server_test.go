@@ -2032,3 +2032,32 @@ func TestSitePublicOnOffCallsLabAndStatusFiltersUrl(t *testing.T) {
 		t.Fatalf("URL di luar trycloudflare.com harus dibuang: %d %s", c, b)
 	}
 }
+
+func TestPHPDefaultGetFiltersAndSetValidates(t *testing.T) {
+	o := testenv.ExtrasEnv(t)
+	c, b := o.GetJSON("/api/php/default")
+	if c != 200 || !strings.Contains(b, `"default":"8.3"`) || !strings.Contains(b, `"brew_linked":"8.5"`) || !strings.Contains(b, `"shell_ready":true`) {
+		t.Fatalf("get: %d %s", c, b)
+	}
+	if strings.Contains(b, "9.9") || strings.Contains(b, "BAD NAME") || strings.Contains(b, `"root"`) {
+		t.Fatalf("nilai tak sah atau path bocor: %s", b)
+	}
+	if !strings.Contains(b, `{"site":"api","version":null}`) {
+		t.Fatalf("situs tanpa PHP harus version null: %s", b)
+	}
+	calls := o.Calls()
+	for n, body := range map[string]string{"kosong": `{}`, "lama": `{"version":"7.4"}`, "injeksi": `{"version":"8.3; rm -rf /"}`, "angka": `{"version":8.3}`, "kunci asing": `{"version":"8.3","x":1}`} {
+		if c, r := o.Post("/api/php/default", body); c != 400 {
+			t.Errorf("%s: %d %s", n, c, r)
+		}
+	}
+	if o.Calls() != calls {
+		t.Fatalf("lab dipanggil padahal input ditolak: %s", o.Calls())
+	}
+	if c, r := o.Post("/api/php/default", `{"version":"8.4"}`); c != 200 {
+		t.Fatalf("set: %d %s", c, r)
+	}
+	if !strings.Contains(o.Calls(), "CALL:[php][default][8.4]") {
+		t.Fatalf("%s", o.Calls())
+	}
+}

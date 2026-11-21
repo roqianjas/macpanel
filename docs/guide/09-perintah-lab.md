@@ -60,6 +60,14 @@ lab apache sites                   # daftar vhost Apache
 lab apache config                  # bangkitkan ulang config dan uji sintaks
 ```
 
+## Versi PHP CLI
+```
+lab php shims                       # pasang pemilih versi php (blok PATH di ~/.zshrc, dengan cadangan)
+lab php default [8.3]               # tampilkan atau atur default global CLI
+lab php which [folder]              # versi yang terpakai di folder dan alasannya
+lab php status [--json]             # default, shim, dan versi web per situs
+```
+
 ## Akses publik sementara
 ```
 lab app install cloudflared        # pasang Cloudflare Tunnel (tanpa proses sendiri)

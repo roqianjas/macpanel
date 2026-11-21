@@ -39,6 +39,7 @@ export type GetPath =
   | "/api/netmon"
   | "/api/notify"
   | "/api/php"
+  | "/api/php/default"
   | `/api/php/${string}/ext`
   | `/api/php/${string}/ini`
   | "/api/redis/info"
@@ -130,6 +131,7 @@ export type PostPath =
   | "/api/me/tokens/revoke"
   | "/api/notify"
   | "/api/notify/test"
+  | "/api/php/default"
   | `/api/php/${string}/ext/${string}/${string}`
   | `/api/php/${string}/ini`
   | `/api/php/${string}/install`

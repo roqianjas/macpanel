@@ -47,6 +47,7 @@ from labcli.ini import ini_get, ini_set
 from labcli.install import app_install, site_clone
 from labcli.nginx import nginx
 from labcli.php import php
+from labcli.phpdefault import php_default
 from labcli.public import public
 from labcli.redis import redis_cmd
 from labcli.regproxy import proxy_cmd
@@ -177,6 +178,13 @@ def reg_sys(top):
     ph.add_parser("list")
     for x in ("install", "remove"):
         ph.add_parser(x).add_argument("version")
+    ph.add_parser("default", help="PHP CLI default global (tanpa argumen: tampilkan)").add_argument("version", nargs="?")
+    q = ph.add_parser("which", help="versi PHP CLI yang terpakai di folder ini dan alasannya")
+    q.add_argument("dir", nargs="?")
+    q = ph.add_parser("status", help="default CLI, shim, dan versi web per situs")
+    q.add_argument("--json", action="store_true")
+    q = ph.add_parser("shims", help="pasang shim php (memilih versi per proyek) dan blok PATH di ~/.zshrc")
+    q.add_argument("--remove", action="store_true", help="hapus blok PATH dari ~/.zshrc")
     r = top.add_parser("runtime").add_subparsers(dest="act", required=True)
     r.add_parser("list")
     for x in ("install", "use", "remove"):
@@ -386,7 +394,7 @@ HANDLERS = {
     "worker": lambda a: run("worker", a),
     "job": lambda a: run("job", a),
     "site": site,
-    "php": php,
+    "php": lambda a: php_default(a) if a.act in ("default", "which", "status", "shims") else php(a),
     "runtime": runtime,
     "nginx": nginx,
     "apache": apache,

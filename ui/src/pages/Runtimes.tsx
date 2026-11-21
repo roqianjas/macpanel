@@ -4,6 +4,7 @@ import { errText, get, post } from "../api";
 import { trackJob } from "../jobs";
 import { Alert, Card, Chip, ConfirmDialog, PageHead, State, useLoad } from "../ui";
 import PhpManage from "./PhpManage";
+import { PhpVersions } from "../features/php/PhpVersions";
 import { useT } from "../i18n";
 
 interface PHP {
@@ -88,6 +89,7 @@ export default function Runtimes() {
     <>
       <PageHead title={t("nav.runtimes")} desc={t("dev.rt.desc")} />
       {note && <Alert tone={note.tone}>{note.text}</Alert>}
+      <PhpVersions />
       <Card title="PHP">
         <State loading={php.loading && !php.data} error={php.error} onRetry={php.reload}>
           <ul className="list">

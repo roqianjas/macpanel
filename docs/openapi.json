@@ -1568,6 +1568,28 @@
         "x-token": true
       }
     },
+    "/api/php/default": {
+      "get": {
+        "operationId": "get_api_php_default",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      },
+      "post": {
+        "operationId": "post_api_php_default",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-level": "full",
+        "x-token": true
+      }
+    },
     "/api/php/{version}/ext": {
       "get": {
         "operationId": "get_api_php_version_ext",

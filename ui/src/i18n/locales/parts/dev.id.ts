@@ -500,5 +500,18 @@ const dev: Record<string, string> = {
   "state.outside.title": "Fitur ini tidak tersedia lewat panel",
   "state.outside.body": "Folder proyek situs ini ada di luar ~/MacPanel/wwwroot, jadi deploy dan .env tidak bisa dikelola dari panel. Kelola dari terminal.",
   "dev.set.domTunnelNote": "Alamat dari tab Publik (trycloudflare.com) tidak perlu didaftarkan di sini: ia berubah setiap dinyalakan dan sudah diterima otomatis. URL lengkap yang ditempel dirapikan menjadi nama host.",
+  "phpv.title": "Versi PHP default",
+  "phpv.intro": "Web dan terminal (CLI) memilih versi PHP dengan cara berbeda. Web ditentukan per situs; CLI mengikuti folder tempat Anda berada.",
+  "phpv.cli": "PHP CLI default",
+  "phpv.cliBrew": "(belum diatur, mengikuti bawaan Homebrew)",
+  "phpv.web": "PHP web",
+  "phpv.pick": "Default CLI",
+  "phpv.pickHint": "Dipakai perintah php di terminal bila folder bukan proyek MacPanel dan tidak punya berkas .php-version.",
+  "phpv.save": "Jadikan default CLI",
+  "phpv.saved": "PHP CLI default sekarang {v}",
+  "phpv.noShim": "Pemilih versi di terminal belum aktif. Jalankan di Terminal, lalu buka terminal baru:",
+  "phpv.order": "Urutan di terminal: berkas .php-version di folder itu atau di atasnya, lalu situs MacPanel pada folder itu (sama dengan web), lalu default ini. Cek dengan lab php which.",
+  "phpv.sites": "PHP {v} × {n} situs",
+  "phpv.seeSites": "Lihat per situs",
 };
 export default dev;

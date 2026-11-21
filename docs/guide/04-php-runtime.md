@@ -3,6 +3,13 @@
 ## PHP
 Beberapa versi PHP (8.2 sampai 8.5) dapat dipasang berdampingan. Setiap situs memilih versinya sendiri, dan tiap versi memiliki pool PHP-FPM sendiri.
 
+### Versi PHP untuk web dan terminal
+- **Web**: ditentukan per situs (soket FPM di konfigurasinya). Ringkasannya tampil di kartu **Versi PHP default**.
+- **Terminal (CLI)**: perintah `php` memilih versi lewat shim, dengan urutan: berkas `.php-version` di folder itu atau di atasnya, lalu situs MacPanel yang foldernya mencakup folder itu (jadi sama dengan web), lalu **default global** yang diatur di kartu tadi.
+- Beberapa versi tetap terpasang berdampingan; hanya perintah `php` yang memilih satu. Perintah `php8.2`, `php8.3`, `php8.4`, `php8.5` selalu memakai versi itu.
+- Aktifkan sekali di Terminal: `lab php shims` (menambah satu blok PATH ke `~/.zshrc` dengan cadangan; batalkan dengan `lab php shims --remove`). Lalu buka terminal baru. Cek dengan `lab php which`.
+- Hanya terminal interaktif zsh yang memakai shim. Proses latar (cron, worker) memakai versi yang Anda pilih eksplisit, dan skrip non-interaktif memakai `php` bawaan Homebrew.
+
 Menu **PHP dan runtime** menyediakan:
 - Pasang atau hapus versi PHP.
 - **Ekstensi**: saklar untuk ekstensi PECL (redis, apcu, xdebug, imagick, dan lain-lain). Ekstensi bawaan PHP Homebrew sudah terkompilasi dan tidak dapat dimatikan.

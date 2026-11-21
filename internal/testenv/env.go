@@ -502,6 +502,7 @@ const fakeNginx = `D=$(dirname "$0")
 case "$1 $2" in
 "nginx test") [ -f "$D/fail_test" ] && { echo "nginx: [emerg] direktif salah"; exit 1; }; echo "test ok";;
 "public status") printf '{"installed":true,"ttl_default":120,"ttl_min":5,"ttl_max":1440,"tunnels":[{"site":"demo","active":true,"url":"https://abc-def.trycloudflare.com","started":1,"expires":2,"seconds_left":60},{"site":"api","active":true,"url":"https://evil.example.com","started":1,"expires":2,"seconds_left":60}]}';;
+"php status") printf '{"default":"8.3","installed":["8.2","8.3","8.4","8.5"],"shims":["php","php8.3"],"shell_ready":true,"brew_linked":"8.5","sites":[{"site":"demo","version":"8.3","root":"/x"},{"site":"api","version":null,"root":"/y"},{"site":"jahat","version":"9.9","root":"/z"},{"site":"BAD NAME","version":"8.4","root":"/q"}]}';;
 "nginx reload") [ -f "$D/fail_reload" ] && { echo "reload gagal"; exit 1; }; echo "reload ok";;
 *) echo "ok $1 $2";;
 esac`

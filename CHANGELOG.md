@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- PHP versions made explicit: a "Default PHP version" card on PHP and runtime shows the CLI default and the web version per site. The web side is a compact per-version site count (it stays one short row however many sites exist; per-site detail is on the Websites page). The terminal `php` command now follows a shim (`lab php shims`): `.php-version`, then the MacPanel site for the folder (same as the web), then a global default (`lab php default`, also settable from the panel). `php8.2`-`php8.5` always use that version.
 - Sizes now match macOS: storage, network and file sizes use base 1000 (GB, as in Finder and System Settings), memory uses base 1024 labelled GB (as in About This Mac). The Disk card also shows the purgeable space macOS can free by itself, so it lines up with the "available" figure in System Settings.
 - Extra domains: a pasted full URL is trimmed to the host name when the field loses focus and on save; pressing Enter now adds a new line (it was removed before); a note explains that Public-tab addresses need no registration.
 - Sites whose project folder is outside `~/MacPanel/wwwroot` show a clear "not available through the panel" notice on the Deploy and .env tabs instead of a raw load error.

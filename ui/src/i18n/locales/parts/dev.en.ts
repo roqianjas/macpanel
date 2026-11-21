@@ -500,5 +500,18 @@ const dev: Record<string, string> = {
   "state.outside.title": "This feature is not available through the panel",
   "state.outside.body": "This site's project folder is outside ~/MacPanel/wwwroot, so deploy and .env cannot be managed from the panel. Manage it from the terminal.",
   "dev.set.domTunnelNote": "Addresses from the Public tab (trycloudflare.com) do not need to be registered here: they change every time they are turned on and are accepted automatically. A pasted full URL is trimmed to the host name.",
+  "phpv.title": "Default PHP version",
+  "phpv.intro": "The web and the terminal (CLI) pick the PHP version differently. The web is set per site; the CLI follows the folder you are in.",
+  "phpv.cli": "PHP CLI default",
+  "phpv.cliBrew": "(not set, following the Homebrew default)",
+  "phpv.web": "PHP web",
+  "phpv.pick": "CLI default",
+  "phpv.pickHint": "Used by the php command in the terminal when the folder is not a MacPanel project and has no .php-version file.",
+  "phpv.save": "Make CLI default",
+  "phpv.saved": "PHP CLI default is now {v}",
+  "phpv.noShim": "The terminal version picker is not active yet. Run this in Terminal, then open a new terminal:",
+  "phpv.order": "Order in the terminal: a .php-version file in that folder or above, then the MacPanel site for that folder (same as the web), then this default. Check with lab php which.",
+  "phpv.sites": "PHP {v} × {n} sites",
+  "phpv.seeSites": "See per site",
 };
 export default dev;
