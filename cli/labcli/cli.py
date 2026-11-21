@@ -276,6 +276,7 @@ def reg_dev(top):
     q.add_argument("ids", nargs="+", help="id entri dari lab clean scan")
     q.add_argument("--apply", action="store_true", help="jalankan; tanpa ini hanya pratinjau")
     q.add_argument("--confirm-careful", action="store_true", help="wajib untuk entri tingkat Hati-hati")
+    q.add_argument("--confirm-review", action="store_true", help="wajib untuk cache terdeteksi kelas Tinjau")
     mm = top.add_parser("mem", help="ringkasan memori dan saran penghematan").add_subparsers(dest="mact", required=True)
     mm.add_parser("top")
     sy = top.add_parser("sys").add_subparsers(dest="act", required=True)

@@ -12,14 +12,14 @@ import (
 	"github.com/roqianjas/macpanel/internal/store"
 )
 
-const maxIDs = 20
+const maxIDs = 80
 
 // Bentuk id katalog: "go-build" atau "bk:nama-folder". Tanpa garis miring, titik-titik, atau awalan "-".
-var idRE = regexp.MustCompile(`^(?:bk:|cx:)?[A-Za-z0-9][A-Za-z0-9._-]{0,89}$`)
+var idRE = regexp.MustCompile(`^(?:bk:|cx:|lc:|xc:)?[A-Za-z0-9][A-Za-z0-9._-]{0,89}$`)
 
 func validIDs(ids []string) (string, bool) {
 	if len(ids) < 1 || len(ids) > maxIDs {
-		return "pilih 1 sampai 20 entri", false
+		return "pilih 1 sampai 80 entri", false
 	}
 	seen := map[string]bool{}
 	for _, id := range ids {
@@ -42,6 +42,17 @@ func careful(ids []string) []string {
 		}
 	}
 	return out
+}
+
+// detected: id cache aplikasi yang terdeteksi otomatis ("lc:nama" di ~/Library/Caches, "xc:nama" di ~/.cache). Kelasnya
+// (aman/tinjau/terkunci) dihitung ulang oleh CLI; di sini hanya bentuk id dan persetujuan eksplisit yang dijaga.
+func detected(ids []string) bool {
+	for _, id := range ids {
+		if strings.HasPrefix(id, "lc:") || strings.HasPrefix(id, "xc:") {
+			return true
+		}
+	}
+	return false
 }
 
 func pass(w http.ResponseWriter, res core.Result, fail string) (json.RawMessage, bool) {
@@ -76,8 +87,9 @@ func Scan(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session
 }
 
 type runIn struct {
-	IDs   []string `json:"ids"`
-	Typed string   `json:"typed"`
+	IDs       []string `json:"ids"`
+	Typed     string   `json:"typed"`
+	ReviewAck bool     `json:"review_ack"`
 }
 
 // Preview: POST /api/clean/preview. Pratinjau (dry-run) tanpa menghapus apa pun.
@@ -120,6 +132,17 @@ func Run(a *core.App, w http.ResponseWriter, r *http.Request, ss *store.Session)
 			return
 		}
 		args = append(args, "--confirm-careful")
+	}
+	if detected(in.IDs) {
+		if len(careful(in.IDs)) > 0 {
+			core.WriteError(w, 400, "folder Hati-hati tidak digabung dengan cache terdeteksi")
+			return
+		}
+		if !in.ReviewAck {
+			core.WriteError(w, 400, "centang persetujuan: isi cache terdeteksi tidak bisa dibuktikan aman")
+			return
+		}
+		args = append(args, "--confirm-review")
 	}
 	if !a.RequireStepUp(w, ss) {
 		return

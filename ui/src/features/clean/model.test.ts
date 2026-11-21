@@ -10,7 +10,7 @@ describe("analisis disk", () => {
     expect(g.safe.map((r) => r.id)).toEqual(["a", "b"]);
     expect(g.careful).toHaveLength(1);
     expect(g.show).toHaveLength(1);
-    expect(group(null)).toEqual({ safe: [], careful: [], show: [] });
+    expect(group(null)).toEqual({ safe: [], careful: [], show: [], detected: [] });
   });
   it("perkiraan menjumlah yang dipilih, mengabaikan show dan id basi", () => {
     expect(estimate(scan, ["a", "b"])).toBe(150);
@@ -66,5 +66,43 @@ describe("memori", () => {
   it("memori aplikasi tidak menghitung cache (inactive)", () => {
     expect(appUsedMb({ wired_mb: 1000, active_mb: 2000, compressed_mb: 500, inactive_mb: 9000 })).toBe(3500);
     expect(appUsedMb({ wired_mb: 1000 })).toBeNull();
+  });
+});
+
+import { SMALL_BYTES, canPick, pickableIds, sumBytes, DETECTED_FACETS, type ScanRow } from "./model";
+
+const d = (id: string, cls: "aman" | "tinjau" | "terkunci", bytes: number, extra: Partial<ScanRow> = {}): ScanRow =>
+  ({ id, label: id, tier: "detected", cls, src: "app", bytes, paths: [], why: "", cost: "", ...extra }) as ScanRow;
+
+describe("cache terdeteksi", () => {
+  const rows = [d("lc:a", "aman", 9e7, { orphan: true }), d("lc:b", "tinjau", 6e7), d("lc:c", "terkunci", 5e8, { src: "apple" })];
+  it("baris terkunci tidak pernah bisa dipilih", () => {
+    expect(rows.map(canPick)).toEqual([true, true, false]);
+    expect(pickableIds(rows)).toEqual(["lc:a", "lc:b"]);
+  });
+  it("jumlah byte hanya dari yang bisa dipilih, id tak dikenal diabaikan", () => {
+    expect(sumBytes(rows, ["lc:a", "lc:b", "lc:c", "zz"])).toBe(1.5e8);
+  });
+  it("saringan menurut kelas, yatim, dan Apple", () => {
+    const n = (id: string) => rows.filter(DETECTED_FACETS.find((f) => f.id === id)!.test).map((r) => r.id);
+    expect(n("aman")).toEqual(["lc:a"]);
+    expect(n("tinjau")).toEqual(["lc:b"]);
+    expect(n("terkunci")).toEqual(["lc:c"]);
+    expect(n("yatim")).toEqual(["lc:a"]);
+    expect(n("apple")).toEqual(["lc:c"]);
+  });
+  it("ambang kecil memakai basis 1000", () => {
+    expect(SMALL_BYTES).toBe(50_000_000);
+  });
+});
+
+import { whyKey } from "./model";
+describe("alasan terdeteksi", () => {
+  it("diturunkan dari kelas", () => {
+    expect(whyKey(d("a", "terkunci", 1, { src: "apple" }))).toBe("apple");
+    expect(whyKey(d("a", "terkunci", 1, { running: true }))).toBe("running");
+    expect(whyKey(d("a", "terkunci", 1))).toBe("unreadable");
+    expect(whyKey(d("a", "aman", 1))).toBe("orphan");
+    expect(whyKey(d("a", "tinjau", 1))).toBe("review");
   });
 });

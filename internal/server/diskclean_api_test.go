@@ -180,3 +180,43 @@ func TestTailscaleStatusIsReadOnlyAndSanitised(t *testing.T) {
 		}
 	}
 }
+
+func TestCleanDetectedNeedsReviewAckAndBuildsFlag(t *testing.T) {
+	o := testenv.NewOpsEnv(t, testenv.FakeSys)
+	for _, b := range []string{
+		`{"ids":["lc:org.removed.app"]}`,
+		`{"ids":["lc:org.removed.app"],"review_ack":false}`,
+		`{"ids":["lc:a","bk:migrasi-x"],"typed":"migrasi-x","review_ack":true}`,
+		`{"ids":["lc:../x"],"review_ack":true}`,
+		`{"ids":["lc:a/b"],"review_ack":true}`,
+		`{"ids":["zz:a"],"review_ack":true}`,
+		`{"ids":["lc:"],"review_ack":true}`,
+	} {
+		if code, _ := o.As(o.Cookie, o.Csrf, "POST", "/api/clean/run", b); code != 400 {
+			t.Errorf("harus 400: %s -> %d", b, code)
+		}
+	}
+	if strings.Contains(o.Calls(), "[clean][run]") {
+		t.Fatalf("masukan buruk sampai ke lab: %q", o.Calls())
+	}
+	o.Stepup()
+	if code, body := o.As(o.Cookie, o.Csrf, "POST", "/api/clean/run", `{"ids":["lc:org.removed.app","xc:tool","go-build"],"review_ack":true}`); code != 202 {
+		t.Fatalf("valid: %d %s", code, body)
+	}
+	if !waitCall(t, o, "[clean][run][lc:org.removed.app][xc:tool][go-build][--confirm-review][--apply]") {
+		t.Fatalf("argumen salah: %q", o.Calls())
+	}
+	if strings.Contains(o.Calls(), "--confirm-careful") {
+		t.Fatal("cache terdeteksi tidak boleh membawa --confirm-careful")
+	}
+}
+
+func TestCleanPreviewDetectedNeedsNoAck(t *testing.T) {
+	o := testenv.NewOpsEnv(t, testenv.FakeSys)
+	if code, body := o.As(o.Cookie, o.Csrf, "POST", "/api/clean/preview", `{"ids":["lc:org.removed.app"]}`); code != 200 {
+		t.Fatalf("pratinjau: %d %s", code, body)
+	}
+	if strings.Contains(o.Calls(), "--apply") || strings.Contains(o.Calls(), "--confirm-review") {
+		t.Fatalf("pratinjau tidak boleh menghapus: %q", o.Calls())
+	}
+}

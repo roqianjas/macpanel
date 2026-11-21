@@ -2,7 +2,8 @@
 import { fmtBytes } from "../../lib";
 import { t } from "../../i18n";
 
-export type Tier = "safe" | "careful" | "show";
+export type Tier = "safe" | "careful" | "show" | "detected";
+export type DetectedClass = "aman" | "tinjau" | "terkunci";
 
 export interface ScanRow {
   id: string;
@@ -15,6 +16,12 @@ export interface ScanRow {
   paths: string[];
   items?: string[];
   age_days?: number | null;
+  /** Hanya untuk tier "detected" (cache aplikasi yang ditemukan otomatis). */
+  cls?: DetectedClass;
+  src?: "apple" | "app" | "lainnya";
+  orphan?: boolean;
+  running?: boolean;
+  loc?: string;
 }
 
 export interface Scan {
@@ -22,6 +29,7 @@ export interface Scan {
   rows: ScanRow[];
   safe_bytes: number;
   careful_bytes: number;
+  detected_bytes?: number;
   disk_free: number;
 }
 
@@ -41,7 +49,7 @@ export interface RunResult {
 }
 
 export function group(scan: Scan | null): Record<Tier, ScanRow[]> {
-  const out: Record<Tier, ScanRow[]> = { safe: [], careful: [], show: [] };
+  const out: Record<Tier, ScanRow[]> = { safe: [], careful: [], show: [], detected: [] };
   for (const r of scan?.rows ?? []) out[r.tier]?.push(r);
   return out;
 }
@@ -52,7 +60,7 @@ export function estimate(scan: Scan | null, ids: Iterable<string>): number {
   let n = 0;
   for (const id of ids) {
     const r = by.get(id);
-    if (r && r.tier !== "show") n += r.bytes;
+    if (r && r.tier !== "show" && !(r.tier === "detected" && r.cls === "terkunci")) n += r.bytes;
   }
   return n;
 }
@@ -141,3 +149,41 @@ export function appUsedMb(m: MemView["mem"]): number | null {
 }
 
 export const PURGE_COMMAND = "sudo purge";
+
+// ---- cache terdeteksi
+
+/** Ambang tampilan awal: yang lebih kecil disembunyikan (sakelar menampilkannya). Ukuran basis 1000 seperti macOS. */
+export const SMALL_BYTES = 50 * 1000 * 1000;
+
+/** Kunci terjemahan untuk alasan sebuah baris terdeteksi. Diturunkan dari kelas, bukan dari teks server, supaya ikut bahasa UI. */
+export function whyKey(r: ScanRow): string {
+  if (r.cls === "terkunci") {
+    return r.src === "apple" ? "apple" : r.running ? "running" : "unreadable";
+  }
+  return r.cls === "aman" ? "orphan" : "review";
+}
+
+export const canPick = (r: ScanRow) => r.tier === "detected" && r.cls !== "terkunci";
+
+export const DETECTED_FACETS: { id: string; test: (r: ScanRow) => boolean }[] = [
+  { id: "aman", test: (r) => r.cls === "aman" },
+  { id: "tinjau", test: (r) => r.cls === "tinjau" },
+  { id: "terkunci", test: (r) => r.cls === "terkunci" },
+  { id: "yatim", test: (r) => !!r.orphan },
+  { id: "apple", test: (r) => r.src === "apple" },
+];
+
+/** Id yang boleh dikirim dari hasil filter: tidak pernah memuat baris Terkunci. */
+export function pickableIds(rows: readonly ScanRow[]): string[] {
+  return rows.filter(canPick).map((r) => r.id);
+}
+
+export function sumBytes(rows: readonly ScanRow[], ids: Iterable<string>): number {
+  const by = new Map(rows.map((r) => [r.id, r]));
+  let n = 0;
+  for (const id of ids) {
+    const r = by.get(id);
+    if (r && canPick(r)) n += r.bytes;
+  }
+  return n;
+}

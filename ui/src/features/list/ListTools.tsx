@@ -10,6 +10,8 @@ export interface ListView<T> {
   q: string;
   setQ: (s: string) => void;
   view: PageView<T>;
+  /** Seluruh hasil setelah filter dan cari (bukan hanya halaman ini), untuk "pilih semua". */
+  filtered: readonly T[];
   setPage: (p: number) => void;
   filteredCount: number;
   allCount: number;
@@ -34,7 +36,7 @@ export function useListView<T>(items: readonly T[], text: (t: T) => string, size
   useEffect(() => {
     setPage(1);
   }, [q, active]);
-  return { q, setQ, view, setPage, filteredCount: filtered.length, allCount: items.length, searching: q.trim() !== "" || active !== "all", facets, facet: active, setFacet };
+  return { q, setQ, view, filtered, setPage, filteredCount: filtered.length, allCount: items.length, searching: q.trim() !== "" || active !== "all", facets, facet: active, setFacet };
 }
 
 /** Tab filter presentasional. Memakai aria-pressed (ini filter, bukan panel bertab). Tab berisi 0 disembunyikan kecuali "Semua" dan yang sedang dipilih. */

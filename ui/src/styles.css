@@ -633,3 +633,4 @@ textarea.mono { width: 100%; }
 
 .pub-list { list-style: disc; padding-left: var(--s4); display: grid; gap: var(--s1); }
 .pub-kv dd { font-size: var(--t-s); }
+.clean-pick.is-locked { cursor: default; opacity: .75; }

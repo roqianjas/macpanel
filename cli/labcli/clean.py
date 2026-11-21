@@ -2,6 +2,7 @@
 
 Prinsip keamanan:
 - Yang dihapus HANYA entri katalog di bawah (jalur dideklarasikan di kode, bukan dari masukan). Tidak ada jalur bebas.
+- Satu tingkat tambahan "detected": subfolder langsung ~/Library/Caches dan ~/.cache yang ditemukan otomatis (lihat cleandetect.py); kelas dihitung ulang tiap dipakai.
 - Tiga tingkat: safe (cache yang dibuat ulang sendiri), careful (perlu persetujuan; folder backup sekali pakai), show (hanya ditampilkan, tidak pernah dihapus).
 - `run` default hanya pratinjau (dry-run); `--apply` menjalankan. Tingkat careful butuh `--confirm-careful`.
 - Entri ditolak bila proses terkait sedang jalan (go, brew, npm, ...). Symlink tidak pernah diikuti keluar dari jalur entri.
@@ -17,6 +18,7 @@ import sys
 import time
 from pathlib import Path
 
+from labcli import cleandetect
 from labcli.core import HOME, ROOT, die
 
 SCAN_FILE = HOME / ".config/macminiops/clean-scan.json"
@@ -30,8 +32,8 @@ class CleanError(Exception):
     pass
 
 
-def E(id_, label, tier, paths, why, cost="", busy=(), kind="contents", items=False):
-    return dict(id=id_, label=label, tier=tier, paths=[str(p) for p in paths], why=why, cost=cost, busy=list(busy), kind=kind, items=items)
+def E(id_, label, tier, paths, why, cost="", busy=(), kind="contents", items=False, **extra):
+    return dict(id=id_, label=label, tier=tier, paths=[str(p) for p in paths], why=why, cost=cost, busy=list(busy), kind=kind, items=items, **extra)
 
 
 def catalog(home=None, root=None):
@@ -220,7 +222,22 @@ def running(names):
 # ------------------------------------------------------------------ scan
 
 
+def detected_entry(id_, home=None, apps=None, comms=None):
+    """Entri untuk id "lc:nama"/"xc:nama" (cache aplikasi yang terdeteksi), dengan kelas dihitung ulang sekarang. None bila tidak sah."""
+    h = Path(home or HOME)
+    d = cleandetect.parse_id(id_, h)
+    if d is None:
+        return None
+    apps = cleandetect.installed_apps(h) if apps is None else apps
+    comms = cleandetect.running_comms() if comms is None else comms
+    cls, src, orphan, on, why = cleandetect.classify(d.name, apps, comms)
+    if cls != "terkunci" and not du_bytes(d, timeout=60)[1]:
+        cls, why = "terkunci", "tidak terbaca penuh (izin macOS)"
+    return E(id_, d.name, "detected", [d], why, "", [], kind="contents", cls=cls, src=src, orphan=orphan)
+
+
 def scan(cat=None, out=None):
+    detect = cat is None
     cat = cat or catalog()
     rows = []
     for e in cat:
@@ -230,11 +247,15 @@ def scan(cat=None, out=None):
             row["items"] = entry_items(e)
             row["age_days"] = entry_age_days(e)
         rows.append(row)
-    rows.sort(key=lambda r: ({"safe": 0, "careful": 1, "show": 2}[r["tier"]], -r["bytes"]))
+    if detect:
+        covered = cleandetect.covered(p for e in cat for p in e["paths"])
+        rows.extend(cleandetect.scan_rows(HOME, covered, lambda p: du_bytes(p, timeout=60)))
+    rows.sort(key=lambda r: ({"safe": 0, "careful": 1, "show": 2, "detected": 3}[r["tier"]], -r["bytes"]))
     safe = sum(r["bytes"] for r in rows if r["tier"] == "safe")
     careful = sum(r["bytes"] for r in rows if r["tier"] == "careful")
+    detected = sum(r["bytes"] for r in rows if r["tier"] == "detected" and r["cls"] != "terkunci")
     free = shutil.disk_usage("/System/Volumes/Data" if os.path.exists("/System/Volumes/Data") else "/").free
-    return dict(at=int(time.time()), rows=rows, safe_bytes=safe, careful_bytes=careful, disk_free=free)
+    return dict(at=int(time.time()), rows=rows, safe_bytes=safe, careful_bytes=careful, detected_bytes=detected, disk_free=free)
 
 
 def save_scan(data, path=None):
@@ -299,14 +320,28 @@ def clean_entry(e, apply):
     return max(size - after, 0), ("; ".join(errs[:3]) if errs else None)
 
 
-def run(ids, apply, confirm_careful, cat=None):
+def run(ids, apply, confirm_careful, cat=None, confirm_review=False):
     cat = cat or catalog()
     by = {e["id"]: e for e in cat}
+    apps = comms = None
     items, skipped, total = [], [], 0
     if not ids:
         raise CleanError("sebutkan id entri (lihat: lab clean scan)")
     for i in ids:
         e = by.get(i)
+        if e is None and re.match(r"^(lc|xc):", i or ""):
+            if apps is None:
+                apps, comms = cleandetect.installed_apps(HOME), cleandetect.running_comms()
+            e = detected_entry(i, apps=apps, comms=comms)
+            if e is None:
+                skipped.append(dict(id=i, reason="folder tidak ada atau bukan subfolder langsung yang sah"))
+                continue
+            if e["cls"] == "terkunci":
+                skipped.append(dict(id=i, reason=f"terkunci: {e['why']}"))
+                continue
+            if e["cls"] == "tinjau" and apply and not confirm_review:
+                skipped.append(dict(id=i, reason="cache yang perlu ditinjau butuh --confirm-review"))
+                continue
         if e is None:
             skipped.append(dict(id=i, reason="id tidak ada di katalog"))
             continue
@@ -494,7 +529,7 @@ def clean_cmd(a):
         print(json.dumps(load_scan()))
         return None
     try:
-        res = run(a.ids, a.apply, a.confirm_careful)
+        res = run(a.ids, a.apply, a.confirm_careful, confirm_review=a.confirm_review)
     except CleanError as x:
         print("lab:", x, file=sys.stderr)
         return 1

@@ -181,9 +181,9 @@ lab sys procs | disk | security | docker | dns | stats | kill | hw | ssd | net [
 
 Tersedia juga di panel: **Sistem → Ruang dan memori**.
 
-- `lab clean scan`: mengukur katalog lokasi yang dikenal dan menyimpan hasilnya. Hanya membaca.
+- `lab clean scan`: mengukur katalog lokasi yang dikenal, ditambah subfolder langsung `~/Library/Caches` dan `~/.cache` yang ditemukan otomatis (aplikasi baru ikut terdeteksi tanpa perubahan kode), lalu menyimpan hasilnya. Hanya membaca.
 - `lab clean last`: menampilkan hasil analisis terakhir.
-- `lab clean run <id> [<id> ...]`: **pratinjau** apa yang akan dibersihkan. Tambahkan `--apply` untuk benar-benar menghapus. Entri tingkat Hati-hati juga butuh `--confirm-careful`.
+- `lab clean run <id> [<id> ...]`: **pratinjau** apa yang akan dibersihkan. Tambahkan `--apply` untuk benar-benar menghapus. Entri tingkat Hati-hati juga butuh `--confirm-careful`. Cache terdeteksi berkelas Tinjau butuh `--confirm-review`; kelas Terkunci (cache sistem Apple, aplikasinya sedang berjalan, tidak terbaca penuh) tidak pernah dihapus.
 - `lab mem top`: ringkasan memori, pemakai terbesar per layanan, dan saran penghematan.
 
 Tiga tingkat, ditetapkan oleh katalog di kode (bukan jalur bebas dari masukan):

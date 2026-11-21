@@ -5,6 +5,7 @@ import { fmtBytes } from "../../lib";
 import { useT } from "../../i18n";
 import { trackJob } from "../../jobs";
 import { Alert, Card, ConfirmDialog, State, useLoad } from "../../ui";
+import { DetectedSection } from "./DetectedSection";
 import { ageLabel, estimate, group, isStale, parseRun, runSummary, scanAge, sizeLabel, type RunResult, type Scan, type ScanRow } from "./model";
 
 // Ikon: ScanSearch = analisis, ShieldCheck = aman, TriangleAlert = perlu persetujuan, Eye = hanya ditampilkan, Trash2 = hapus, Eraser = bersihkan pilihan.
@@ -158,6 +159,8 @@ export default function CleanSection() {
               </span>
             </div>
           </Card>
+
+          <DetectedSection rows={g.detected} onDone={afterRun} />
 
           <Card
             title={
