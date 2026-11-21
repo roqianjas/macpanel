@@ -1,3 +1,4 @@
+import { normalizeHosts } from "./hosts";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { errText, post } from "../../api";
@@ -10,6 +11,7 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
   const [m, setM] = useState<Model>({ ...initial, rewrites: initial.rewrites ?? [] });
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [aliasText, setAliasText] = useState((initial.aliases ?? []).join("\n"));
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const set = <K extends keyof Model>(k: K, v: Model[K]) => setM((p) => ({ ...p, [k]: v }));
   const presets = m.mode === "php" ? ["laravel", "wordpress"] : m.mode === "statis" ? ["static", "spa"] : [];
@@ -20,7 +22,7 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
     setBusy(true);
     setMsg(null);
     try {
-      const body: Record<string, unknown> = { ...m, max_body_mb: Number(m.max_body_mb), read_timeout_s: Number(m.read_timeout_s) };
+      const body: Record<string, unknown> = { ...m, aliases: normalizeHosts((m.aliases ?? []).join("\n")), max_body_mb: Number(m.max_body_mb), read_timeout_s: Number(m.read_timeout_s) };
       if (replace) body.replace = true;
       await post(`/api/sites/${name}/settings`, body);
       setMsg({ tone: "ok", text: t("dev.set.saved") });
@@ -55,10 +57,11 @@ export function SettingsForm({ name, kind, initial, system, section, onSaved }: 
             </p>
             <Field label={t("dev.set.domains")} hint={t("dev.set.mainName", { name })}>
               {(id, dd) => (
-                <textarea id={id} aria-describedby={dd} className="mono" rows={4} placeholder={t("dev.set.domPh")} value={(m.aliases ?? []).join("\n")} onChange={(e) => set("aliases", e.target.value.split("\n").map((x) => x.trim().toLowerCase()).filter(Boolean))} spellCheck={false} />
+                <textarea id={id} aria-describedby={dd} className="mono" rows={4} placeholder={t("dev.set.domPh")} value={aliasText} onChange={(e) => { setAliasText(e.target.value); set("aliases", e.target.value.split("\n").map((x) => x.trim().toLowerCase()).filter(Boolean)); }} onBlur={(e) => { const h = normalizeHosts(e.target.value); setAliasText(h.join("\n")); set("aliases", h); }} spellCheck={false} />
               )}
             </Field>
             <p className="small muted">{t("dev.set.domPublicNote")}</p>
+            <p className="small muted">{t("dev.set.domTunnelNote")}</p>
             {(m.aliases ?? []).some((x) => !x.endsWith(".lab")) && (
               <>
                 <div className="alert alert-warn" role="alert">{t("dev.set.domPublicWarn")}</div>

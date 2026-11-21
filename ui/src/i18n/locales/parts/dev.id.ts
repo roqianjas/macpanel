@@ -499,5 +499,6 @@ const dev: Record<string, string> = {
   "pub.h": "{h} jam",
   "state.outside.title": "Fitur ini tidak tersedia lewat panel",
   "state.outside.body": "Folder proyek situs ini ada di luar ~/MacPanel/wwwroot, jadi deploy dan .env tidak bisa dikelola dari panel. Kelola dari terminal.",
+  "dev.set.domTunnelNote": "Alamat dari tab Publik (trycloudflare.com) tidak perlu didaftarkan di sini: ia berubah setiap dinyalakan dan sudah diterima otomatis. URL lengkap yang ditempel dirapikan menjadi nama host.",
 };
 export default dev;

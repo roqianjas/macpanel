@@ -499,5 +499,6 @@ const dev: Record<string, string> = {
   "pub.h": "{h} h",
   "state.outside.title": "This feature is not available through the panel",
   "state.outside.body": "This site's project folder is outside ~/MacPanel/wwwroot, so deploy and .env cannot be managed from the panel. Manage it from the terminal.",
+  "dev.set.domTunnelNote": "Addresses from the Public tab (trycloudflare.com) do not need to be registered here: they change every time they are turned on and are accepted automatically. A pasted full URL is trimmed to the host name.",
 };
 export default dev;

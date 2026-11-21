@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Sizes now match macOS: storage, network and file sizes use base 1000 (GB, as in Finder and System Settings), memory uses base 1024 labelled GB (as in About This Mac). The Disk card also shows the purgeable space macOS can free by itself, so it lines up with the "available" figure in System Settings.
+- Extra domains: a pasted full URL is trimmed to the host name when the field loses focus and on save; pressing Enter now adds a new line (it was removed before); a note explains that Public-tab addresses need no registration.
 - Sites whose project folder is outside `~/MacPanel/wwwroot` show a clear "not available through the panel" notice on the Deploy and .env tabs instead of a raw load error.
 - Temporary public access per site (Public tab, `lab public`) through Cloudflare Quick Tunnel: one loopback listener per site, explicit confirmation + step-up, time limit with automatic shutdown, Activity log, never restarts after reboot. Listener files live in `nginx/public/`, outside `sites/`, so they never appear as sites. Cloudflare Tunnel is an optional app (install/stop/remove from Apps). The Apps page can now install and remove Apache too.
 - Extra domains accept any host name (e.g. a Tailscale Funnel name) with an explicit public-exposure confirmation; only `.lab` names get an mkcert certificate.
