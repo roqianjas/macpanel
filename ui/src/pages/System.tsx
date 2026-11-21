@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Skull } from "lucide-react";
 import { get, post } from "../api";
-import { fmtBytes } from "../lib";
+import { fmtBytes, fmtMem } from "../lib";
 import CleanSection from "../features/clean/CleanSection";
 import MemSection from "../features/clean/MemSection";
 import TailscaleSection from "../features/tailscale/TailscaleSection";
@@ -115,7 +115,7 @@ function Procs() {
                   <td className="mono">{p.pid}</td>
                   <td>{p.name}</td>
                   <td className="mono">{p.cpu.toFixed(1)}</td>
-                  <td className="mono">{fmtBytes(p.rss_mb * 1048576)}</td>
+                  <td className="mono">{fmtMem(p.rss_mb * 1048576)}</td>
                   <td className="mono">{p.etime}</td>
                   <td className="cell-end">
                     {p.killable ? (

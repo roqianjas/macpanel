@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Copy, Gauge, MemoryStick, Power } from "lucide-react";
 import { get, post } from "../../api";
-import { fmtBytes } from "../../lib";
+import { fmtMem } from "../../lib";
 import { t as tr, useT } from "../../i18n";
 import { Card, Chip, ConfirmDialog, State, useLoad } from "../../ui";
 import { appUsedMb, pressure, PURGE_COMMAND, type MemSuggestion, type MemView } from "./model";
 
 // Ikon: MemoryStick = memori, Gauge = tekanan, Power = matikan layanan opsional, Copy = salin perintah.
 
-const mb = (v: number | undefined) => (v == null ? tr("fmt.na") : fmtBytes(v * 1048576));
+const mb = (v: number | undefined) => (v == null ? tr("fmt.na") : fmtMem(v * 1048576));
 
 export default function MemSection() {
   const t = useT();

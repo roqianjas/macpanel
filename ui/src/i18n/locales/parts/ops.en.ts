@@ -221,5 +221,6 @@ const ops: Record<string, string> = {
   "ops.dc.list": "Document list",
   "ops.dc.search": "Search the documentation",
   "ops.dc.doc": "Document",
+  "ov.disk.purgeable": "+ {size} that macOS can free by itself (System Settings shows {total} available)",
 };
 export default ops;

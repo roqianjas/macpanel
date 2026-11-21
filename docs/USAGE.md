@@ -293,7 +293,7 @@ Panel mencatat satu sampel tiap 30 detik dan menyimpannya 7 hari. Grafik hanya b
 
 - **CPU**: pemakaian total.
 - **Memori**: App Memory + Wired + Compressed, sama dengan definisi Activity Monitor macOS (memori yang dipakai cache tidak dihitung terpakai).
-- **Disk**: volume data.
+- **Disk**: volume data. Ukuran memakai basis 1000 (GB) seperti Pengaturan Sistem macOS; memori memakai basis 1024 seperti Tentang Mac Ini. Kartu juga menampilkan ruang "dapat dibersihkan" yang bisa dibebaskan macOS sendiri; Pengaturan Sistem menjumlahkannya ke angka "tersedia", sedangkan angka "bebas" di panel adalah ruang yang benar-benar kosong.
 - **Beban**: load average.
 - **Bandwidth**: selisih byte per antarmuka jaringan; total periode adalah jumlah selisih, sehingga reboot tidak menurunkan angka.
 

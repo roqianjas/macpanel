@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Cpu, Gauge, HardDrive, Network } from "lucide-react";
 import { LineChart, RangePicker } from "../charts";
 import { useMetrics, useSystem } from "../data";
-import { byteUnit, fmtBytes, fmtRate, niceTop, RANGES, type RangeKey } from "../lib";
+import { byteUnit, fmtBytes, fmtMem, fmtRate, niceTop, RANGES, type RangeKey } from "../lib";
 import { Card, PageHead, State } from "../ui";
 import HardwareSection from "../features/hardware/HardwareSection";
 import NetSection from "../features/netmon/NetSection";
@@ -137,7 +137,7 @@ export default function Monitoring() {
                   <tr key={`${p.name}-${i}`}>
                     <th scope="row" className="mono">{p.name}</th>
                     <td className="num">{p.cpu.toFixed(1).replace(".", decimalSep())}%</td>
-                    <td className="num">{fmtBytes(p.rss_mb * 1024 * 1024)}</td>
+                    <td className="num">{fmtMem(p.rss_mb * 1024 * 1024)}</td>
                   </tr>
                 ))}
               </tbody>

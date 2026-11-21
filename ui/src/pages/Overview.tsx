@@ -2,7 +2,7 @@ import { Activity, Boxes, Cpu, Database, Download, Globe, HardDrive, MemoryStick
 import { get } from "../api";
 import { CountUp, LineChart, RangePicker, Ring, Sparkline, toneOf } from "../charts";
 import { serviceView, useAlerts, useMetrics, useServices, useSystem } from "../data";
-import { fmtAgo, fmtBytes, fmtRate, fmtUptime, type RangeKey } from "../lib";
+import { fmtAgo, fmtBytes, fmtMem, fmtRate, fmtUptime, type RangeKey } from "../lib";
 import { Card, Chip, Mark, State, usePoll } from "../ui";
 import HealthCard from "../features/hardware/HealthCard";
 import { useState } from "react";
@@ -151,7 +151,7 @@ export default function Overview() {
                 <Ring pct={hasSample ? si.mem : null} label={t("ov.mem.used")} tone={toneOf(hasSample ? si.mem : null)} />
                 <div>
                   <p className="big">{hasSample ? <CountUp value={si.mem} decimals={0} suffix="%" /> : t("fmt.na")}</p>
-                  <p className="small muted">{t("ov.mem.of", { size: fmtBytes(si.mem_total) })}</p>
+                  <p className="small muted">{t("ov.mem.of", { size: fmtMem(si.mem_total) })}</p>
                 </div>
               </div>
               <Sparkline pts={spark.data?.mem ?? []} label={t("ov.mem.hour")} />
@@ -163,6 +163,9 @@ export default function Overview() {
                 <div>
                   <p className="big">{si.disk_total ? <CountUp value={si.disk} decimals={0} suffix="%" /> : t("fmt.na")}</p>
                   <p className="small muted">{t("ov.disk.free", { size: fmtBytes(si.disk_free) })}</p>
+                  {(si.disk_purgeable ?? 0) > 100e6 && (
+                    <p className="small muted">{t("ov.disk.purgeable", { size: fmtBytes(si.disk_purgeable ?? 0), total: fmtBytes(si.disk_free + (si.disk_purgeable ?? 0)) })}</p>
+                  )}
                 </div>
               </div>
               {si.disk >= 85 && <p className="callout">{t("system.ov.diskFull")}</p>}
@@ -215,7 +218,7 @@ export default function Overview() {
                 <div><dt>{t("ov.sys.host")}</dt><dd>{si.host}</dd></div>
                 <div><dt>{t("ov.sys.os")}</dt><dd>{si.os}</dd></div>
                 <div><dt>{t("ov.sys.cpu")}</dt><dd>{t("ov.cores", { n: si.cores })}</dd></div>
-                <div><dt>{t("ov.mem")}</dt><dd>{fmtBytes(si.mem_total)}</dd></div>
+                <div><dt>{t("ov.mem")}</dt><dd>{fmtMem(si.mem_total)}</dd></div>
                 <div><dt>{t("ov.disk")}</dt><dd>{fmtBytes(si.disk_total)}</dd></div>
                 <div>
                   <dt>{t("ov.sys.backup")}</dt>

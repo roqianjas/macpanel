@@ -22,6 +22,7 @@ export interface SystemInfo {
   mem_total: number;
   disk_total: number;
   disk_free: number;
+  disk_purgeable?: number;
   boot: number;
   load: [number, number, number];
   cpu: number;

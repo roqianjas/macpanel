@@ -62,10 +62,10 @@ export function niceTop(v: number, floor: number, unit = 1): number {
   return 4 * step * unit;
 }
 
-/** Satuan byte terbesar (1024^k) yang masih <= v, untuk memilih langkah sumbu bandwidth. */
+/** Satuan byte terbesar (1000^k) yang masih <= v, untuk memilih langkah sumbu bandwidth. */
 export function byteUnit(v: number): number {
   let u = 1;
-  while (u * 1024 <= v && u < 1024 ** 4) u *= 1024;
+  while (u * 1000 <= v && u < 1000 ** 4) u *= 1000;
   return u;
 }
 
@@ -100,17 +100,26 @@ export function fmtAgo(sec: number): string {
 
 const num = (v: number, d: number) => v.toFixed(d).replace(".", decimalSep());
 
-/** Ukuran data (basis 1024). */
-export function fmtBytes(b: number | null | undefined): string {
+function fmtScaled(b: number | null | undefined, base: number): string {
   if (b == null || !isFinite(b)) return "n/a";
   const u = ["B", "KB", "MB", "GB", "TB"];
   let v = Math.max(0, b);
   let i = 0;
-  while (v >= 1024 && i < u.length - 1) {
-    v /= 1024;
+  while (v >= base && i < u.length - 1) {
+    v /= base;
     i++;
   }
   return `${num(v, i === 0 || v >= 100 ? 0 : v >= 10 ? 1 : 2).replace(new RegExp(`\\${decimalSep()}(\\d*?)0+$`), (_m, d: string) => (d ? `${decimalSep()}${d}` : ""))} ${u[i]}`;
+}
+
+/** Ukuran penyimpanan, jaringan, dan berkas: basis 1000 seperti Finder dan Pengaturan Sistem macOS. */
+export function fmtBytes(b: number | null | undefined): string {
+  return fmtScaled(b, 1000);
+}
+
+/** Ukuran memori (RAM, RSS): basis 1024 dengan label GB/MB seperti Tentang Mac Ini dan Activity Monitor. */
+export function fmtMem(b: number | null | undefined): string {
+  return fmtScaled(b, 1024);
 }
 
 /** Laju dalam byte per detik. */

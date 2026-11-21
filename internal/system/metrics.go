@@ -209,6 +209,18 @@ type Collector struct {
 	}
 }
 
+// purgeableJS membaca kapasitas "important usage" volume (angka yang dipakai Pengaturan Sistem). Tanpa shell dari string: skrip tetap.
+const purgeableJS = `ObjC.import("Foundation");var r=$.NSURL.fileURLWithPath("/").resourceValuesForKeysError($(["NSURLVolumeAvailableCapacityForImportantUsageKey"]),null);String(ObjC.unwrap(r.objectForKey("NSURLVolumeAvailableCapacityForImportantUsageKey")))`
+
+// parsePurgeable: selisih antara kapasitas "important usage" dan ruang bebas sebenarnya; 0 bila tidak masuk akal.
+func parsePurgeable(out string, free uint64) uint64 {
+	v, err := strconv.ParseUint(strings.TrimSpace(out), 10, 64)
+	if err != nil || v <= free {
+		return 0
+	}
+	return v - free
+}
+
 func NewCollector(a *core.App) *Collector {
 	return &Collector{a: a, Runner: realRun, Disk: diskUsage}
 }
@@ -313,23 +325,25 @@ func Metrics(a *core.App, w http.ResponseWriter, r *http.Request, _ *store.Sessi
 }
 
 type SystemInfo struct {
-	Host      string         `json:"host"`
-	OS        string         `json:"os"`
-	Cores     int            `json:"cores"`
-	MemTotal  uint64         `json:"mem_total"`
-	DiskTotal uint64         `json:"disk_total"`
-	DiskFree  uint64         `json:"disk_free"`
-	Boot      int64          `json:"boot"`
-	Load      [3]float64     `json:"load"`
-	CPU       float64        `json:"cpu"`
-	Mem       float64        `json:"mem"`
-	Disk      float64        `json:"disk"`
-	SampleAt  int64          `json:"sample_at"`
-	Tailnet   string         `json:"tailnet_ip"`
-	Nets      []NetNow       `json:"nets"`
-	Top       []ProcInfo     `json:"top"`
-	Backup    *BackupInfo    `json:"backup"`
-	Extra     map[string]any `json:"-"`
+	Host      string `json:"host"`
+	OS        string `json:"os"`
+	Cores     int    `json:"cores"`
+	MemTotal  uint64 `json:"mem_total"`
+	DiskTotal uint64 `json:"disk_total"`
+	DiskFree  uint64 `json:"disk_free"`
+	// Ruang yang boleh dibebaskan macOS sendiri (cache, snapshot); "tersedia" di Pengaturan Sistem = DiskFree + DiskPurgeable.
+	DiskPurgeable uint64         `json:"disk_purgeable"`
+	Boot          int64          `json:"boot"`
+	Load          [3]float64     `json:"load"`
+	CPU           float64        `json:"cpu"`
+	Mem           float64        `json:"mem"`
+	Disk          float64        `json:"disk"`
+	SampleAt      int64          `json:"sample_at"`
+	Tailnet       string         `json:"tailnet_ip"`
+	Nets          []NetNow       `json:"nets"`
+	Top           []ProcInfo     `json:"top"`
+	Backup        *BackupInfo    `json:"backup"`
+	Extra         map[string]any `json:"-"`
 }
 
 type NetNow struct {
@@ -393,6 +407,9 @@ func systemInfo(a *core.App) SystemInfo {
 	}
 	if c != nil {
 		si.DiskTotal, si.DiskFree = c.Disk()
+		if o, err := run(5*time.Second, "/usr/bin/osascript", "-l", "JavaScript", "-e", purgeableJS); err == nil {
+			si.DiskPurgeable = parsePurgeable(o, si.DiskFree)
+		}
 		c.mu.Lock()
 		si.CPU, si.Mem, si.Disk, si.Load, si.SampleAt = c.last.CPU, c.last.Mem, c.last.Disk, c.last.Load, c.lastAt
 		cur := c.last.Nets

@@ -221,5 +221,6 @@ const ops: Record<string, string> = {
   "ops.dc.list": "Daftar dokumen",
   "ops.dc.search": "Cari di dokumentasi",
   "ops.dc.doc": "Dokumen",
+  "ov.disk.purgeable": "+ {size} dapat dibersihkan macOS sendiri (Pengaturan Sistem menyebut {total} tersedia)",
 };
 export default ops;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byteUnit, fmtBytes, fmtRate, fmtUptime, geometry, niceTop, summarize } from "./lib";
+import { byteUnit, fmtBytes, fmtMem, fmtRate, fmtUptime, geometry, niceTop, summarize } from "./lib";
 
 describe("niceTop: empat interval berlabel bulat", () => {
   it("beban 3 -> 4 (langkah 1), beban 5 -> 8 (langkah 2), batas bawah 4", () => {
@@ -18,32 +18,39 @@ describe("niceTop: empat interval berlabel bulat", () => {
     }
   });
   it("bandwidth: 145 KB/s -> 200 KB/s dengan tick 50, 100, 150, 200", () => {
-    const v = 145 * 1024;
+    const v = 145 * 1000;
     const unit = byteUnit(Math.max(v, 4096) / 4);
-    expect(unit).toBe(1024);
-    expect(niceTop(v, 4096, unit) / 1024).toBe(200);
+    expect(unit).toBe(1000);
+    expect(niceTop(v, 4096, unit) / 1000).toBe(200);
   });
 });
 
 describe("byteUnit dan format", () => {
   it("memilih satuan terbesar yang muat", () => {
     expect(byteUnit(500)).toBe(1);
-    expect(byteUnit(1024)).toBe(1024);
-    expect(byteUnit(5 * 1024 * 1024)).toBe(1024 * 1024);
+    expect(byteUnit(1000)).toBe(1000);
+    expect(byteUnit(5 * 1000 * 1000)).toBe(1000 * 1000);
   });
   it("fmtBytes: koma desimal Indonesia, tanpa ',0' sisa", () => {
     expect(fmtBytes(0)).toBe("0 B");
-    expect(fmtBytes(1024)).toBe("1 KB");
-    expect(fmtBytes(1536)).toBe("1,5 KB");
-    expect(fmtBytes(48.8 * 1024)).toBe("48,8 KB");
-    expect(fmtBytes(50 * 1024)).toBe("50 KB");
-    expect(fmtBytes(16 * 1024 ** 3)).toBe("16 GB");
+    expect(fmtBytes(1000)).toBe("1 KB");
+    expect(fmtBytes(1500)).toBe("1,5 KB");
+    expect(fmtBytes(48800)).toBe("48,8 KB");
+    expect(fmtBytes(50000)).toBe("50 KB");
+    expect(fmtBytes(16e9)).toBe("16 GB");
     expect(fmtBytes(null)).toBe("n/a");
     expect(fmtBytes(NaN)).toBe("n/a");
     expect(fmtBytes(-5)).toBe("0 B");
   });
+  it("sama dengan macOS: 146,05 GB desimal = 136 GiB; RAM 16 GiB tetap tampil 16 GB", () => {
+    expect(fmtBytes(146.05e9)).toBe("146,05 GB".replace(",05", "")); // 146 GB
+    expect(fmtBytes(245.05e9)).toBe("245 GB");
+    expect(fmtMem(16 * 1024 ** 3)).toBe("16 GB");
+    expect(fmtMem(512 * 1024 ** 2)).toBe("512 MB");
+    expect(fmtMem(null)).toBe("n/a");
+  });
   it("fmtRate", () => {
-    expect(fmtRate(2048)).toBe("2 KB/s");
+    expect(fmtRate(2000)).toBe("2 KB/s");
     expect(fmtRate(undefined)).toBe("n/a");
   });
   it("fmtUptime", () => {
