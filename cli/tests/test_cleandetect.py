@@ -132,3 +132,22 @@ def test_run_symlink_inside_not_followed(home):
 def test_run_bad_ids_skipped_not_executed(home, bad):
     r = run([bad], True, review=True)
     assert r["skipped"] and not r["items"]
+
+
+def test_npm_cache_not_blocked_by_unrelated_node():
+    e = next(x for x in clean.catalog() if x["id"] == "npm-cache")
+    assert "node" not in e["busy"] and {"npm", "pnpm"} <= set(e["busy"])
+
+
+def test_scan_rows_report_running_processes(monkeypatch, tmp_path):
+    monkeypatch.setattr(clean, "HOME", tmp_path)
+    monkeypatch.setattr(clean, "running", lambda names: [n for n in names if n == "Google Chrome"])
+    cat = [
+        clean.E("chrome-cache", "Chrome", "safe", [tmp_path / "x"], "w", busy=["Google Chrome"]),
+        clean.E("go", "Go", "safe", [tmp_path / "y"], "w", busy=["go"]),
+        clean.E("v", "V", "show", [tmp_path / "z"], "w"),
+    ]
+    rows = {r["id"]: r for r in clean.scan(cat)["rows"]}
+    assert rows["chrome-cache"]["busy"] == ["Google Chrome"]
+    assert rows["go"]["busy"] == []
+    assert "busy" not in rows["v"]

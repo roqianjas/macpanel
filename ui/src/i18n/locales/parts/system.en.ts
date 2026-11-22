@@ -510,5 +510,7 @@ const system: Record<string, string> = {
   "system.cl.det.w.unreadable": "Not fully readable (macOS permission), not deleted.",
   "system.cl.det.w.orphan": "No installed app has this id; probably left over from a removed app.",
   "system.cl.det.w.review": "The content cannot be proven safe; delete only if you are sure.",
+  "system.cl.busy": "{procs} is running: close it first to clean this.",
+  "system.cl.nothing": "Nothing was cleaned. {n} skipped ({reasons}).",
 };
 export default system;

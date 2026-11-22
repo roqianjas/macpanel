@@ -106,3 +106,19 @@ describe("alasan terdeteksi", () => {
     expect(whyKey(d("a", "tinjau", 1))).toBe("review");
   });
 });
+
+import { isBusy } from "./model";
+describe("baris terblokir proses berjalan", () => {
+  it("isBusy dan ringkasan 0 B", () => {
+    expect(isBusy({ ...d("a", "aman", 1), busy: ["Google Chrome"] })).toBe(true);
+    expect(isBusy({ ...d("a", "aman", 1), busy: [] })).toBe(false);
+    expect(isBusy(d("a", "aman", 1))).toBe(false);
+    const r = runSummary({ dry_run: false, items: [], skipped: [{ id: "x", reason: "proses terkait sedang berjalan: node" }], bytes: 0 });
+    expect(r.tone).toBe("warn");
+    expect(r.text).toMatch(/node/);
+    expect(r.text).not.toMatch(/dibebaskan|freed/);
+  });
+  it("baris terblokir tidak bisa dipilih di cache terdeteksi", () => {
+    expect(canPick({ ...d("lc:a", "aman", 1), busy: ["X"] })).toBe(false);
+  });
+});

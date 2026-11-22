@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Eraser, Eye, HardDrive, ScanSearch, ShieldCheck, Trash2, TriangleAlert } from "lucide-react";
+import { Eraser, Eye, HardDrive, Lock, ScanSearch, ShieldCheck, Trash2, TriangleAlert } from "lucide-react";
 import { errText, get, post } from "../../api";
 import { fmtBytes } from "../../lib";
 import { useT } from "../../i18n";
 import { trackJob } from "../../jobs";
 import { Alert, Card, ConfirmDialog, State, useLoad } from "../../ui";
 import { DetectedSection } from "./DetectedSection";
-import { ageLabel, estimate, group, isStale, parseRun, runSummary, scanAge, sizeLabel, type RunResult, type Scan, type ScanRow } from "./model";
+import { ageLabel, estimate, group, isBusy, isStale, parseRun, runSummary, scanAge, sizeLabel, type RunResult, type Scan, type ScanRow } from "./model";
 
 // Ikon: ScanSearch = analisis, ShieldCheck = aman, TriangleAlert = perlu persetujuan, Eye = hanya ditampilkan, Trash2 = hapus, Eraser = bersihkan pilihan.
 
@@ -64,8 +64,8 @@ export default function CleanSection() {
     setErr("");
     setBusy(true);
     try {
-      const r = await post<{ preview: RunResult }>("/api/clean/preview", { ids: [...picked] });
-      setReview({ ids: [...picked], preview: r.preview });
+      const r = await post<{ preview: RunResult }>("/api/clean/preview", { ids: [...eff] });
+      setReview({ ids: [...eff], preview: r.preview });
     } catch (e) {
       setErr(errText(e));
     } finally {
@@ -73,7 +73,9 @@ export default function CleanSection() {
     }
   };
 
-  const est = estimate(scan, picked);
+  const busyIds = new Set((scan?.rows ?? []).filter(isBusy).map((r) => r.id));
+  const eff = new Set([...picked].filter((id) => !busyIds.has(id)));
+  const est = estimate(scan, eff);
 
   return (
     <div className="stack">
@@ -126,11 +128,16 @@ export default function CleanSection() {
                   <ul className="cgrid">
                     {filled.map((r) => (
                       <li key={r.id} className="crow">
-                        <label className="clean-pick">
-                          <input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} aria-label={t("system.cl.pick", { label: r.label })} />
+                        <label className={`clean-pick ${isBusy(r) ? "is-locked" : ""}`}>
+                          <input type="checkbox" checked={picked.has(r.id) && !isBusy(r)} disabled={isBusy(r)} onChange={() => toggle(r.id)} aria-label={t("system.cl.pick", { label: r.label })} />
                           <span>
                             <span className="clean-name">{r.label}</span>
                             <span className="small muted block">{r.why} {r.cost}</span>
+                            {isBusy(r) && (
+                              <span className="small block warn-text">
+                                <Lock aria-hidden="true" size={12} /> {t("system.cl.busy", { procs: (r.busy ?? []).join(", ") })}
+                              </span>
+                            )}
                           </span>
                         </label>
                         <span className="mono csize">{sizeLabel(r)}</span>
@@ -148,12 +155,12 @@ export default function CleanSection() {
               );
             })()}
             <div className="sticky-bar">
-              <span className="small" aria-live="polite">{picked.size === 0 ? t("system.cl.noneSel") : t("system.cl.sel", { n: picked.size, size: fmtBytes(est) })}</span>
+              <span className="small" aria-live="polite">{eff.size === 0 ? t("system.cl.noneSel") : t("system.cl.sel", { n: eff.size, size: fmtBytes(est) })}</span>
               <span className="row-end">
-                <button className="btn" onClick={() => setPicked(new Set(g.safe.filter((r) => r.bytes > 0).map((r) => r.id)))} disabled={busy}>
+                <button className="btn" onClick={() => setPicked(new Set(g.safe.filter((r) => r.bytes > 0 && !isBusy(r)).map((r) => r.id)))} disabled={busy}>
                   {t("system.cl.selAll")}
                 </button>
-                <button className="btn btn-primary" onClick={openReview} disabled={busy || picked.size === 0}>
+                <button className="btn btn-primary" onClick={openReview} disabled={busy || eff.size === 0}>
                   <Eraser aria-hidden="true" size={16} /> {t("system.cl.review")}
                 </button>
               </span>

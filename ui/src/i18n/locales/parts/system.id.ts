@@ -510,5 +510,7 @@ const system: Record<string, string> = {
   "system.cl.det.w.unreadable": "Tidak terbaca penuh (izin macOS), tidak dihapus.",
   "system.cl.det.w.orphan": "Tidak ada aplikasi terpasang dengan id ini; kemungkinan sisa aplikasi yang sudah dihapus.",
   "system.cl.det.w.review": "Isinya tidak bisa dibuktikan aman; hapus hanya bila Anda yakin.",
+  "system.cl.busy": "{procs} sedang berjalan: tutup dulu agar bisa dibersihkan.",
+  "system.cl.nothing": "Tidak ada yang dibersihkan. {n} dilewati ({reasons}).",
 };
 export default system;

@@ -22,6 +22,8 @@ export interface ScanRow {
   orphan?: boolean;
   running?: boolean;
   loc?: string;
+  /** Nama proses terkait yang sedang berjalan; baris ini dilewati panel sampai prosesnya ditutup. */
+  busy?: string[];
 }
 
 export interface Scan {
@@ -104,6 +106,9 @@ export function runSummary(r: RunResult | null): { tone: "ok" | "warn" | "bad"; 
   if (!r) return { tone: "warn", text: t("system.cl.runUnreadable") };
   const errs = r.items.filter((i) => i.error).length;
   const done = r.items.length - errs;
+  if (done === 0 && r.skipped.length && !errs) {
+    return { tone: "warn", text: t("system.cl.nothing", { n: r.skipped.length, reasons: r.skipped.map((s) => s.reason).join("; ") }) };
+  }
   const parts = [t("system.cl.freed", { size: fmtBytes(r.bytes), n: done })];
   if (errs) parts.push(t("system.cl.failed", { n: errs }));
   if (r.skipped.length) parts.push(t("system.cl.skippedN", { n: r.skipped.length, reasons: r.skipped.map((s) => s.reason).join("; ") }));
@@ -163,7 +168,8 @@ export function whyKey(r: ScanRow): string {
   return r.cls === "aman" ? "orphan" : "review";
 }
 
-export const canPick = (r: ScanRow) => r.tier === "detected" && r.cls !== "terkunci";
+export const isBusy = (r: ScanRow) => (r.busy?.length ?? 0) > 0;
+export const canPick = (r: ScanRow) => r.tier === "detected" && r.cls !== "terkunci" && !isBusy(r);
 
 export const DETECTED_FACETS: { id: string; test: (r: ScanRow) => boolean }[] = [
   { id: "aman", test: (r) => r.cls === "aman" },

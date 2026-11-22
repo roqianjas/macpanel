@@ -44,7 +44,7 @@ def catalog(home=None, root=None):
     cat = [
         E("go-build", "Cache build Go", "safe", [c / "go-build"], "Hasil kompilasi sementara; Go membuatnya ulang sendiri.", "Build Go berikutnya lebih lambat.", ["go"]),
         E("homebrew-cache", "Cache unduhan Homebrew", "safe", [c / "Homebrew"], "Berkas unduhan paket yang sudah terpasang.", "Instal ulang paket akan mengunduh lagi.", ["brew"]),
-        E("npm-cache", "Cache npm", "safe", [h / ".npm/_cacache"], "Salinan paket npm yang pernah diunduh.", "Instal npm berikutnya mengunduh ulang.", ["npm", "pnpm", "node"]),
+        E("npm-cache", "Cache npm", "safe", [h / ".npm/_cacache"], "Salinan paket npm yang pernah diunduh.", "Instal npm berikutnya mengunduh ulang.", ["npm", "pnpm"]),
         E("pnpm-cache", "Cache pnpm", "safe", [c / "pnpm"], "Metadata dan cache unduhan pnpm.", "Instal pnpm berikutnya lebih lambat.", ["pnpm"]),
         E("pip-uv-cache", "Cache pip dan uv", "safe", [c / "pip", h / ".cache/uv"], "Cache paket Python.", "Instal Python berikutnya mengunduh ulang.", ["pip", "pip3", "uv"]),
         E("composer-cache", "Cache Composer", "safe", [c / "composer", h / ".composer/cache"], "Cache paket PHP.", "Composer berikutnya mengunduh ulang.", ["composer"]),
@@ -243,6 +243,8 @@ def scan(cat=None, out=None):
     for e in cat:
         size, ok = entry_size(e)
         row = dict(id=e["id"], label=e["label"], tier=e["tier"], bytes=size, complete=ok, why=e["why"], cost=e["cost"], paths=[p.replace(str(HOME), "~") for p in e["paths"]])
+        if e["tier"] != "show":
+            row["busy"] = running(e["busy"])
         if e["items"]:
             row["items"] = entry_items(e)
             row["age_days"] = entry_age_days(e)
