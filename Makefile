@@ -68,7 +68,7 @@ cli-check:
 cli-test:
 	@if command -v uv >/dev/null; then uv run --with pytest python -m pytest cli/tests -q; \
 	elif $(PY) -c 'import pytest' 2>/dev/null; then $(PY) -m pytest cli/tests -q; \
-	else echo "pytest tidak tersedia (brew install uv)"; exit 1; fi; find cli -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
+	else echo "pytest tidak tersedia (brew install uv)"; exit 1; fi; rc=$$?; find cli -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true; exit $$rc
 
 cli-live:
 	MACPANEL_LIVE=1 uv run --with pytest python -m pytest cli/tests -q -m live

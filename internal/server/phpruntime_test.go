@@ -17,12 +17,27 @@ func TestParsersOnRealShapes(t *testing.T) {
 	if len(r) != 3 || !r[0].Default || r[1].Default || !r[2].Pruned {
 		t.Fatalf("%+v", r)
 	}
-	u, pins := updates.ParseUpdates("Homebrew:\n  mycli              2.30.4 -> 2.31.0   \n  mysql@8.4          8.4.1 -> 9.0.0   PIN (MAYOR: x)\nmise:\n  pnpm       12.18.0 -> 12.21.0\nPin aktif: mysql@8.4, postgresql@17\nCatatan: a -> b\n")
-	if len(u) != 3 || u[0].Source != "homebrew" || !u[1].Pinned || !u[1].Major || u[2].Source != "mise" || len(pins) != 2 {
-		t.Fatalf("%+v %v", u, pins)
+	c, err := updates.ParseCheck(`{"pins":["mysql@8.4","a b"],"errors":["panel"],"items":[
+{"kind":"service","source":"homebrew","name":"nginx","from":"1.1","to":"1.2","pinned":false,"major":false,"upgradable":true,"target":"nginx","note":"restart"},
+{"kind":"service","source":"homebrew","name":"mysql@8.4","from":"8.4.1","to":"9.0.0","pinned":true,"major":true,"upgradable":false,"target":"mysql@8.4","note":"major"},
+{"kind":"runtime","source":"mise","name":"pnpm","from":"12.18.0","to":"12.21.0","pinned":false,"major":false,"upgradable":true,"target":"mise:pnpm","note":""},
+{"kind":"app","source":"npm","name":"9router","from":"0.5.119","to":"0.5.123","pinned":false,"major":false,"upgradable":true,"target":"npm:9router","note":"restart"},
+{"kind":"hacker","source":"homebrew","name":"x","from":"1","to":"2","target":"x"},
+{"kind":"tool","source":"curl","name":"x","from":"1","to":"2","target":"x"},
+{"kind":"tool","source":"homebrew","name":"x","from":"1","to":"2","target":"x;rm -rf /"},
+{"kind":"tool","source":"homebrew","name":"x","from":"1 2","to":"2","target":"x"},
+{"kind":"tool","source":"homebrew","name":"","from":"1","to":"2","target":"x"}]}`)
+	if err != nil || len(c.Items) != 4 || c.Items[0].Kind != "service" || !c.Items[1].Pinned || !c.Items[1].Major || c.Items[2].Target != "mise:pnpm" || c.Items[3].Target != "npm:9router" {
+		t.Fatalf("%+v %v", c, err)
 	}
-	if u, pins := updates.ParseUpdates("Homebrew: semua terbaru\nmise: semua terbaru\nPin aktif: -\n"); len(u) != 0 || len(pins) != 0 {
-		t.Fatalf("kosong: %+v %v", u, pins)
+	if len(c.Pins) != 1 || c.Pins[0] != "mysql@8.4" || len(c.Errors) != 1 {
+		t.Fatalf("pins/errors: %+v", c)
+	}
+	if c, err := updates.ParseCheck(`{"items":[],"pins":[]}`); err != nil || len(c.Items) != 0 || c.Items == nil || c.Pins == nil || c.Errors == nil {
+		t.Fatalf("kosong harus slice kosong, bukan nil: %+v %v", c, err)
+	}
+	if _, err := updates.ParseCheck("Homebrew: semua terbaru"); err == nil {
+		t.Fatal("bukan JSON harus galat")
 	}
 	tk := tasks.ParseTasks("NAMA   STATUS PID EXIT JADWAL/CMD\nq-1  jalan  12  -  KeepAlive  php a\nq-2  tidak dimuat  -  -  KeepAlive  php a\nj  terjadwal  -  0  tiap 60s  php t\n")
 	if len(tk) != 3 || tk[1].Status != "tidak dimuat" || tk[1].PID != "-" || tk[2].Schedule != "tiap 60s php t" {

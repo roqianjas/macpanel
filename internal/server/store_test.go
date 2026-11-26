@@ -1025,7 +1025,7 @@ func TestRuntimeEndpoints(t *testing.T) {
 func TestUpdatesCheckAndApply(t *testing.T) {
 	o := testenv.NewP3Env(t)
 	l := o.Do("GET", "/api/updates", "", o.Cookie, "", nil).Body.String()
-	for _, s := range []string{`"name":"mycli"`, `"major":true`, `"source":"mise"`, `"pins":["mysql@8.4","postgresql@17"]`} {
+	for _, s := range []string{`"name":"mycli"`, `"major":true`, `"source":"mise"`, `"pins":["mysql@8.4","postgresql@17"]`, `"kind":"app"`, `"kind":"lib"`, `"kind":"runtime"`, `"kind":"service"`, `"errors":[]`, `"target":"npm:9router"`} {
 		if !strings.Contains(l, s) {
 			t.Errorf("update tanpa %s: %s", s, l)
 		}
@@ -1047,6 +1047,11 @@ func TestUpdatesCheckAndApply(t *testing.T) {
 			t.Errorf("harus 400: %s -> %d", b, c)
 		}
 	}
+	for _, b := range []string{body("panel", "panel", false), body("npm:../x", "npm:../x", false), body("npm:", "npm:", false), body("npm:A", "npm:A", false), body("npm:x;id", "npm:x;id", false), body("lib:all", "lib", false), body("lib:other", "lib:other", false), body("npm:"+strings.Repeat("a", 61), "npm:"+strings.Repeat("a", 61), false)} {
+		if c, _ := o.Post("/api/updates/apply", b); c != 400 {
+			t.Errorf("harus 400: %s -> %d", b, c)
+		}
+	}
 	if o.Calls() != before {
 		t.Fatal("lab terpanggil oleh input buruk")
 	}
@@ -1064,6 +1069,18 @@ func TestUpdatesCheckAndApply(t *testing.T) {
 	o.WaitJob(testenv.JobID(t, b))
 	if !strings.Contains(o.Calls(), "CALL:[update][apply][mise:pnpm] STDIN") || strings.Contains(strings.Split(o.Calls(), "mise:pnpm")[1], "--allow-pinned") {
 		t.Fatalf("mise argv: %s", o.Calls())
+	}
+	for _, tg := range []string{"npm:9router", "lib:all"} {
+		o.Now = o.Now.Add(store.StepupTTL + time.Second)
+		o.Stepup()
+		c, b := o.Post("/api/updates/apply", body(tg, tg, false))
+		if c != 202 {
+			t.Fatalf("%s: %d %s", tg, c, b)
+		}
+		o.WaitJob(testenv.JobID(t, b))
+		if !strings.Contains(o.Calls(), "CALL:[update][apply]["+tg+"]") || strings.Contains(strings.Split(o.Calls(), "["+tg+"]")[1], "--allow-pinned") {
+			t.Fatalf("%s argv: %s", tg, o.Calls())
+		}
 	}
 }
 

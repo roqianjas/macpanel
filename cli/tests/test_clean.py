@@ -201,10 +201,10 @@ def test_cli_exit_and_dry_default(env, monkeypatch, capsys):
     monkeypatch.setattr(clean, "catalog", lambda *a, **k: cat)
     import types
 
-    a = types.SimpleNamespace(cact="run", ids=["go-build"], apply=False, confirm_careful=False)
+    a = types.SimpleNamespace(cact="run", ids=["go-build"], apply=False, confirm_careful=False, confirm_review=False)
     assert clean.clean_cmd(a) is None
     assert (h / "Library/Caches/go-build/a/f.bin").exists()
-    a = types.SimpleNamespace(cact="run", ids=[], apply=True, confirm_careful=False)
+    a = types.SimpleNamespace(cact="run", ids=[], apply=True, confirm_careful=False, confirm_review=False)
     assert clean.clean_cmd(a) == 1
 
 
